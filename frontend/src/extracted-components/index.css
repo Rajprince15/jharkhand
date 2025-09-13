@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom animations for the AI Travel Planner */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out;
+}
+
+/* Custom styles for better UX */
+.travel-planner-form {
+  @apply space-y-6;
+}
+
+.travel-planner-button {
+  @apply transition-all duration-300 transform hover:scale-105 active:scale-95;
+}
+
+.travel-planner-card {
+  @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+}
+
+/* Loading spinner enhancement */
+.spinner-dual-ring {
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+}
+
+.spinner-dual-ring:after {
+  content: " ";
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin: 4px;
+  border-radius: 50%;
+  border: 4px solid #3b82f6;
+  border-color: #3b82f6 transparent #3b82f6 transparent;
+  animation: spinner-dual-ring 1.2s linear infinite;
+}
+
+@keyframes spinner-dual-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive improvements */
+@media (max-width: 640px) {
+  .travel-planner-grid {
+    @apply grid-cols-1 gap-4;
+  }
+  
+  .travel-planner-form {
+    @apply space-y-4;
+  }
+}
+
+/* Focus styles for accessibility */
+.travel-planner-input:focus {
+  @apply ring-2 ring-blue-500 ring-offset-2 outline-none;
+}
+
+/* Custom scrollbar for better UX */
+.travel-planner-container {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.travel-planner-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.travel-planner-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.travel-planner-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.travel-planner-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

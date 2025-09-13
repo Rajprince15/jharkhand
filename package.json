@@ -1,0 +1,17 @@
+{
+  "name": "fullstack-app",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "repository": "https://github.com/techy-raj-bit/app.git",
+  "author": "Prince Raj <princeraj15042005@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "start": "concurrently \"yarn --cwd backend start\" \"yarn --cwd frontend start\""
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@craco/craco": "^7.1.0",
+    "concurrently": "^9.2.1"
+  }
+}
