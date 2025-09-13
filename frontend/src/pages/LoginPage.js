@@ -240,7 +240,6 @@ const LoginPage = () => {
                       <SelectContent>
                         <SelectItem value="tourist">Tourist</SelectItem>
                         <SelectItem value="provider">Service Provider</SelectItem>
-                        <SelectItem value="admin">Administrator</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

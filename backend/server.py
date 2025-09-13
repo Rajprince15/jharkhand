@@ -163,6 +163,14 @@ async def root():
 @api_router.post("/auth/register")
 async def register_user(user_data: UserCreate):
     try:
+        # Block admin role registration for security
+        if user_data.role == "admin":
+            raise HTTPException(status_code=403, detail="Admin registration is not allowed through public registration")
+        
+        # Ensure only valid roles are allowed
+        if user_data.role not in ["tourist", "provider"]:
+            raise HTTPException(status_code=400, detail="Invalid role. Only 'tourist' and 'provider' roles are allowed")
+        
         pool = await get_db()
         user_id = str(uuid.uuid4())
         hashed_password = hash_password(user_data.password)
@@ -194,6 +202,8 @@ async def register_user(user_data: UserCreate):
                         "phone": user_data.phone
                     }
                 }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -96,7 +96,7 @@
 # END - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
 #====================================================================================================
 
-user_problem_statement: "Complete Jharkhand Tourism Website - Add missing destinations, integrate MySQL database, complete backend with all API endpoints, integrate DeepSeek AI for planner and chatbot, ensure role-based authentication works, and make all dashboards work with real-time data"
+user_problem_statement: "User reported: 1) Bookings not showing in dashboard 2) Remove admin role from registration 3) Data not appearing in MySQL workbench even after booking/registering 4) Want MySQL database integration with provided credentials 5) Create .sql file for database schema"
 
 backend:
   - task: "MySQL Database Integration"
@@ -110,6 +110,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "Database connection successfully tested. MariaDB configured on port 3001 with proper credentials. All tables created and populated with sample data."
+      - working: true
+        agent: "main"
+        comment: "Created .env file with user's exact MySQL credentials (Prince1504). Database connectivity verified and bookings are being stored correctly."
 
   - task: "Authentication System"
     implemented: true
@@ -122,6 +125,24 @@ backend:
       - working: true
         agent: "testing"
         comment: "User registration, login, and JWT token validation working for all roles (tourist, provider, admin). Role-based access control implemented."
+      - working: true
+        agent: "main"
+        comment: "FIXED: Admin role registration now blocked via API. Only tourist and provider roles allowed in public registration. Admin registration returns 403 error."
+
+  - task: "Admin Registration Security"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL ISSUE: Admin role registration was allowed via API, creating security vulnerability."
+      - working: true
+        agent: "main"
+        comment: "FIXED: Added explicit admin role blocking in registration endpoint. Returns 403 Forbidden for admin role attempts."
 
   - task: "Destinations API"
     implemented: true
@@ -158,6 +179,21 @@ backend:
       - working: true
         agent: "testing"
         comment: "Booking creation and retrieval working with proper validation. User and provider booking views functional."
+      - working: true
+        agent: "main"
+        comment: "VERIFIED: Booking creation working correctly. New booking created and stored in MySQL database. Total bookings in DB: 2"
+
+  - task: "Database Schema File"
+    implemented: true
+    working: true
+    file: "/app/jharkhand_tourism_schema.sql"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Created complete .sql file with user's schema including sample data, indexes, and proper table structure for easy import."
 
   - task: "DeepSeek AI Integration"
     implemented: true
