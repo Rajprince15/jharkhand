@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { ArrowLeft, Check, X } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { bookingsAPI } from '../services/api';
+import { useToast } from '../hooks/use-toast';
 
 const BookingPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedPackage, setSelectedPackage] = useState('heritage');
   const [basePrice, setBasePrice] = useState(15999);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
   const [totalPrice, setTotalPrice] = useState(15999);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -170,25 +176,73 @@ const BookingPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleBookTour = () => {
+  const handleBookTour = async () => {
     if (!validateForm()) {
       return;
     }
 
-    // Generate booking reference
-    const ref = 'JH' + Date.now().toString().substr(-6);
-    setBookingRef(ref);
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to make a booking",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
 
-    // Show success modal
-    setShowSuccessModal(true);
+    setIsSubmitting(true);
 
-    // Here you would typically send the booking data to your server
-    console.log('Booking Data:', {
-      package: selectedPackage,
-      ...formData,
-      totalPrice: totalPrice,
-      bookingRef: ref
-    });
+    try {
+      // Generate booking reference
+      const ref = 'JH' + Date.now().toString().substr(-6);
+      
+      // Get selected package details
+      const packageData = getPackageData(selectedPackage);
+      
+      // Prepare booking data for API
+      const bookingData = {
+        destination_id: selectedPackage, // Using package ID as destination ID for now
+        destination_name: packageData.name,
+        provider_id: "default-provider", // You might want to select a provider
+        provider_name: "Jharkhand Tourism",
+        booking_date: formData.departureDate,
+        guests: parseInt(formData.travelers),
+        total_price: totalPrice,
+        status: "pending",
+        special_requests: formData.requirements || "",
+        customer_details: {
+          name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          city_origin: formData.cityOrigin,
+          addons: formData.addons
+        }
+      };
+
+      // Create booking via API
+      const response = await bookingsAPI.create(bookingData);
+      
+      if (response) {
+        setBookingRef(ref);
+        setShowSuccessModal(true);
+        
+        toast({
+          title: "Booking Successful!",
+          description: `Your booking has been created with reference: ${ref}`,
+        });
+      }
+      
+    } catch (error) {
+      console.error('Booking error:', error);
+      toast({
+        title: "Booking Failed",
+        description: "There was an error creating your booking. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const closeModal = () => {
@@ -433,9 +487,10 @@ const BookingPage = () => {
 
                 <Button 
                   onClick={handleBookTour}
-                  className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                  disabled={isSubmitting}
+                  className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  Book Your Adventure Now
+                  {isSubmitting ? 'Creating Booking...' : 'Book Your Adventure Now'}
                 </Button>
               </CardContent>
             </Card>

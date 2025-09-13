@@ -65,8 +65,13 @@ const DestinationDetailPage = () => {
       navigate('/login');
       return;
     }
-    // Navigate to booking page
-    navigate('/booking');
+    // Navigate to booking page with destination info
+    navigate('/booking', { 
+      state: { 
+        destination: destination,
+        isDestinationBooking: true 
+      }
+    });
   };
 
   if (loading) {
