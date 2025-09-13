@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Use environment variable, fallback to '/api' if not set
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 const API_BASE = `${BACKEND_URL}/api`;
 
-// Create axios instance with default config
+// Create axios instance
 const api = axios.create({
   baseURL: API_BASE,
   headers: {
@@ -61,6 +62,9 @@ export const authAPI = {
     localStorage.removeItem('jharkhandTourismUser');
   }
 };
+
+
+
 
 // Destinations API
 export const destinationsAPI = {

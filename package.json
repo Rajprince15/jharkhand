@@ -7,7 +7,7 @@
   "author": "Prince Raj <princeraj15042005@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "start": "concurrently \"yarn --cwd backend start\" \"yarn --cwd frontend start\""
+    "start": "concurrently \"python -u backend/main.py\" \"yarn --cwd frontend start\""
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
