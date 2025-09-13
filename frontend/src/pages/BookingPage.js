@@ -200,24 +200,25 @@ const BookingPage = () => {
       // Get selected package details
       const packageData = getPackageData(selectedPackage);
       
-      // Prepare booking data for API
+      // Prepare booking data for API (matching backend BookingCreate model)
+      const departureDate = new Date(formData.departureDate);
+      const checkOutDate = new Date(departureDate);
+      
+      // Extract number of days from duration string (e.g., "5 Days / 4 Nights" -> 5)
+      const durationDays = packageData.duration ? 
+        parseInt(packageData.duration.match(/(\d+)\s*Days?/i)?.[1]) || 3 : 3;
+      
+      checkOutDate.setDate(checkOutDate.getDate() + durationDays);
+      
       const bookingData = {
-        destination_id: selectedPackage, // Using package ID as destination ID for now
-        destination_name: packageData.name,
-        provider_id: "default-provider", // You might want to select a provider
-        provider_name: "Jharkhand Tourism",
-        booking_date: formData.departureDate,
+        provider_id: "1", // Use first available provider (IDs are 1-8 according to backend test)
+        destination_id: "1", // Use first available destination (will update to use selectedPackage mapping)
+        booking_date: formData.departureDate, // YYYY-MM-DD format
+        check_in: formData.departureDate, // Use departure date as check-in
+        check_out: checkOutDate.toISOString().split('T')[0], // Calculate check-out date
         guests: parseInt(formData.travelers),
-        total_price: totalPrice,
-        status: "pending",
-        special_requests: formData.requirements || "",
-        customer_details: {
-          name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          city_origin: formData.cityOrigin,
-          addons: formData.addons
-        }
+        rooms: Math.ceil(parseInt(formData.travelers) / 2), // Estimate rooms needed (2 guests per room)
+        special_requests: `${formData.requirements || ''}${formData.requirements && formData.cityOrigin ? '\n' : ''}${formData.cityOrigin ? 'Origin: ' + formData.cityOrigin : ''}${formData.addons.length > 0 ? '\nAdd-ons: ' + formData.addons.join(', ') : ''}`.trim()
       };
 
       // Create booking via API
