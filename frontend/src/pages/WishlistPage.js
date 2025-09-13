@@ -3,16 +3,19 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Heart, MapPin, Star, ArrowLeft, Trash2 } from 'lucide-react';
-import { destinations } from '../data/mock';
+import { Heart, MapPin, Star, ArrowLeft, Trash2, Loader2 } from 'lucide-react';
+import { wishlistAPI } from '../services/api';
 import { useTranslation } from '../hooks/useTranslation';
+import { useToast } from '../hooks/use-toast';
 
 const WishlistPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [removingId, setRemovingId] = useState(null);
 
   useEffect(() => {
     if (!user) {
@@ -20,26 +23,66 @@ const WishlistPage = () => {
       return;
     }
     
-    // Mock wishlist data - showing some destinations from mock data
-    const mockWishlist = destinations.slice(0, 3).map(dest => ({
-      ...dest,
-      dateAdded: new Date().toISOString()
-    }));
+    if (user.role !== 'tourist') {
+      toast({
+        title: "Access Denied",
+        description: "Only tourists can access wishlist",
+        variant: "destructive",
+      });
+      navigate('/');
+      return;
+    }
     
-    setWishlist(mockWishlist);
-    setLoading(false);
-  }, [user, navigate]);
+    fetchWishlist();
+  }, [user, navigate, toast]);
 
-  const removeFromWishlist = (destinationId) => {
-    setWishlist(wishlist.filter(item => item.id !== destinationId));
+  const fetchWishlist = async () => {
+    try {
+      setLoading(true);
+      const data = await wishlistAPI.getAll();
+      setWishlist(data.items || []);
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load wishlist",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeFromWishlist = async (destinationId) => {
+    try {
+      setRemovingId(destinationId);
+      await wishlistAPI.remove(destinationId);
+      
+      // Update local state
+      setWishlist(wishlist.filter(item => item.destination_id !== destinationId));
+      
+      toast({
+        title: "Success",
+        description: "Destination removed from wishlist",
+      });
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove from wishlist",
+        variant: "destructive",
+      });
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t('loadingWishlist')}</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">{t('loadingWishlist')}</p>
         </div>
       </div>
     );
@@ -87,55 +130,67 @@ const WishlistPage = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {wishlist.map((destination) => (
-              <Card key={destination.id} className="hover:shadow-lg transition-shadow">
+            {wishlist.map((item) => (
+              <Card key={item.id} className="hover:shadow-lg transition-shadow">
                 <div className="relative">
                   <img
-                    src={destination.image_url}
-                    alt={destination.name}
+                    src={item.destination.image_url}
+                    alt={item.destination.name}
                     className="w-full h-48 object-cover rounded-t-lg"
                   />
                   <Button
                     variant="outline"
                     size="sm"
                     className="absolute top-2 right-2 bg-white hover:bg-red-50 text-red-600 border-red-300"
-                    onClick={() => removeFromWishlist(destination.id)}
+                    onClick={() => removeFromWishlist(item.destination_id)}
+                    disabled={removingId === item.destination_id}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {removingId === item.destination_id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {destination.name}
+                      {item.destination.name}
                     </h3>
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                      <span className="text-sm text-gray-600">{destination.rating}</span>
+                      <span className="text-sm text-gray-600">{item.destination.rating}</span>
                     </div>
                   </div>
                   
                   <div className="flex items-center text-gray-600 mb-2">
                     <MapPin className="h-4 w-4 mr-1" />
-                    <span className="text-sm">{destination.location}</span>
+                    <span className="text-sm">{item.destination.location}</span>
                   </div>
                   
                   <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                    {destination.description}
+                    {item.destination.description}
                   </p>
                   
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-bold text-green-600">
-                      ₹{destination.price?.toLocaleString() || t('contactForPricing')}
+                      ₹{item.destination.price?.toLocaleString() || t('contactForPricing')}
                     </span>
                     <div className="space-x-2">
-                      <Button size="sm" variant="outline">
-                        {t('viewDetails')}
-                      </Button>
+                      <Link to={`/destination/${item.destination_id}`}>
+                        <Button size="sm" variant="outline">
+                          {t('viewDetails')}
+                        </Button>
+                      </Link>
                       <Button 
                         size="sm" 
                         className="bg-green-600 hover:bg-green-700"
-                        onClick={() => navigate('/booking')}
+                        onClick={() => navigate('/booking', { 
+                          state: { 
+                            destination: item.destination,
+                            isDestinationBooking: true 
+                          }
+                        })}
                       >
                         {t('bookNow')}
                       </Button>
@@ -144,7 +199,7 @@ const WishlistPage = () => {
                   
                   <div className="mt-3 pt-3 border-t">
                     <p className="text-xs text-gray-500">
-                      {t('addedOn')} {new Date(destination.dateAdded).toLocaleDateString()}
+                      {t('addedOn')} {new Date(item.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 </CardContent>

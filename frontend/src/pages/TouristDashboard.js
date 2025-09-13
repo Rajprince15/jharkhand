@@ -131,7 +131,7 @@ const TouristDashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="p-6 text-center">
                   <MapPin className="h-12 w-12 text-green-600 mx-auto mb-4" />
@@ -146,6 +146,17 @@ const TouristDashboard = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="p-6 text-center">
                   <Heart className="h-12 w-12 text-red-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">My Wishlist</h3>
+                  <p className="text-gray-600 mb-4">View your favorite destinations</p>
+                  <Link to="/wishlist">
+                    <Button variant="outline">View Wishlist</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-6 text-center">
+                  <Heart className="h-12 w-12 text-blue-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">AI Planner</h3>
                   <p className="text-gray-600 mb-4">Get personalized travel itineraries</p>
                   <Link to="/ai-planner">
@@ -156,7 +167,7 @@ const TouristDashboard = () => {
 
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="p-6 text-center">
-                  <Calendar className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                  <Calendar className="h-12 w-12 text-purple-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">My Bookings</h3>
                   <p className="text-gray-600 mb-4">View your travel bookings</p>
                   <Link to="/bookings">

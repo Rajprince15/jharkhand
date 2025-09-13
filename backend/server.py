@@ -671,6 +671,162 @@ async def update_booking_status(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Wishlist API
+class WishlistItemCreate(BaseModel):
+    destination_id: str
+
+@api_router.get("/wishlist")
+async def get_user_wishlist(current_user: dict = Depends(get_current_user)):
+    """Get all wishlist items for current user"""
+    try:
+        if current_user['role'] != 'tourist':
+            raise HTTPException(status_code=403, detail="Only tourists can access wishlist")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    SELECT w.id, w.user_id, w.destination_id, w.created_at,
+                           d.name, d.location, d.description, d.image_url, 
+                           d.rating, d.price, d.category, d.highlights
+                    FROM wishlist w
+                    JOIN destinations d ON w.destination_id = d.id
+                    WHERE w.user_id = %s
+                    ORDER BY w.created_at DESC
+                """, (current_user['id'],))
+                wishlist_items = await cur.fetchall()
+                
+                # Format the response
+                formatted_items = []
+                for item in wishlist_items:
+                    # Parse highlights JSON if it exists
+                    highlights = []
+                    if item['highlights']:
+                        try:
+                            highlights = json.loads(item['highlights'])
+                        except:
+                            highlights = []
+                    
+                    formatted_items.append({
+                        'id': item['id'],
+                        'user_id': item['user_id'],
+                        'destination_id': item['destination_id'],
+                        'created_at': item['created_at'],
+                        'destination': {
+                            'id': item['destination_id'],
+                            'name': item['name'],
+                            'location': item['location'],
+                            'description': item['description'],
+                            'image_url': item['image_url'],
+                            'rating': float(item['rating']) if item['rating'] else 0,
+                            'price': float(item['price']),
+                            'category': item['category'],
+                            'highlights': highlights
+                        }
+                    })
+                
+                return {
+                    'items': formatted_items,
+                    'total_count': len(formatted_items)
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/wishlist")
+async def add_to_wishlist(
+    wishlist_item: WishlistItemCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Add destination to user's wishlist"""
+    try:
+        if current_user['role'] != 'tourist':
+            raise HTTPException(status_code=403, detail="Only tourists can manage wishlist")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Check if destination exists
+                await cur.execute("SELECT id FROM destinations WHERE id = %s", (wishlist_item.destination_id,))
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Destination not found")
+                
+                # Check if already in wishlist
+                await cur.execute("""
+                    SELECT id FROM wishlist WHERE user_id = %s AND destination_id = %s
+                """, (current_user['id'], wishlist_item.destination_id))
+                
+                if await cur.fetchone():
+                    raise HTTPException(status_code=400, detail="Destination already in wishlist")
+                
+                # Add to wishlist
+                wishlist_id = str(uuid.uuid4())
+                await cur.execute("""
+                    INSERT INTO wishlist (id, user_id, destination_id)
+                    VALUES (%s, %s, %s)
+                """, (wishlist_id, current_user['id'], wishlist_item.destination_id))
+                
+                return {"message": "Destination added to wishlist successfully", "id": wishlist_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/wishlist/{destination_id}")
+async def remove_from_wishlist(
+    destination_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove destination from user's wishlist"""
+    try:
+        if current_user['role'] != 'tourist':
+            raise HTTPException(status_code=403, detail="Only tourists can manage wishlist")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Check if item exists in wishlist
+                await cur.execute("""
+                    SELECT id FROM wishlist WHERE user_id = %s AND destination_id = %s
+                """, (current_user['id'], destination_id))
+                
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Destination not found in wishlist")
+                
+                # Remove from wishlist
+                await cur.execute("""
+                    DELETE FROM wishlist WHERE user_id = %s AND destination_id = %s
+                """, (current_user['id'], destination_id))
+                
+                return {"message": "Destination removed from wishlist successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/wishlist/check/{destination_id}")
+async def check_wishlist_status(
+    destination_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Check if destination is in user's wishlist"""
+    try:
+        if current_user['role'] != 'tourist':
+            return {"is_wishlisted": False}
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    SELECT id FROM wishlist WHERE user_id = %s AND destination_id = %s
+                """, (current_user['id'], destination_id))
+                
+                is_wishlisted = await cur.fetchone() is not None
+                return {"is_wishlisted": is_wishlisted}
+    except Exception as e:
+        return {"is_wishlisted": False}
+
 # Provider Management API
 class ProviderCreate(BaseModel):
     name: str

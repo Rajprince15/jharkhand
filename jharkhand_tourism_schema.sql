@@ -72,6 +72,17 @@ CREATE TABLE IF NOT EXISTS bookings (
     FOREIGN KEY (destination_id) REFERENCES destinations(id) ON DELETE CASCADE
 );
 
+-- Wishlist table (NEW)
+CREATE TABLE IF NOT EXISTS wishlist (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    destination_id VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (destination_id) REFERENCES destinations(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_destination (user_id, destination_id)
+);
+
 -- Itineraries table
 CREATE TABLE IF NOT EXISTS itineraries (
     id VARCHAR(255) PRIMARY KEY,
@@ -154,6 +165,13 @@ INSERT INTO bookings (id, user_id, provider_id, destination_id, user_name, provi
 ('2', 'user2', '2', '2', 'Raj Patel', 'Netarhat Trekking Adventures', 'Netarhat', '2025-03-20', '2025-03-20', '2025-03-23', 2, 1, 'pending', 17000),
 ('3', 'user3', '3', '3', 'Anita Kumar', 'Betla Safari Services', 'Betla National Park', '2025-01-10', '2025-01-10', '2025-01-13', 4, 2, 'completed', 21000);
 
+-- Sample wishlist items
+INSERT INTO wishlist (id, user_id, destination_id) VALUES
+('wl1', 'user1', '2'),
+('wl2', 'user1', '4'),
+('wl3', 'user2', '3'),
+('wl4', 'user2', '5');
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_destinations_category ON destinations(category);
 CREATE INDEX IF NOT EXISTS idx_destinations_rating ON destinations(rating);
@@ -164,3 +182,5 @@ CREATE INDEX IF NOT EXISTS idx_providers_rating ON providers(rating);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(booking_date);
+CREATE INDEX IF NOT EXISTS idx_wishlist_user_id ON wishlist(user_id);
+CREATE INDEX IF NOT EXISTS idx_wishlist_destination_id ON wishlist(destination_id);

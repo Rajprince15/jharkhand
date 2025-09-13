@@ -194,4 +194,27 @@ export const aiAPI = {
   }
 };
 
+// Wishlist API
+export const wishlistAPI = {
+  getAll: async () => {
+    const response = await api.get('/wishlist');
+    return response.data;
+  },
+
+  add: async (destinationId) => {
+    const response = await api.post('/wishlist', { destination_id: destinationId });
+    return response.data;
+  },
+
+  remove: async (destinationId) => {
+    const response = await api.delete(`/wishlist/${destinationId}`);
+    return response.data;
+  },
+
+  checkStatus: async (destinationId) => {
+    const response = await api.get(`/wishlist/check/${destinationId}`);
+    return response.data;
+  }
+};
+
 export default api;
