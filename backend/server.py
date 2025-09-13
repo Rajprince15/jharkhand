@@ -2,7 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import os
@@ -508,14 +508,43 @@ async def get_chat_history(
 
 # Booking Management API
 class BookingCreate(BaseModel):
-    provider_id: str
-    destination_id: str
-    booking_date: str
-    check_in: str
-    check_out: str
-    guests: int = 1
-    rooms: int = 1
-    special_requests: Optional[str] = None
+    provider_id: str = Field(..., min_length=1, description="Provider ID is required")
+    destination_id: str = Field(..., min_length=1, description="Destination ID is required")
+    booking_date: str = Field(..., description="Booking date in YYYY-MM-DD format")
+    check_in: str = Field(..., description="Check-in date in YYYY-MM-DD format") 
+    check_out: str = Field(..., description="Check-out date in YYYY-MM-DD format")
+    guests: int = Field(default=1, ge=1, le=20, description="Number of guests (1-20)")
+    rooms: int = Field(default=1, ge=1, le=10, description="Number of rooms (1-10)")
+    special_requests: Optional[str] = Field(None, max_length=500, description="Special requests")
+    
+    @field_validator('booking_date', 'check_in', 'check_out')
+    @classmethod
+    def validate_date_format(cls, v):
+        try:
+            datetime.strptime(v, '%Y-%m-%d')
+            return v
+        except ValueError:
+            raise ValueError('Date must be in YYYY-MM-DD format')
+    
+    @model_validator(mode='after')
+    def validate_dates(self):
+        try:
+            booking_date = datetime.strptime(self.booking_date, '%Y-%m-%d')
+            check_in = datetime.strptime(self.check_in, '%Y-%m-%d')  
+            check_out = datetime.strptime(self.check_out, '%Y-%m-%d')
+            
+            if check_in >= check_out:
+                raise ValueError('Check-out date must be after check-in date')
+            
+            if booking_date < datetime.now().replace(hour=0, minute=0, second=0, microsecond=0):
+                raise ValueError('Booking date cannot be in the past')
+                
+        except ValueError as e:
+            if 'does not match format' in str(e):
+                raise ValueError('Invalid date format. Use YYYY-MM-DD format')
+            raise e
+            
+        return self
 
 @api_router.post("/bookings")
 async def create_booking(
