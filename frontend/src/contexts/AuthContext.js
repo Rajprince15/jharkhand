@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockUsers } from '../data/mock';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -16,61 +16,62 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
-    const savedUser = localStorage.getItem('jharkhandTourismUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    // Check if user is logged in and validate token
+    const checkAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      const savedUser = localStorage.getItem('jharkhandTourismUser');
+      
+      if (token && savedUser) {
+        try {
+          // Validate token by fetching current user
+          const currentUser = await authAPI.getCurrentUser();
+          setUser(currentUser);
+          localStorage.setItem('jharkhandTourismUser', JSON.stringify(currentUser));
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          // Clear invalid token
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('jharkhandTourismUser');
+          setUser(null);
+        }
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
   const login = async (email, password) => {
     try {
-      // Mock authentication - check against mock users
-      const foundUser = mockUsers.find(
-        u => u.email === email && u.password === password
-      );
+      const response = await authAPI.login({ email, password });
+      const user = response.user;
       
-      if (!foundUser) {
-        throw new Error('Invalid credentials');
-      }
-
-      // Remove password from user object
-      const { password: _, ...userWithoutPassword } = foundUser;
+      setUser(user);
+      localStorage.setItem('jharkhandTourismUser', JSON.stringify(user));
       
-      setUser(userWithoutPassword);
-      localStorage.setItem('jharkhandTourismUser', JSON.stringify(userWithoutPassword));
-      
-      return userWithoutPassword;
+      return user;
     } catch (error) {
-      throw error;
+      throw new Error(error.response?.data?.detail || 'Login failed');
     }
   };
 
   const register = async (userData) => {
     try {
-      // Mock registration - in real app, this would call backend API
-      const newUser = {
-        id: Date.now().toString(),
-        ...userData,
-        role: userData.role || 'tourist'
-      };
-
-      // Remove password from user object
-      const { password: _, ...userWithoutPassword } = newUser;
+      const response = await authAPI.register(userData);
+      const user = response.user;
       
-      setUser(userWithoutPassword);
-      localStorage.setItem('jharkhandTourismUser', JSON.stringify(userWithoutPassword));
+      setUser(user);
+      localStorage.setItem('jharkhandTourismUser', JSON.stringify(user));
       
-      return userWithoutPassword;
+      return user;
     } catch (error) {
-      throw error;
+      throw new Error(error.response?.data?.detail || 'Registration failed');
     }
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('jharkhandTourismUser');
+    authAPI.logout();
   };
 
   const value = {
@@ -78,7 +79,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     register,
-    logout
+    logout,
+    isAuthenticated: !!user
   };
 
   return (

@@ -102,6 +102,70 @@ export const reviewsAPI = {
     
     const response = await api.get(`/reviews?${params.toString()}`);
     return response.data;
+  },
+
+  create: async (reviewData) => {
+    const response = await api.post('/reviews', reviewData);
+    return response.data;
+  }
+};
+
+// Bookings API
+export const bookingsAPI = {
+  create: async (bookingData) => {
+    const response = await api.post('/bookings', bookingData);
+    return response.data;
+  },
+
+  getUserBookings: async () => {
+    const response = await api.get('/bookings');
+    return response.data;
+  },
+
+  getProviderBookings: async () => {
+    const response = await api.get('/provider/bookings');
+    return response.data;
+  },
+
+  updateStatus: async (bookingId, status) => {
+    const response = await api.put(`/bookings/${bookingId}/status`, { status });
+    return response.data;
+  }
+};
+
+// Provider Management API
+export const providerManagementAPI = {
+  create: async (providerData) => {
+    const response = await api.post('/providers', providerData);
+    return response.data;
+  },
+
+  getUserProviders: async () => {
+    const response = await api.get('/user/providers');
+    return response.data;
+  },
+
+  update: async (providerId, providerData) => {
+    const response = await api.put(`/providers/${providerId}`, providerData);
+    return response.data;
+  }
+};
+
+// Admin API
+export const adminAPI = {
+  getStats: async () => {
+    const response = await api.get('/admin/stats');
+    return response.data;
+  },
+
+  getAllUsers: async () => {
+    const response = await api.get('/admin/users');
+    return response.data;
+  },
+
+  getAllBookings: async () => {
+    const response = await api.get('/admin/bookings');
+    return response.data;
   }
 };
 

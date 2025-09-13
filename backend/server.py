@@ -496,13 +496,426 @@ async def get_chat_history(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Booking Management API
+class BookingCreate(BaseModel):
+    provider_id: str
+    destination_id: str
+    booking_date: str
+    check_in: str
+    check_out: str
+    guests: int = 1
+    rooms: int = 1
+    special_requests: Optional[str] = None
+
+@api_router.post("/bookings")
+async def create_booking(
+    booking_data: BookingCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new booking"""
+    try:
+        pool = await get_db()
+        booking_id = str(uuid.uuid4())
+        
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Get provider and destination details
+                await cur.execute("SELECT name, price FROM providers WHERE id = %s", (booking_data.provider_id,))
+                provider = await cur.fetchone()
+                if not provider:
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                await cur.execute("SELECT name, price FROM destinations WHERE id = %s", (booking_data.destination_id,))
+                destination = await cur.fetchone()
+                if not destination:
+                    raise HTTPException(status_code=404, detail="Destination not found")
+                
+                # Calculate total price
+                total_price = (provider['price'] + destination['price']) * booking_data.guests
+                
+                # Create booking
+                await cur.execute("""
+                    INSERT INTO bookings (id, user_id, provider_id, destination_id, user_name, 
+                                        provider_name, destination_name, booking_date, check_in, 
+                                        check_out, guests, rooms, total_price, special_requests, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    booking_id, current_user['id'], booking_data.provider_id, booking_data.destination_id,
+                    current_user['name'], provider['name'], destination['name'], booking_data.booking_date,
+                    booking_data.check_in, booking_data.check_out, booking_data.guests, booking_data.rooms,
+                    total_price, booking_data.special_requests, 'pending'
+                ))
+                
+                return {
+                    "id": booking_id,
+                    "status": "pending",
+                    "total_price": total_price,
+                    "message": "Booking created successfully"
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/bookings")
+async def get_user_bookings(current_user: dict = Depends(get_current_user)):
+    """Get all bookings for current user"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    SELECT * FROM bookings WHERE user_id = %s ORDER BY created_at DESC
+                """, (current_user['id'],))
+                bookings = await cur.fetchall()
+                return bookings
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/provider/bookings")
+async def get_provider_bookings(current_user: dict = Depends(get_current_user)):
+    """Get all bookings for current provider"""
+    try:
+        if current_user['role'] != 'provider':
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    SELECT b.* FROM bookings b 
+                    JOIN providers p ON b.provider_id = p.id 
+                    WHERE p.user_id = %s ORDER BY b.created_at DESC
+                """, (current_user['id'],))
+                bookings = await cur.fetchall()
+                return bookings
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/bookings/{booking_id}/status")
+async def update_booking_status(
+    booking_id: str,
+    status_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update booking status"""
+    try:
+        new_status = status_data.get('status')
+        if new_status not in ['confirmed', 'cancelled', 'completed']:
+            raise HTTPException(status_code=400, detail="Invalid status")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Check if user has permission to update this booking
+                if current_user['role'] == 'provider':
+                    await cur.execute("""
+                        SELECT b.id FROM bookings b 
+                        JOIN providers p ON b.provider_id = p.id 
+                        WHERE b.id = %s AND p.user_id = %s
+                    """, (booking_id, current_user['id']))
+                elif current_user['role'] == 'admin':
+                    await cur.execute("SELECT id FROM bookings WHERE id = %s", (booking_id,))
+                else:
+                    await cur.execute("SELECT id FROM bookings WHERE id = %s AND user_id = %s", 
+                                    (booking_id, current_user['id']))
+                
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Booking not found or access denied")
+                
+                await cur.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, booking_id))
+                return {"message": "Booking status updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Provider Management API
+class ProviderCreate(BaseModel):
+    name: str
+    category: str
+    service_name: str
+    description: str
+    price: float
+    location: str
+    contact: str
+    image_url: Optional[str] = None
+
+@api_router.post("/providers")
+async def create_provider(
+    provider_data: ProviderCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new provider service"""
+    try:
+        if current_user['role'] != 'provider':
+            raise HTTPException(status_code=403, detail="Only providers can create services")
+        
+        pool = await get_db()
+        provider_id = str(uuid.uuid4())
+        
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    INSERT INTO providers (id, user_id, name, category, service_name, description, 
+                                         price, location, contact, image_url, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    provider_id, current_user['id'], provider_data.name, provider_data.category,
+                    provider_data.service_name, provider_data.description, provider_data.price,
+                    provider_data.location, provider_data.contact, provider_data.image_url, True
+                ))
+                
+                return {
+                    "id": provider_id,
+                    "message": "Provider service created successfully"
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/user/providers")
+async def get_user_providers(current_user: dict = Depends(get_current_user)):
+    """Get all providers for current user"""
+    try:
+        if current_user['role'] != 'provider':
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("SELECT * FROM providers WHERE user_id = %s", (current_user['id'],))
+                providers = await cur.fetchall()
+                return providers
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/providers/{provider_id}")
+async def update_provider(
+    provider_id: str,
+    provider_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update provider service"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Check ownership
+                await cur.execute("SELECT user_id FROM providers WHERE id = %s", (provider_id,))
+                provider = await cur.fetchone()
+                if not provider or provider[0] != current_user['id']:
+                    raise HTTPException(status_code=404, detail="Provider not found or access denied")
+                
+                # Update provider
+                update_fields = []
+                update_values = []
+                for field, value in provider_data.items():
+                    if field in ['name', 'category', 'service_name', 'description', 'price', 'location', 'contact', 'image_url']:
+                        update_fields.append(f"{field} = %s")
+                        update_values.append(value)
+                
+                if update_fields:
+                    update_values.append(provider_id)
+                    query = f"UPDATE providers SET {', '.join(update_fields)} WHERE id = %s"
+                    await cur.execute(query, update_values)
+                
+                return {"message": "Provider updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Reviews API
+class ReviewCreate(BaseModel):
+    destination_id: Optional[str] = None
+    provider_id: Optional[str] = None
+    rating: int
+    comment: str
+
+@api_router.post("/reviews")
+async def create_review(
+    review_data: ReviewCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new review"""
+    try:
+        if not review_data.destination_id and not review_data.provider_id:
+            raise HTTPException(status_code=400, detail="Either destination_id or provider_id is required")
+        
+        if review_data.rating < 1 or review_data.rating > 5:
+            raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+        
+        pool = await get_db()
+        review_id = str(uuid.uuid4())
+        
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    INSERT INTO reviews (id, user_id, destination_id, provider_id, rating, comment)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    review_id, current_user['id'], review_data.destination_id,
+                    review_data.provider_id, review_data.rating, review_data.comment
+                ))
+                
+                # Update average rating
+                if review_data.destination_id:
+                    await cur.execute("""
+                        UPDATE destinations SET rating = (
+                            SELECT AVG(rating) FROM reviews WHERE destination_id = %s
+                        ) WHERE id = %s
+                    """, (review_data.destination_id, review_data.destination_id))
+                
+                if review_data.provider_id:
+                    await cur.execute("""
+                        UPDATE providers SET rating = (
+                            SELECT AVG(rating) FROM reviews WHERE provider_id = %s
+                        ) WHERE id = %s
+                    """, (review_data.provider_id, review_data.provider_id))
+                
+                return {
+                    "id": review_id,
+                    "message": "Review created successfully"
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Admin API
+@api_router.get("/admin/stats")
+async def get_admin_stats(current_user: dict = Depends(get_current_user)):
+    """Get admin dashboard statistics"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Get various statistics
+                stats = {}
+                
+                await cur.execute("SELECT COUNT(*) as total FROM users")
+                stats['total_users'] = (await cur.fetchone())['total']
+                
+                await cur.execute("SELECT COUNT(*) as total FROM destinations")
+                stats['total_destinations'] = (await cur.fetchone())['total']
+                
+                await cur.execute("SELECT COUNT(*) as total FROM providers")
+                stats['total_providers'] = (await cur.fetchone())['total']
+                
+                await cur.execute("SELECT COUNT(*) as total FROM bookings")
+                stats['total_bookings'] = (await cur.fetchone())['total']
+                
+                await cur.execute("SELECT SUM(total_price) as revenue FROM bookings WHERE status = 'completed'")
+                revenue_result = await cur.fetchone()
+                stats['total_revenue'] = float(revenue_result['revenue']) if revenue_result['revenue'] else 0
+                
+                await cur.execute("""
+                    SELECT status, COUNT(*) as count FROM bookings GROUP BY status
+                """)
+                booking_stats = await cur.fetchall()
+                stats['booking_by_status'] = {stat['status']: stat['count'] for stat in booking_stats}
+                
+                return stats
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/users")
+async def get_all_users(current_user: dict = Depends(get_current_user)):
+    """Get all users for admin"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("SELECT id, name, email, role, phone, created_at FROM users ORDER BY created_at DESC")
+                users = await cur.fetchall()
+                return users
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/bookings")
+async def get_all_bookings(current_user: dict = Depends(get_current_user)):
+    """Get all bookings for admin"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("SELECT * FROM bookings ORDER BY created_at DESC")
+                bookings = await cur.fetchall()
+                return bookings
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 
 @app.on_event("startup")
 async def startup_event():
     await init_db()
-    print("Database connection initialized")
+    await create_missing_tables()
+    print("Database connection initialized and tables created")
+
+async def create_missing_tables():
+    """Create missing tables if they don't exist"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Create chat_logs table
+                await cur.execute("""
+                    CREATE TABLE IF NOT EXISTS chat_logs (
+                        id VARCHAR(255) PRIMARY KEY,
+                        user_id VARCHAR(255),
+                        session_id VARCHAR(255),
+                        message TEXT NOT NULL,
+                        response TEXT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        INDEX idx_chat_logs_user_session (user_id, session_id),
+                        INDEX idx_chat_logs_created (created_at)
+                    )
+                """)
+                
+                # Update itineraries table structure if needed
+                await cur.execute("""
+                    CREATE TABLE IF NOT EXISTS itineraries (
+                        id VARCHAR(255) PRIMARY KEY,
+                        user_id VARCHAR(255),
+                        destination VARCHAR(255) NOT NULL,
+                        days INT NOT NULL,
+                        budget DECIMAL(10,2) NOT NULL,
+                        content TEXT,
+                        preferences JSON,
+                        generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                """)
+                
+                print("Missing tables created successfully")
+    except Exception as e:
+        print(f"Error creating tables: {str(e)}")
 
 @app.on_event("shutdown")  
 async def shutdown_event():

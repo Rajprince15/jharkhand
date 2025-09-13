@@ -1,30 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { destinations } from '../data/mock';
+import { destinationsAPI } from '../services/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Star, MapPin, IndianRupee, Filter } from 'lucide-react';
+import { Star, MapPin, IndianRupee, Filter, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTranslation } from '../hooks/useTranslation';
+import { useToast } from '../hooks/use-toast';
 
 const DestinationsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [filteredDestinations, setFilteredDestinations] = useState(destinations);
+  const { toast } = useToast();
+  const [destinations, setDestinations] = useState([]);
+  const [filteredDestinations, setFilteredDestinations] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
 
-  const categories = [t('all'), ...new Set(destinations.map(d => d.category))];
+  useEffect(() => {
+    fetchDestinations();
+  }, []);
+
+  const fetchDestinations = async () => {
+    try {
+      setLoading(true);
+      const data = await destinationsAPI.getAll();
+      setDestinations(data);
+      setFilteredDestinations(data);
+      
+      // Extract unique categories
+      const uniqueCategories = [...new Set(data.map(d => d.category))];
+      setCategories([t('all'), ...uniqueCategories]);
+    } catch (error) {
+      console.error('Error fetching destinations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load destinations. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCategoryFilter = (category) => {
     setSelectedCategory(category);
-    if (category === t('all')) {
+    if (category === t('all') || category === 'All') {
       setFilteredDestinations(destinations);
     } else {
       setFilteredDestinations(destinations.filter(d => d.category === category));
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading destinations...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

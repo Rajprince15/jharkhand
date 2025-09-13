@@ -1,14 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { MapPin, Heart, Calendar, LogOut, Star } from 'lucide-react';
-import { destinations } from '../data/mock';
+import { MapPin, Heart, Calendar, LogOut, Star, Loader2 } from 'lucide-react';
+import { destinationsAPI, bookingsAPI } from '../services/api';
+import { useToast } from '../hooks/use-toast';
 
 const TouristDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [destinations, setDestinations] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.role === 'tourist') {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [destinationsData, bookingsData] = await Promise.all([
+        destinationsAPI.getAll(null, 6), // Get 6 destinations for recommendations
+        bookingsAPI.getUserBookings()
+      ]);
+      
+      setDestinations(destinationsData);
+      setBookings(bookingsData);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -19,6 +52,9 @@ const TouristDashboard = () => {
     navigate('/login');
     return null;
   }
+
+  const recentBookings = bookings.slice(0, 3);
+  const recommendedDestinations = destinations.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -42,72 +78,180 @@ const TouristDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardContent className="p-6 text-center">
-              <MapPin className="h-12 w-12 text-green-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Explore Destinations</h3>
-              <p className="text-gray-600 mb-4">Discover amazing places in Jharkhand</p>
-              <Link to="/destinations">
-                <Button className="bg-green-600 hover:bg-green-700">Browse</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardContent className="p-6 text-center">
-              <Heart className="h-12 w-12 text-red-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Wishlist</h3>
-              <p className="text-gray-600 mb-4">Save your favorite destinations</p>
-              <Link to="/wishlist\">
-                <Button variant="outline\">View Wishlist</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardContent className="p-6 text-center">
-              <Calendar className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">My Bookings</h3>
-              <p className="text-gray-600 mb-4">View your travel bookings</p>
-               <Link to="/bookings\">
-                <Button variant="outline\">View Bookings</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recommended Destinations */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recommended for You</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {destinations.slice(0, 3).map((destination) => (
-                <div key={destination.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <img
-                    src={destination.image_url}
-                    alt={destination.name}
-                    className="w-full h-32 object-cover rounded-lg mb-3"
-                  />
-                  <h4 className="font-semibold mb-2">{destination.name}</h4>
-                  <p className="text-sm text-gray-600 mb-2">{destination.description}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                      <span className="text-sm">{destination.rating}</span>
-                    </div>
-                    <Link to={`/destination/${destination.id}`}>
-                      <Button size="sm\" variant="outline\">View Details</Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading your dashboard...</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        ) : (
+          <>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                      <p className="text-3xl font-bold text-gray-900">{bookings.length}</p>
+                    </div>
+                    <Calendar className="h-8 w-8 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Active Bookings</p>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {bookings.filter(b => ['pending', 'confirmed'].includes(b.status)).length}
+                      </p>
+                    </div>
+                    <MapPin className="h-8 w-8 text-green-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Spent</p>
+                      <p className="text-3xl font-bold text-gray-900">
+                        ₹{bookings.reduce((sum, booking) => sum + (booking.total_price || 0), 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <Heart className="h-8 w-8 text-red-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-6 text-center">
+                  <MapPin className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Explore Destinations</h3>
+                  <p className="text-gray-600 mb-4">Discover amazing places in Jharkhand</p>
+                  <Link to="/destinations">
+                    <Button className="bg-green-600 hover:bg-green-700">Browse</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-6 text-center">
+                  <Heart className="h-12 w-12 text-red-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">AI Planner</h3>
+                  <p className="text-gray-600 mb-4">Get personalized travel itineraries</p>
+                  <Link to="/ai-planner">
+                    <Button variant="outline">Plan Trip</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-6 text-center">
+                  <Calendar className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">My Bookings</h3>
+                  <p className="text-gray-600 mb-4">View your travel bookings</p>
+                  <Link to="/bookings">
+                    <Button variant="outline">View Bookings</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Recent Bookings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Bookings</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {recentBookings.length > 0 ? (
+                    <div className="space-y-4">
+                      {recentBookings.map((booking) => (
+                        <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{booking.destination_name}</p>
+                            <p className="text-sm text-gray-600">
+                              {booking.provider_name} • {new Date(booking.booking_date).toLocaleDateString()}
+                            </p>
+                            <p className="text-sm text-gray-500">₹{booking.total_price}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {booking.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">No bookings yet</p>
+                      <Link to="/destinations">
+                        <Button className="mt-4">Book Your First Trip</Button>
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recommended Destinations */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recommended for You</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {recommendedDestinations.length > 0 ? (
+                    <div className="space-y-4">
+                      {recommendedDestinations.map((destination) => (
+                        <div key={destination.id} className="flex items-center space-x-4 p-3 border rounded-lg hover:shadow-md transition-shadow">
+                          <img
+                            src={destination.image_url}
+                            alt={destination.name}
+                            className="w-16 h-16 object-cover rounded-lg"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{destination.name}</h4>
+                            <p className="text-sm text-gray-600 line-clamp-1">{destination.description}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center space-x-1">
+                                <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                                <span className="text-sm">{destination.rating}</span>
+                              </div>
+                              <span className="text-sm font-medium text-green-600">₹{destination.price}</span>
+                            </div>
+                          </div>
+                          <Link to={`/destination/${destination.id}`}>
+                            <Button size="sm" variant="outline">View</Button>
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">Loading recommendations...</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
