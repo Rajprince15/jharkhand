@@ -1,18 +1,85 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Star, MapPin, IndianRupee, Calendar, Users, X } from 'lucide-react';
+import { Star, MapPin, IndianRupee, Calendar, Users, X, Heart } from 'lucide-react';
+import { wishlistAPI } from '../services/api';
+import { useToast } from '../hooks/use-toast';
 
 const DestinationModal = ({ destination, isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
   
   if (!destination) return null;
 
   const handleBookNow = () => {
     navigate('/booking');
     onClose();
+  };
+
+  const handleAddToWishlist = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to add destinations to your wishlist",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (user.role !== 'tourist') {
+      toast({
+        title: "Access Denied",
+        description: "Only tourists can add destinations to wishlist",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsAddingToWishlist(true);
+      await wishlistAPI.add(destination.id);
+      setIsInWishlist(true);
+      toast({
+        title: "Success",
+        description: "Destination added to your wishlist!",
+      });
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || "Failed to add to wishlist",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingToWishlist(false);
+    }
+  };
+
+  const handleRemoveFromWishlist = async () => {
+    try {
+      setIsAddingToWishlist(true);
+      await wishlistAPI.remove(destination.id);
+      setIsInWishlist(false);
+      toast({
+        title: "Success",
+        description: "Destination removed from your wishlist",
+      });
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove from wishlist",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingToWishlist(false);
+    }
   };
 
   return (
@@ -128,9 +195,26 @@ const DestinationModal = ({ destination, isOpen, onClose }) => {
                 >
                   Book Now
                 </Button>
-                <Button variant="outline" className="w-full">
-                  Add to Wishlist
-                </Button>
+                {user && user.role === 'tourist' && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={isInWishlist ? handleRemoveFromWishlist : handleAddToWishlist}
+                    disabled={isAddingToWishlist}
+                  >
+                    {isAddingToWishlist ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
+                        {isInWishlist ? 'Removing...' : 'Adding...'}
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <Heart className={`h-4 w-4 mr-2 ${isInWishlist ? 'fill-red-500 text-red-500' : ''}`} />
+                        {isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                      </div>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
             

@@ -35,6 +35,8 @@ const BookingPage = () => {
       name: 'Heritage Explorer',
       price: 15999,
       duration: '5 Days / 4 Nights',
+      provider_id: '1', // Ranchi City Tours
+      destination_id: '1', // Ranchi
       features: [
         'Visit Ranchi & Deoghar',
         'Baidyanath Temple darshan',
@@ -49,6 +51,8 @@ const BookingPage = () => {
       name: 'Adventure Seeker',
       price: 22999,
       duration: '7 Days / 6 Nights',
+      provider_id: '2', // Netarhat Trekking Adventures
+      destination_id: '2', // Netarhat
       features: [
         'Netarhat & Betla National Park',
         'Wildlife safari experience',
@@ -63,6 +67,8 @@ const BookingPage = () => {
       name: 'Spiritual Journey',
       price: 18999,
       duration: '6 Days / 5 Nights',
+      provider_id: '4', // Parasnath Pilgrimage Guide
+      destination_id: '4', // Parasnath Hill
       features: [
         'Baidyanath Jyotirlinga',
         'Parasnath Temple',
@@ -77,6 +83,8 @@ const BookingPage = () => {
       name: 'Premium Experience',
       price: 35999,
       duration: '10 Days / 9 Nights',
+      provider_id: '3', // Betla Safari Services (premium wildlife experience)
+      destination_id: '3', // Betla National Park
       features: [
         'Complete Jharkhand tour',
         'Luxury resorts & hotels',
@@ -211,14 +219,19 @@ const BookingPage = () => {
       checkOutDate.setDate(checkOutDate.getDate() + durationDays);
       
       const bookingData = {
-        provider_id: "1", // Use first available provider (IDs are 1-8 according to backend test)
-        destination_id: "1", // Use first available destination (will update to use selectedPackage mapping)
+        provider_id: packageData.provider_id, // Use package-specific provider
+        destination_id: packageData.destination_id, // Use package-specific destination
         booking_date: formData.departureDate, // YYYY-MM-DD format
         check_in: formData.departureDate, // Use departure date as check-in
         check_out: checkOutDate.toISOString().split('T')[0], // Calculate check-out date
         guests: parseInt(formData.travelers),
         rooms: Math.ceil(parseInt(formData.travelers) / 2), // Estimate rooms needed (2 guests per room)
-        special_requests: `${formData.requirements || ''}${formData.requirements && formData.cityOrigin ? '\n' : ''}${formData.cityOrigin ? 'Origin: ' + formData.cityOrigin : ''}${formData.addons.length > 0 ? '\nAdd-ons: ' + formData.addons.join(', ') : ''}`.trim()
+        special_requests: `${formData.requirements || ''}${formData.requirements && formData.cityOrigin ? '\n' : ''}${formData.cityOrigin ? 'Origin: ' + formData.cityOrigin : ''}${formData.addons.length > 0 ? '\nAdd-ons: ' + formData.addons.join(', ') : ''}`.trim(),
+        // New package-related fields
+        package_type: selectedPackage,
+        package_name: packageData.name,
+        calculated_price: totalPrice, // Send the frontend calculated price
+        addons: JSON.stringify(formData.addons) // Store selected addons as JSON
       };
 
       // Create booking via API

@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { MapPin, Heart, Calendar, LogOut, Star, Loader2 } from 'lucide-react';
-import { destinationsAPI, bookingsAPI } from '../services/api';
+import { destinationsAPI, bookingsAPI, wishlistAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 
 const TouristDashboard = () => {
@@ -13,6 +13,7 @@ const TouristDashboard = () => {
   const { toast } = useToast();
   const [destinations, setDestinations] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,13 +25,15 @@ const TouristDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [destinationsData, bookingsData] = await Promise.all([
+      const [destinationsData, bookingsData, wishlistData] = await Promise.all([
         destinationsAPI.getAll(null, 6), // Get 6 destinations for recommendations
-        bookingsAPI.getUserBookings()
+        bookingsAPI.getUserBookings(),
+        wishlistAPI.getAll()
       ]);
       
       setDestinations(destinationsData);
       setBookings(bookingsData);
+      setWishlist(wishlistData.items || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast({
@@ -55,6 +58,7 @@ const TouristDashboard = () => {
 
   const recentBookings = bookings.slice(0, 3);
   const recommendedDestinations = destinations.slice(0, 3);
+  const recentWishlistItems = wishlist.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -119,10 +123,8 @@ const TouristDashboard = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                      <p className="text-3xl font-bold text-gray-900">
-                        ₹{bookings.reduce((sum, booking) => sum + (booking.total_price || 0), 0).toLocaleString()}
-                      </p>
+                      <p className="text-sm font-medium text-gray-600">Wishlist Items</p>
+                      <p className="text-3xl font-bold text-gray-900">{wishlist.length}</p>
                     </div>
                     <Heart className="h-8 w-8 text-red-600" />
                   </div>
@@ -149,7 +151,7 @@ const TouristDashboard = () => {
                   <h3 className="text-lg font-semibold mb-2">My Wishlist</h3>
                   <p className="text-gray-600 mb-4">View your favorite destinations</p>
                   <Link to="/wishlist">
-                    <Button variant="outline">View Wishlist</Button>
+                    <Button variant="outline">View Wishlist ({wishlist.length})</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -177,7 +179,7 @@ const TouristDashboard = () => {
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Recent Bookings */}
               <Card>
                 <CardHeader>
@@ -214,6 +216,52 @@ const TouristDashboard = () => {
                       <p className="text-gray-500">No bookings yet</p>
                       <Link to="/destinations">
                         <Button className="mt-4">Book Your First Trip</Button>
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* My Wishlist */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Wishlist</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {recentWishlistItems.length > 0 ? (
+                    <div className="space-y-4">
+                      {recentWishlistItems.map((item) => (
+                        <div key={item.id} className="flex items-center space-x-4 p-3 border rounded-lg hover:shadow-md transition-shadow">
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="w-16 h-16 object-cover rounded-lg"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{item.name}</h4>
+                            <p className="text-sm text-gray-600 line-clamp-1">{item.description}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center space-x-1">
+                                <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                                <span className="text-sm">{item.rating}</span>
+                              </div>
+                              <span className="text-sm font-medium text-green-600">₹{item.price}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="text-center pt-4">
+                        <Link to="/wishlist">
+                          <Button size="sm" variant="outline">View All</Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">No wishlist items yet</p>
+                      <Link to="/destinations">
+                        <Button className="mt-4">Explore Destinations</Button>
                       </Link>
                     </div>
                   )}

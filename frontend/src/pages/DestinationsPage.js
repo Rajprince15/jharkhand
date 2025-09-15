@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import DestinationModal from '../components/DestinationModal';
 import { destinationsAPI } from '../services/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -19,6 +20,8 @@ const DestinationsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [selectedDestination, setSelectedDestination] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchDestinations();
@@ -53,6 +56,16 @@ const DestinationsPage = () => {
     } else {
       setFilteredDestinations(destinations.filter(d => d.category === category));
     }
+  };
+
+  const handleLearnMore = (destination) => {
+    setSelectedDestination(destination);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedDestination(null);
   };
 
   if (loading) {
@@ -153,9 +166,9 @@ const DestinationsPage = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => navigate('/booking')}
+                      onClick={() => handleLearnMore(destination)}
                     >
-                      {t('bookNow')}
+                      {t('Learn more')}
                     </Button>
                   </div>
                 </CardContent>
@@ -164,6 +177,13 @@ const DestinationsPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Destination Modal */}
+      <DestinationModal
+        destination={selectedDestination}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
 
       <Footer />
     </div>

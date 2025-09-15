@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Calendar, MapPin, User, Clock, ArrowLeft } from 'lucide-react';
+import { bookingsAPI } from '../services/api';
 
 const BookingsPage = () => {
   const { user } = useAuth();
@@ -17,40 +18,53 @@ const BookingsPage = () => {
       return;
     }
     
-    // Mock bookings data for now
-    const mockBookings = [
-      {
-        id: '1',
-        destination: 'Ranchi City Tour',
-        provider: 'Ranchi City Tours',
-        date: '2025-03-15',
-        status: 'confirmed',
-        price: 3000,
-        image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-      },
-      {
-        id: '2',
-        destination: 'Netarhat Trek',
-        provider: 'Netarhat Trekking Adventures',
-        date: '2025-03-20',
-        status: 'pending',
-        price: 2500,
-        image: 'https://images.unsplash.com/photo-1551632811-561732d1e306?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-      },
-      {
-        id: '3',
-        destination: 'Betla Safari',
-        provider: 'Betla Safari Services',
-        date: '2025-02-28',
-        status: 'completed',
-        price: 4000,
-        image: 'https://images.unsplash.com/photo-1549366021-9f761d040a94?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+    const fetchBookings = async () => {
+      try {
+        setLoading(true);
+        // Fetch real bookings from API
+        const response = await bookingsAPI.getUserBookings();
+        console.log('Fetched bookings:', response);
+        
+        // Transform database response to match frontend format
+        const transformedBookings = response.map(booking => ({
+          id: booking.id,
+          destination: booking.destination_name || booking.package_name || 'Unknown Destination',
+          provider: booking.provider_name || 'Unknown Provider',
+          date: booking.check_in || booking.booking_date,
+          status: booking.status,
+          price: booking.total_price,
+          packageType: booking.package_type,
+          packageName: booking.package_name,
+          addons: booking.addons ? JSON.parse(booking.addons) : [],
+          guests: booking.guests,
+          rooms: booking.rooms,
+          specialRequests: booking.special_requests,
+          image: getImageForPackage(booking.package_type || 'heritage')
+        }));
+        
+        setBookings(transformedBookings);
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+        // Set empty array on error instead of showing mock data
+        setBookings([]);
+      } finally {
+        setLoading(false);
       }
-    ];
-    
-    setBookings(mockBookings);
-    setLoading(false);
+    };
+
+    fetchBookings();
   }, [user, navigate]);
+
+  // Helper function to get appropriate image based on package type
+  const getImageForPackage = (packageType) => {
+    const packageImages = {
+      heritage: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+      adventure: 'https://images.unsplash.com/photo-1551632811-561732d1e306?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+      spiritual: 'https://images.unsplash.com/photo-1549366021-9f761d040a94?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+      premium: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+    };
+    return packageImages[packageType] || packageImages.heritage;
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -126,7 +140,7 @@ const BookingsPage = () => {
                       />
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                          {booking.destination}
+                          {booking.packageName || booking.destination}
                         </h3>
                         <div className="space-y-2">
                           <div className="flex items-center text-gray-600">
@@ -143,6 +157,17 @@ const BookingsPage = () => {
                               {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                             </span>
                           </div>
+                          {booking.packageType && (
+                            <div className="flex items-center text-gray-600">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              <span className="text-sm capitalize">{booking.packageType} Package</span>
+                            </div>
+                          )}
+                          {booking.guests && (
+                            <div className="text-sm text-gray-600">
+                              Travelers: {booking.guests} | Rooms: {booking.rooms}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

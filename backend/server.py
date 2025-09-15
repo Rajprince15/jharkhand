@@ -516,6 +516,11 @@ class BookingCreate(BaseModel):
     guests: int = Field(default=1, ge=1, le=20, description="Number of guests (1-20)")
     rooms: int = Field(default=1, ge=1, le=10, description="Number of rooms (1-10)")
     special_requests: Optional[str] = Field(None, max_length=500, description="Special requests")
+    # Package information fields
+    package_type: Optional[str] = Field(None, description="Package type (heritage, adventure, spiritual, premium)")
+    package_name: Optional[str] = Field(None, description="Package name")
+    calculated_price: Optional[float] = Field(None, ge=0, description="Calculated price from frontend")
+    addons: Optional[str] = Field(None, description="JSON string of selected addons")
     
     @field_validator('booking_date', 'check_in', 'check_out')
     @classmethod
@@ -569,26 +574,33 @@ async def create_booking(
                 if not destination:
                     raise HTTPException(status_code=404, detail="Destination not found")
                 
-                # Calculate total price
-                total_price = (provider['price'] + destination['price']) * booking_data.guests
+                # Use calculated price from frontend if provided, otherwise calculate from provider/destination
+                if booking_data.calculated_price and booking_data.calculated_price > 0:
+                    total_price = booking_data.calculated_price
+                else:
+                    total_price = (provider['price'] + destination['price']) * booking_data.guests
                 
-                # Create booking
+                # Create booking with package information
                 await cur.execute("""
                     INSERT INTO bookings (id, user_id, provider_id, destination_id, user_name, 
                                         provider_name, destination_name, booking_date, check_in, 
-                                        check_out, guests, rooms, total_price, special_requests, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        check_out, guests, rooms, total_price, special_requests, status,
+                                        package_type, package_name, addons)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     booking_id, current_user['id'], booking_data.provider_id, booking_data.destination_id,
                     current_user['name'], provider['name'], destination['name'], booking_data.booking_date,
                     booking_data.check_in, booking_data.check_out, booking_data.guests, booking_data.rooms,
-                    total_price, booking_data.special_requests, 'pending'
+                    total_price, booking_data.special_requests, 'pending',
+                    booking_data.package_type, booking_data.package_name, booking_data.addons
                 ))
                 
                 return {
                     "id": booking_id,
                     "status": "pending",
                     "total_price": total_price,
+                    "package_type": booking_data.package_type,
+                    "package_name": booking_data.package_name,
                     "message": "Booking created successfully"
                 }
     except HTTPException:

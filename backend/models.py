@@ -109,6 +109,11 @@ class BookingCreate(BaseModel):
     guests: int = 1
     rooms: int = 1
     special_requests: Optional[str] = None
+    # New fields for package information
+    package_type: Optional[str] = None  # heritage, adventure, spiritual, premium
+    package_name: Optional[str] = None  # Full package name
+    calculated_price: Optional[float] = None  # Frontend calculated price
+    addons: Optional[str] = None  # JSON string of selected addons
 
 class Booking(BaseModel):
     id: str
@@ -126,6 +131,10 @@ class Booking(BaseModel):
     status: BookingStatus
     total_price: float
     special_requests: Optional[str] = None
+    # New fields for package information
+    package_type: Optional[str] = None
+    package_name: Optional[str] = None
+    addons: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

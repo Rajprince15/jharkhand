@@ -168,6 +168,18 @@ backend:
         agent: "testing"
         comment: "Full CRUD operations working with role-based access control. Provider creation, listing, and updates functional."
 
+  - task: "Package-Based Booking System"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "PACKAGE BOOKING SYSTEM FULLY TESTED AND OPERATIONAL: ✅ Heritage Explorer package (provider_id=1, destination_id=1, calculated_price=18500, addons=['pickup','insurance']) created successfully. ✅ All package types tested: heritage, adventure, spiritual, premium with correct provider/destination mapping. ✅ Price handling verified: calculated_price from frontend overrides provider/destination pricing. ✅ Package fields (package_type, package_name, addons) stored and retrieved correctly in database. ✅ 10 comprehensive test bookings created with total value ₹305,999. FIXED: Added missing package fields (package_type, package_name, calculated_price, addons) to BookingCreate Pydantic model. System ready for production use."
+
   - task: "Bookings API"
     implemented: true
     working: true
@@ -176,6 +188,9 @@ backend:
     priority: "high"
     needs_retesting: false
     status_history:
+      - working: true
+        agent: "testing"
+        comment: "COMPREHENSIVE PACKAGE BOOKING SYSTEM TESTING COMPLETED: ✅ Heritage Explorer package (provider_id=1, destination_id=1) with calculated_price=18500 and addons=['pickup','insurance'] working perfectly. ✅ All package types (heritage, adventure, spiritual, premium) tested with different provider/destination combinations. ✅ Calculated price handling verified - frontend prices override provider/destination calculations. ✅ Package fields (package_type, package_name, addons) stored and retrieved correctly. ✅ 10 test bookings created with total value ₹305,999. FIXED: Added missing package fields to BookingCreate Pydantic model (package_type, package_name, calculated_price, addons). Package-based booking system is fully operational."
       - working: true
         agent: "testing"
         comment: "Booking creation and retrieval working with proper validation. User and provider booking views functional."
@@ -269,16 +284,40 @@ frontend:
         comment: "Added missing API endpoints for bookings, provider management, admin functionality, and reviews to frontend API service."
 
   - task: "Dashboard Integration"
-    implemented: false
+    implemented: true
     working: "NA"
-    file: "frontend/src/pages/[Dashboard].js"
+    file: "frontend/src/pages/BookingsPage.js"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
+        comment: "IMPLEMENTED: BookingsPage updated to fetch real data from API, removed mock data, added package information display. Ready for frontend testing."
+      - working: false
+        agent: "user"
+        comment: "USER REPORTED: My Bookings dashboard showing mock data instead of real database data. BookingsPage.js using hardcoded mock data instead of fetching from backend API."
+      - working: "NA"
+        agent: "main"
         comment: "Dashboards (tourist, provider, admin) need to be updated to use real-time data from backend APIs."
+
+  - task: "Booking System Real-time Integration"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/BookingPage.js, backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "BACKEND COMPLETELY FIXED: Package-based booking system fully operational. Heritage Explorer, Adventure, Spiritual, Premium packages all working with correct provider/destination mapping, calculated pricing, and addons storage. 10 test bookings created (₹305,999 total)."
+      - working: false
+        agent: "user"
+        comment: "USER REPORTED: Booking page VIP treatments/pricing not working - always saving same amount and same place (Ranchi) regardless of selected package. Backend not storing calculated frontend prices."
+      - working: "NA"
+        agent: "main"
+        comment: "New task identified - booking system needs proper package-to-provider mapping and price integration."
 
 metadata:
   created_by: "main_agent"
@@ -288,19 +327,23 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Frontend Dashboard Integration"
-    - "Complete Frontend Testing"
-    - "End-to-End User Flow Testing"
+    - "Booking System Real-time Integration" 
+    - "Dashboard Integration"
+    - "Frontend Testing"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
-    message: "Completed full backend implementation with MySQL database integration, all API endpoints, DeepSeek AI integration, and comprehensive testing. Backend testing shows 100% pass rate (21/21 tests). Updated AuthContext and DestinationsPage to use real database. Ready for frontend dashboard updates and testing."
+    message: "MAJOR FIXES COMPLETED: 1) Backend booking system now stores package information (package_type, package_name, calculated_price, addons) and maps packages to correct providers/destinations 2) BookingsPage updated to fetch real data from API instead of mock data 3) Package-based pricing system working correctly - Heritage Explorer (₹15,999), Adventure Seeker (₹22,999), Spiritual Journey (₹18,999), Premium Experience (₹35,999) 4) Backend tested with 10 bookings created successfully. Ready for frontend testing."
   - agent: "testing"
     message: "Backend comprehensive testing completed successfully. All 21 tests passed including database connectivity, authentication, CRUD operations, AI integration, and admin functionality. Backend is fully functional and ready for production use."
   - agent: "testing"
     BACKEND TESTING COMPLETED - ALL SYSTEMS OPERATIONAL: ✅ Database Connection (MySQL port 3001) ✅ User Registration (Tourist/Provider, Admin blocked) ✅ Authentication (JWT tokens) ✅ Destinations API (10 destinations) ✅ Bookings API (5 bookings created, dashboard ready) ✅ Provider Management (10 providers) ✅ Admin APIs (Dashboard stats: 11 users, ₹21,000 revenue) ✅ AI Integration (DeepSeek planner & chatbot) ✅ Data Persistence (All data stored in MySQL). Backend URL http://localhost:8001/api confirmed working. Database schema fixed for itineraries table. Admin login credentials verified. 100% test success rate (21/21 tests passed)."
+  - agent: "testing"
+    message: "PACKAGE-BASED BOOKING SYSTEM TESTING COMPLETED SUCCESSFULLY: ✅ Heritage Explorer package (provider_id=1, destination_id=1) with calculated_price=18500 and addons=['pickup','insurance'] working perfectly. ✅ All package types (heritage, adventure, spiritual, premium) tested with different provider/destination combinations. ✅ Calculated price handling verified - frontend prices override provider/destination calculations correctly. ✅ Package fields (package_type, package_name, addons) stored and retrieved from database successfully. ✅ 10 comprehensive test bookings created with total value ₹305,999. FIXED CRITICAL ISSUE: Added missing package fields to BookingCreate Pydantic model. Package-based booking system is fully operational and ready for production use."
   - agent: "user"
     message: "USER REPORTED ISSUES: 1) Wishlist and save buttons not working - tourist dashboard is not working with real time data 2) Booking system only saving one provider with same price for all bookings despite different prices being entered. Need real-time data support for new places/providers."
+  - agent: "user"
+    message: "NEW CRITICAL ISSUES REPORTED: 1) My Bookings dashboard showing mock data instead of real database data 2) Booking page VIP treatments/pricing not working correctly - always saving same amount and same place (Ranchi) regardless of selected package 3) No real-time data integration between booking creation and dashboard display"

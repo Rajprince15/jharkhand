@@ -65,6 +65,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending',
     total_price DECIMAL(10,2) NOT NULL,
     special_requests TEXT,
+    package_type VARCHAR(50),
+    package_name VARCHAR(100),
+    addons TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -184,3 +187,4 @@ CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(booking_date);
 CREATE INDEX IF NOT EXISTS idx_wishlist_user_id ON wishlist(user_id);
 CREATE INDEX IF NOT EXISTS idx_wishlist_destination_id ON wishlist(destination_id);
+
