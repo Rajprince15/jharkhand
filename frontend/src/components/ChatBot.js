@@ -124,7 +124,7 @@ const ChatBot = () => {
               <span>Jharkhand AI Assistant</span>
               {user && (
                 <span className="text-xs bg-green-700 px-2 py-1 rounded-full ml-auto">
-                  Powered by Deepseek
+                  Powered by Gemini
                 </span>
               )}
             </CardTitle>

@@ -93,6 +93,9 @@ CREATE TABLE IF NOT EXISTS itineraries (
     destination VARCHAR(255) NOT NULL,
     days INT NOT NULL,
     budget DECIMAL(10,2) NOT NULL,
+    content TEXT,
+    preferences JSON,
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     interests JSON,
     travel_style VARCHAR(100),
     group_size INT DEFAULT 1,
@@ -101,6 +104,7 @@ CREATE TABLE IF NOT EXISTS itineraries (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
 
 -- Reviews table
 CREATE TABLE IF NOT EXISTS reviews (

@@ -79,27 +79,64 @@ class GeminiService:
         group_size = preferences.get('group_size', 2)
         
         return f"""
-        Create a detailed {days}-day travel itinerary for Jharkhand, India with the following requirements:
+        Create a detailed {days}-day travel itinerary for {destinations}, Jharkhand, India following this EXACT FORMAT:
 
-        DESTINATIONS: {destinations}
-        BUDGET: ₹{budget} total for {group_size} people
-        INTERESTS: {interests}
-        TRAVEL STYLE: {travel_style}
-        GROUP SIZE: {group_size} people
+        **TRIP PARAMETERS:**
+        - Destinations: {destinations}
+        - Duration: {days} days
+        - Budget: ₹{budget} for {group_size} people
+        - Interests: {interests}
+        - Travel Style: {travel_style}
+        - Group Size: {group_size} people
 
-        Please provide a structured response with:
-        1. Day-by-day schedule with specific timings
-        2. Recommended activities based on interests
-        3. Estimated costs for each activity
-        4. Local transportation suggestions
-        5. Cultural etiquette tips for tribal areas
-        6. Best local food recommendations
-        7. Accommodation suggestions within budget
+        **FORMAT REQUIREMENTS - Follow this structure exactly:**
 
-        Focus on authentic experiences, sustainable tourism practices, and respect for local communities.
-        Include specific locations, contact information where possible, and practical tips.
+        **Day 1: [Activity Theme]**
+        • Morning (8:00 AM): [Activity with location and brief description]
+        • Mid-morning (10:30 AM): [Activity with cost estimate]
+        • Afternoon (2:00 PM): [Activity with travel time]
+        • Evening (6:00 PM): [Activity with local experience]
         
-        Format the response as a structured itinerary that can be easily parsed.
+        **Estimated Day 1 Cost (excluding hotel): ₹[amount] per person**
+
+        **Day 2: [Activity Theme]**
+        [Same time-based format]
+
+        **Important Notes Before You Start:**
+        • **Respect:** Cultural sensitivity guidelines
+        • **Bargaining:** Local market tips
+        • **Environmental Responsibility:** Sustainable practices
+        • **Flexibility:** Weather and timing adjustments
+        • **Safety:** Emergency contacts and precautions
+        • **Language:** Basic Hindi/local phrases
+
+        **Accommodation Recommendation:**
+        [Specific hotel with contact details and why it's recommended]
+
+        **Cultural Etiquette Tips for Tribal Areas:**
+        • Photography permissions
+        • Dress code recommendations
+        • Interaction guidelines
+
+        **Sustainable Tourism Practices:**
+        • Local economy support
+        • Environmental conservation
+        • Community respect
+
+        **Practical Tips:**
+        • **Best Time to Visit:** [Season recommendations]
+        • **Mobile Connectivity:** Network coverage info
+        • **Currency:** ATM and exchange locations
+        • **Medical Facilities:** Hospital/clinic details
+
+        **Important Contact Information:**
+        • Railway Enquiry: [Phone number]
+        • Tourist Information: [Phone number]
+        • Emergency Services: [Phone numbers]
+
+        **Total Estimated Cost: ₹[total amount] for {group_size} people**
+        
+        Use authentic Jharkhand locations, real contact numbers where possible, include tribal cultural elements, mention specific local dishes, and ensure all costs are realistic for the budget provided.
         """
     
     def _parse_itinerary_response(self, response: str, preferences: Dict) -> Dict[str, Any]:
