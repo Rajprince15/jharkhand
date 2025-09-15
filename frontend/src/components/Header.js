@@ -75,12 +75,9 @@ const Header = () => {
           >
             {t('thingsToDo')}
           </Link>
-          <button
-            onClick={() => navigate('/practical-tips')}
-            className="text-foreground/80 hover:text-foreground transition-colors font-medium"
-          >
-            {t('practicalTips')}
-          </button>
+          
+            
+          
 
           <Link
             to="/ai-planner"
