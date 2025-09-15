@@ -100,20 +100,7 @@ class BookingStatus(str, Enum):
     completed = "completed"
     cancelled = "cancelled"
 
-class BookingCreate(BaseModel):
-    provider_id: str
-    destination_id: str
-    booking_date: date
-    check_in: date
-    check_out: date
-    guests: int = 1
-    rooms: int = 1
-    special_requests: Optional[str] = None
-    # New fields for package information
-    package_type: Optional[str] = None  # heritage, adventure, spiritual, premium
-    package_name: Optional[str] = None  # Full package name
-    calculated_price: Optional[float] = None  # Frontend calculated price
-    addons: Optional[str] = None  # JSON string of selected addons
+# BookingCreate model moved to server.py to avoid duplication
 
 class Booking(BaseModel):
     id: str
