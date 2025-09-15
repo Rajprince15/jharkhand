@@ -216,17 +216,17 @@ backend:
         agent: "main"
         comment: "Created complete .sql file with user's schema including sample data, indexes, and proper table structure for easy import."
 
-  - task: "DeepSeek AI Integration"
+  - task: "Gemini AI Integration"
     implemented: true
-    working: true
-    file: "backend/services/deepseek_service.py"
+    working: "NA"
+    file: "backend/services/gemini_service.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
-      - working: true
-        agent: "testing"
-        comment: "AI Planner (/api/planner) and Chatbot (/api/chatbot) endpoints working with API key sk-047119d73d8e487d96262acfd8faede3. Both reasoner and chat models functional."
+      - working: "NA"
+        agent: "main"
+        comment: "REPLACED DEEPSEEK WITH GEMINI: ✅ Created new GeminiService using emergentintegrations library ✅ Updated server.py to use Gemini API instead of DeepSeek ✅ Added user's Gemini API key (AIzaSyBJiCZKnD82zRaE-2fLzbnoUQjZyk8PYGs) to .env file ✅ Both /api/planner and /api/chatbot endpoints updated to use gemini-2.0-flash model ✅ Backend restarted successfully. Ready for testing."
 
   - task: "Admin API Endpoints"
     implemented: true
@@ -333,6 +333,7 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Gemini AI Integration"
     - "Booking System Real-time Integration" 
     - "Dashboard Integration"
     - "Frontend Testing"
@@ -341,6 +342,8 @@ test_plan:
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: "GEMINI API INTEGRATION COMPLETED: ✅ Successfully replaced DeepSeek API with user's Gemini API (AIzaSyBJiCZKnD82zRaE-2fLzbnoUQjZyk8PYGs) ✅ Installed emergentintegrations library for Gemini integration ✅ Created new GeminiService with async support using gemini-2.0-flash model ✅ Updated both /api/planner and /api/chatbot endpoints to use Gemini ✅ Backend service restarted successfully ✅ Ready for testing to verify AI functionality works with new Gemini integration"
   - agent: "main"
     message: "MAJOR FIXES COMPLETED: 1) Backend booking system now stores package information (package_type, package_name, calculated_price, addons) and maps packages to correct providers/destinations 2) BookingsPage updated to fetch real data from API instead of mock data 3) Package-based pricing system working correctly - Heritage Explorer (₹15,999), Adventure Seeker (₹22,999), Spiritual Journey (₹18,999), Premium Experience (₹35,999) 4) Backend tested with 10 bookings created successfully. Ready for frontend testing."
   - agent: "testing"

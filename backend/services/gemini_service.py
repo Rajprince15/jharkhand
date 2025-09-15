@@ -1,103 +1,69 @@
 import os
-import requests
-import json
+import asyncio
 from typing import Dict, List, Any, Optional
 from datetime import datetime
+from dotenv import load_dotenv
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
-class DeepseekService:
+# Load environment variables
+load_dotenv()
+
+class GeminiService:
     def __init__(self):
-        self.api_key = os.getenv('DEEPSEEK_API_KEY')
-        self.base_url = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
-        self.headers = {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json'
-        }
+        self.api_key = os.getenv('GEMINI_API_KEY')
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is not set")
     
-    def generate_itinerary(self, user_preferences: Dict[str, Any]) -> Dict[str, Any]:
+    async def generate_itinerary(self, user_preferences: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate travel itinerary using Deepseek Reasoner model
+        Generate travel itinerary using Gemini model
         """
         try:
+            # Create a chat instance for itinerary generation
+            chat = LlmChat(
+                api_key=self.api_key,
+                session_id=f"itinerary_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                system_message="You are an expert travel planner for Jharkhand, India. Generate detailed, practical itineraries with specific locations, timings, costs, and local insights. Always include authentic local experiences and respect for tribal culture."
+            ).with_model("gemini", "gemini-2.0-flash")
+            
             # Prepare the prompt for itinerary generation
             prompt = self._create_itinerary_prompt(user_preferences)
             
-            payload = {
-                "model": "deepseek-reasoner",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are an expert travel planner for Jharkhand, India. Generate detailed, practical itineraries with specific locations, timings, costs, and local insights. Always include authentic local experiences and respect for tribal culture."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "max_tokens": 2000,
-                "temperature": 0.7
-            }
+            # Create user message
+            user_message = UserMessage(text=prompt)
             
-            response = requests.post(
-                f"{self.base_url}/v1/chat/completions",
-                headers=self.headers,
-                json=payload,
-                timeout=30
-            )
+            # Send message and get response
+            response = await chat.send_message(user_message)
             
-            if response.status_code == 200:
-                result = response.json()
-                return self._parse_itinerary_response(result, user_preferences)
-            else:
-                raise Exception(f"Deepseek API error: {response.status_code} - {response.text}")
+            return self._parse_itinerary_response(response, user_preferences)
                 
         except Exception as e:
             print(f"Error generating itinerary: {str(e)}")
             return self._generate_fallback_itinerary(user_preferences)
     
-    def chat_response(self, user_message: str, conversation_history: List[Dict] = None) -> Dict[str, Any]:
+    async def chat_response(self, user_message: str, conversation_history: List[Dict] = None) -> Dict[str, Any]:
         """
-        Generate chatbot response using Deepseek Chat model
+        Generate chatbot response using Gemini model
         """
         try:
-            messages = [
-                {
-                    "role": "system",
-                    "content": "You are a helpful tourism assistant for Jharkhand, India. Provide accurate, friendly information about destinations, culture, travel tips, and bookings. Be concise but informative. Always promote sustainable and respectful tourism."
-                }
-            ]
+            # Create a chat instance for chatbot
+            chat = LlmChat(
+                api_key=self.api_key,
+                session_id=f"chat_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                system_message="You are a helpful tourism assistant for Jharkhand, India. Provide accurate, friendly information about destinations, culture, travel tips, and bookings. Be concise but informative. Always promote sustainable and respectful tourism."
+            ).with_model("gemini", "gemini-2.0-flash")
             
-            # Add conversation history if provided
-            if conversation_history:
-                messages.extend(conversation_history[-5:])  # Keep last 5 messages for context
+            # Create user message
+            message = UserMessage(text=user_message)
             
-            messages.append({
-                "role": "user",
-                "content": user_message
-            })
+            # Send message and get response
+            response = await chat.send_message(message)
             
-            payload = {
-                "model": "deepseek-chat",
-                "messages": messages,
-                "max_tokens": 500,
-                "temperature": 0.8
+            return {
+                "message": response,
+                "timestamp": datetime.utcnow().isoformat(),
+                "model": "gemini-2.0-flash"
             }
-            
-            response = requests.post(
-                f"{self.base_url}/v1/chat/completions",
-                headers=self.headers,
-                json=payload,
-                timeout=15
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                return {
-                    "message": result['choices'][0]['message']['content'],
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "model": "deepseek-chat"
-                }
-            else:
-                raise Exception(f"Deepseek API error: {response.status_code}")
                 
         except Exception as e:
             print(f"Error generating chat response: {str(e)}")
@@ -136,23 +102,20 @@ class DeepseekService:
         Format the response as a structured itinerary that can be easily parsed.
         """
     
-    def _parse_itinerary_response(self, api_response: Dict, preferences: Dict) -> Dict[str, Any]:
-        """Parse Deepseek response into structured itinerary format"""
+    def _parse_itinerary_response(self, response: str, preferences: Dict) -> Dict[str, Any]:
+        """Parse Gemini response into structured itinerary format"""
         try:
-            content = api_response['choices'][0]['message']['content']
-            
-            # For now, return the content as-is with metadata
-            # In production, you might want to parse this into a more structured format
+            # Return the content with metadata
             return {
                 "id": f"itinerary_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
                 "destination": ', '.join(preferences.get('destinations', ['Jharkhand'])),
                 "days": preferences.get('days', 3),
                 "budget": preferences.get('budget', 15000),
                 "currency": "INR",
-                "content": content,
+                "content": response,
                 "preferences": preferences,
                 "generated_at": datetime.utcnow().isoformat(),
-                "model": "deepseek-reasoner",
+                "model": "gemini-2.0-flash",
                 "status": "generated"
             }
         except Exception as e:
@@ -160,7 +123,7 @@ class DeepseekService:
             return self._generate_fallback_itinerary(preferences)
     
     def _generate_fallback_itinerary(self, preferences: Dict) -> Dict[str, Any]:
-        """Generate fallback itinerary when Deepseek API fails"""
+        """Generate fallback itinerary when Gemini API fails"""
         return {
             "id": f"fallback_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
             "destination": ', '.join(preferences.get('destinations', ['Jharkhand'])),
@@ -175,7 +138,7 @@ class DeepseekService:
         }
     
     def _generate_fallback_chat_response(self, user_message: str) -> Dict[str, Any]:
-        """Generate fallback chat response when Deepseek API fails"""
+        """Generate fallback chat response when Gemini API fails"""
         return {
             "message": "I'm sorry, I'm having trouble connecting to my AI service right now. Please try again in a moment, or contact our support team for assistance with your Jharkhand travel questions.",
             "timestamp": datetime.utcnow().isoformat(),

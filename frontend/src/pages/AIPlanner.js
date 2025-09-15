@@ -9,7 +9,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { MapPin, Calendar, Users, IndianRupee, Sparkles } from 'lucide-react';
-import { deepseekAPI } from '../services/deepseekApi';
+import { deepseekAPI } from '../services/GeminiService';
 import { useAuth } from '../contexts/AuthContext';
 
 const AIPlanner = () => {

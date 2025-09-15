@@ -12,7 +12,7 @@ from jose import jwt, JWTError
 import json
 import uuid
 from pathlib import Path
-from services.deepseek_service import DeepseekService
+from services.gemini_service import GeminiService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -41,8 +41,8 @@ api_router = APIRouter(prefix="/api")
 # Security
 security = HTTPBearer()
 
-# Initialize Deepseek service
-deepseek_service = DeepseekService()
+# Initialize Gemini service
+gemini_service = GeminiService()
 
 # CORS middleware
 app.add_middleware(
@@ -375,8 +375,8 @@ async def generate_itinerary(
             "group_size": request_data.get("group_size", 2)
         }
         
-        # Generate itinerary using Deepseek
-        itinerary = deepseek_service.generate_itinerary(preferences)
+        # Generate itinerary using Gemini
+        itinerary = await gemini_service.generate_itinerary(preferences)
         
         # Optionally save to database
         pool = await get_db()
@@ -436,8 +436,8 @@ async def chatbot_message(
                         {"role": "assistant", "content": chat["response"]}
                     ])
         
-        # Generate response using Deepseek
-        response = deepseek_service.chat_response(user_message, conversation_history)
+        # Generate response using Gemini
+        response = await gemini_service.chat_response(user_message, conversation_history)
         
         # Save conversation to database
         async with pool.acquire() as conn:
