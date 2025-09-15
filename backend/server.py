@@ -6,13 +6,13 @@ from pydantic import BaseModel, Field, EmailStr, field_validator, model_validato
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import os
-import aiomysql
 import bcrypt
 from jose import jwt, JWTError
 import json
 import uuid
 from pathlib import Path
 from services.gemini_service import GeminiService
+import aiomysql
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')

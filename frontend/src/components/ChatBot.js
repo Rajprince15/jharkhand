@@ -4,7 +4,7 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { deepseekAPI } from '../services/deepseekApi';
+import { geminiAPI } from '../services/geminiApi';
 
 const ChatBot = () => {
   const { user } = useAuth();
@@ -40,7 +40,7 @@ const ChatBot = () => {
 
   const loadChatHistory = async () => {
     try {
-      const history = await deepseekAPI.getChatHistory(sessionId);
+      const history = await geminiAPI.getChatHistory(sessionId);
       if (history.length > 0) {
         setMessages(history);
       }
@@ -71,7 +71,7 @@ const ChatBot = () => {
 
     try {
       // Send message to Deepseek API
-      const response = await deepseekAPI.sendChatMessage(inputMessage, sessionId);
+      const response = await geminiAPI.sendChatMessage(inputMessage, sessionId);
       
       const botResponse = {
         id: Date.now() + 1,
