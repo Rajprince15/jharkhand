@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -100,56 +102,129 @@ const AIPlanner = () => {
       const margin = 20;
       const maxWidth = pageWidth - (margin * 2);
       
-      // Header
-      pdf.setFontSize(24);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Jharkhand Tourism', margin, 30);
+      // Header with beautiful styling
+      pdf.setFillColor(34, 197, 94); // Green background
+      pdf.rect(0, 0, pageWidth, 50, 'F');
       
-      pdf.setFontSize(18);
-      pdf.text('AI Generated Itinerary', margin, 45);
-      
-      // Trip Details
-      pdf.setFontSize(14);
+      pdf.setTextColor(255, 255, 255); // White text
+      pdf.setFontSize(28);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Trip Summary:', margin, 65);
+      pdf.text('Jharkhand Tourism', margin, 25);
+      
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('AI Generated Itinerary', margin, 38);
+      
+      // Reset text color for content
+      pdf.setTextColor(0, 0, 0);
+      
+      // Trip Summary Box
+      pdf.setFillColor(248, 250, 252); // Light gray background
+      pdf.roundedRect(margin, 60, maxWidth, 35, 3, 3, 'F');
+      
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Trip Summary:', margin + 5, 75);
       
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(12);
-      pdf.text(`Destination: ${generatedPlan.destination}`, margin, 80);
-      pdf.text(`Duration: ${generatedPlan.days} days`, margin, 90);
-      pdf.text(`Budget: ₹${generatedPlan.budget?.toLocaleString()}`, margin, 100);
-      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, 110);
+      pdf.setFontSize(11);
+      pdf.text(`📍 Destination: ${generatedPlan.destination}`, margin + 5, 85);
+      pdf.text(`📅 Duration: ${generatedPlan.days} days`, margin + 5, 92);
+      pdf.text(`💰 Budget: ₹${generatedPlan.budget?.toLocaleString()}`, margin + 100, 85);
+      pdf.text(`📝 Generated: ${new Date().toLocaleDateString()}`, margin + 100, 92);
       
-      // Itinerary Content
-      let yPosition = 130;
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Detailed Itinerary:', margin, yPosition);
-      yPosition += 15;
+      // Parse and format markdown content
+      let yPosition = 110;
+      const content = generatedPlan.content;
+      const contentLines = content.split('\n');
       
-      // Split content into lines and handle page breaks
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-      
-      const lines = pdf.splitTextToSize(generatedPlan.content, maxWidth);
-      const lineHeight = 5;
-      
-      for (let i = 0; i < lines.length; i++) {
-        if (yPosition + lineHeight > pageHeight - margin) {
+      for (let line of contentLines) {
+        if (yPosition > pageHeight - margin - 20) {
           pdf.addPage();
           yPosition = margin;
         }
-        pdf.text(lines[i], margin, yPosition);
-        yPosition += lineHeight;
+        
+        line = line.trim();
+        if (!line) {
+          yPosition += 6;
+          continue;
+        }
+        
+        // Handle different markdown elements
+        if (line.startsWith('**') && line.endsWith('**')) {
+          // Bold headers (Day headers)
+          const cleanLine = line.replace(/\*\*/g, '');
+          pdf.setFontSize(14);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(34, 197, 94); // Green color for headers
+          yPosition += 8;
+          pdf.text(cleanLine, margin, yPosition);
+          yPosition += 8;
+          pdf.setTextColor(0, 0, 0); // Reset to black
+        } else if (line.startsWith('• ') || line.startsWith('- ')) {
+          // Bullet points
+          const cleanLine = line.replace(/^[•-]\s*/, '').replace(/\*\*/g, '');
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          const bullet = '• ';
+          const bulletLines = pdf.splitTextToSize(bullet + cleanLine, maxWidth - 10);
+          
+          for (let bLine of bulletLines) {
+            if (yPosition > pageHeight - margin - 20) {
+              pdf.addPage();
+              yPosition = margin;
+            }
+            pdf.text(bLine, margin + 5, yPosition);
+            yPosition += 5;
+          }
+        } else if (line.includes('**') && !line.startsWith('**')) {
+          // Mixed bold text within content
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          
+          // Simple bold text handling for mixed content
+          const cleanLine = line.replace(/\*\*(.*?)\*\*/g, '$1');
+          const textLines = pdf.splitTextToSize(cleanLine, maxWidth);
+          
+          for (let tLine of textLines) {
+            if (yPosition > pageHeight - margin - 20) {
+              pdf.addPage();
+              yPosition = margin;
+            }
+            pdf.text(tLine, margin, yPosition);
+            yPosition += 5;
+          }
+        } else {
+          // Regular text
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          const textLines = pdf.splitTextToSize(line, maxWidth);
+          
+          for (let tLine of textLines) {
+            if (yPosition > pageHeight - margin - 20) {
+              pdf.addPage();
+              yPosition = margin;
+            }
+            pdf.text(tLine, margin, yPosition);
+            yPosition += 5;
+          }
+        }
       }
       
-      // Footer
+      // Beautiful footer
       const totalPages = pdf.internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
+        
+        // Footer background
+        pdf.setFillColor(248, 250, 252);
+        pdf.rect(0, pageHeight - 20, pageWidth, 20, 'F');
+        
+        pdf.setTextColor(100, 100, 100);
         pdf.setFontSize(8);
-        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 40, pageHeight - 10);
-        pdf.text('Generated by Jharkhand Tourism AI Planner', margin, pageHeight - 10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 40, pageHeight - 8);
+        pdf.text('Generated by Jharkhand Tourism AI Planner', margin, pageHeight - 8);
       }
       
       pdf.save(`jharkhand-itinerary-${generatedPlan.destination.toLowerCase().replace(/\s+/g, '-')}.pdf`);
@@ -226,95 +301,134 @@ const AIPlanner = () => {
       <div className="min-h-screen bg-background">
         <Header />
         
-        <section className="py-20">
+        <section className="py-20 bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 min-h-screen">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                Your AI Generated Itinerary
+            <div className="text-center mb-16">
+              <div className="flex items-center justify-center mb-8">
+                <div className="bg-gradient-to-r from-green-500 to-blue-500 p-6 rounded-full shadow-lg">
+                  <Sparkles className="h-12 w-12 text-white animate-pulse" />
+                </div>
+              </div>
+              <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                Your Perfect Itinerary
               </h1>
-              <p className="text-lg text-muted-foreground">
-                Personalized travel plan for {generatedPlan.destination}
+              <p className="text-2xl text-gray-600 max-w-3xl mx-auto">
+                ✨ Personalized travel plan for <span className="font-bold text-green-600">{generatedPlan.destination}</span>
               </p>
+              <div className="mt-6 inline-block bg-white/70 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg">
+                <span className="text-green-600 font-semibold">🤖 Generated by Gemini AI</span>
+              </div>
             </div>
 
             <div className="max-w-4xl mx-auto">
               {/* Trip Summary */}
-              <Card className="mb-8">
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="flex items-center space-x-3">
-                      <Calendar className="h-8 w-8 text-blue-600" />
-                      <div>
-                        <p className="font-semibold">Duration</p>
-                        <p className="text-muted-foreground">{generatedPlan.days} days</p>
+              <Card className="mb-10 shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+                <CardContent className="p-8">
+                  <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Trip Overview</h2>
+                    <p className="text-gray-600">Your personalized travel details</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                      <div className="flex justify-center mb-4">
+                        <Calendar className="h-12 w-12 text-blue-600" />
                       </div>
+                      <p className="font-bold text-lg text-gray-800 mb-1">Duration</p>
+                      <p className="text-2xl font-bold text-blue-600">{generatedPlan.days} days</p>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <IndianRupee className="h-8 w-8 text-green-600" />
-                      <div>
-                        <p className="font-semibold">Total Budget</p>
-                        <p className="text-muted-foreground">₹{generatedPlan.budget?.toLocaleString()}</p>
+                    <div className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                      <div className="flex justify-center mb-4">
+                        <IndianRupee className="h-12 w-12 text-green-600" />
                       </div>
+                      <p className="font-bold text-lg text-gray-800 mb-1">Total Budget</p>
+                      <p className="text-2xl font-bold text-green-600">₹{generatedPlan.budget?.toLocaleString()}</p>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <MapPin className="h-8 w-8 text-red-600" />
-                      <div>
-                        <p className="font-semibold">Destination</p>
-                        <p className="text-muted-foreground">{generatedPlan.destination}</p>
+                    <div className="text-center p-6 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl border border-red-100">
+                      <div className="flex justify-center mb-4">
+                        <MapPin className="h-12 w-12 text-red-600" />
                       </div>
+                      <p className="font-bold text-lg text-gray-800 mb-1">Destination</p>
+                      <p className="text-xl font-bold text-red-600">{generatedPlan.destination}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* AI Generated Content */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Sparkles className="h-5 w-5 mr-2 text-blue-600" />
-                    AI Generated Itinerary
+              <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+                <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-t-lg">
+                  <CardTitle className="flex items-center text-2xl">
+                    <Sparkles className="h-8 w-8 mr-3 text-white animate-pulse" />
+                    Your AI Generated Itinerary
                   </CardTitle>
+                  <p className="text-green-100 mt-2">Detailed day-by-day travel plan created just for you</p>
                 </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                <CardContent className="p-8">
+                  <div className="prose prose-lg max-w-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({ children }) => <h1 className="text-3xl font-bold text-green-700 mb-6 mt-8 first:mt-0 pb-2 border-b-2 border-green-200">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-2xl font-bold text-blue-700 mb-4 mt-6 pb-1 border-b border-blue-200">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-xl font-semibold text-purple-700 mb-3 mt-5">{children}</h3>,
+                        p: ({ children }) => <p className="text-gray-700 leading-relaxed mb-4 text-lg">{children}</p>,
+                        strong: ({ children }) => <strong className="font-bold text-gray-900 bg-yellow-100 px-1 rounded">{children}</strong>,
+                        em: ({ children }) => <em className="italic text-blue-600 font-medium">{children}</em>,
+                        ul: ({ children }) => <ul className="list-none pl-0 mb-6 space-y-2">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal pl-6 mb-6 space-y-2">{children}</ol>,
+                        li: ({ children }) => <li className="text-gray-700 flex items-start"><span className="text-green-500 mr-2 text-xl">•</span><span className="flex-1">{children}</span></li>,
+                        blockquote: ({ children }) => <blockquote className="border-l-4 border-green-500 pl-6 py-4 my-6 bg-gradient-to-r from-green-50 to-blue-50 text-gray-700 italic rounded-r-lg">{children}</blockquote>,
+                        code: ({ children }) => <code className="bg-gradient-to-r from-gray-100 to-gray-200 px-3 py-1 rounded-lg text-sm font-mono text-gray-800 border">{children}</code>,
+                        table: ({ children }) => <table className="w-full border-collapse border border-gray-300 mb-6 rounded-lg overflow-hidden shadow-sm">{children}</table>,
+                        th: ({ children }) => <th className="border border-gray-300 px-4 py-3 bg-gradient-to-r from-green-100 to-blue-100 font-bold text-gray-800">{children}</th>,
+                        td: ({ children }) => <td className="border border-gray-300 px-4 py-3 text-gray-700">{children}</td>,
+                      }}
+                    >
                       {generatedPlan.content}
-                    </div>
+                    </ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="text-center mt-12">
-                <Button 
-                  onClick={() => setGeneratedPlan(null)}
-                  variant="outline" 
-                  className="mr-4"
-                >
-                  Generate New Plan
-                </Button>
-                <Button 
-                  onClick={downloadItineraryPDF}
-                  disabled={isDownloading}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isDownloading ? (
-                    <>
-                      <Download className="h-4 w-4 mr-2 animate-spin" />
-                      Generating PDF...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download PDF
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  onClick={() => navigate('/booking')}
-                  className="bg-orange-600 hover:bg-orange-700 ml-4"
-                >
-                  Book This Trip
-                </Button>
+              <div className="text-center mt-12 bg-gradient-to-r from-indigo-50 to-purple-50 p-8 rounded-xl">
+                <h3 className="text-2xl font-bold text-gray-800 mb-6">Ready to explore Jharkhand?</h3>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                  <Button 
+                    onClick={() => setGeneratedPlan(null)}
+                    variant="outline" 
+                    className="px-8 py-3 text-lg border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
+                  >
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    Generate New Plan
+                  </Button>
+                  <Button 
+                    onClick={downloadItineraryPDF}
+                    disabled={isDownloading}
+                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Download className="h-5 w-5 mr-2 animate-spin" />
+                        Creating Beautiful PDF...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-5 w-5 mr-2" />
+                        Download Beautiful PDF
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/booking')}
+                    className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <MapPin className="h-5 w-5 mr-2" />
+                    Book This Trip
+                  </Button>
+                </div>
+                <p className="text-gray-600 mt-4">
+                  💡 Save your itinerary as PDF or book your perfect Jharkhand adventure now!
+                </p>
               </div>
             </div>
           </div>
@@ -329,39 +443,53 @@ const AIPlanner = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <section className="py-20">
+      <section className="py-20 bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <div className="flex items-center justify-center mb-6">
-              <div className="bg-blue-100 p-4 rounded-full">
-                <MapPin className="h-8 w-8 text-blue-600" />
+          <div className="text-center mb-16">
+            <div className="flex items-center justify-center mb-8">
+              <div className="bg-gradient-to-r from-green-500 to-blue-500 p-6 rounded-full shadow-lg">
+                <Sparkles className="h-10 w-10 text-white" />
               </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
               AI Travel Planner
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Let our AI create a personalized itinerary based on your preferences, budget, and interests
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Discover Jharkhand like never before! Let our advanced AI create a personalized itinerary 
+              based on your preferences, budget, and interests
             </p>
+            <div className="mt-8 flex items-center justify-center space-x-4 text-sm text-gray-500">
+              <div className="flex items-center">
+                <Sparkles className="h-4 w-4 mr-1 text-green-500" />
+                <span>Powered by Gemini AI</span>
+              </div>
+              <div className="w-px h-4 bg-gray-300"></div>
+              <div className="flex items-center">
+                <MapPin className="h-4 w-4 mr-1 text-blue-500" />
+                <span>Personalized for Jharkhand</span>
+              </div>
+            </div>
           </div>
 
-          <Card className="max-w-4xl mx-auto">
-            <CardContent className="p-8">
-              <div className="space-y-8">
+          <Card className="max-w-5xl mx-auto shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-10">
+              <div className="space-y-10">
                 {/* Destination Input */}
-                <div>
-                  <Label className="text-lg font-semibold mb-3 block">
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-xl border border-green-100">
+                  <Label className="text-xl font-bold mb-4 block flex items-center">
+                    <MapPin className="h-6 w-6 mr-2 text-green-600" />
                     Which destinations in Jharkhand would you like to visit?
                   </Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <p className="text-gray-600 mb-6">Select one or more destinations that interest you</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {jharkhandDestinations.map((destination) => (
                       <Badge
                         key={destination}
                         variant={formData.destinations.includes(destination) ? "default" : "outline"}
-                        className={`cursor-pointer p-3 text-center justify-center ${
+                        className={`cursor-pointer p-4 text-center justify-center transition-all duration-200 hover:scale-105 ${
                           formData.destinations.includes(destination)
-                            ? 'bg-green-600 hover:bg-green-700'
-                            : 'hover:bg-gray-100'
+                            ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg'
+                            : 'hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 hover:border-green-300'
                         }`}
                         onClick={() => handleDestinationChange(destination)}
                       >
@@ -375,6 +503,11 @@ const AIPlanner = () => {
                 </div>
 
                 {/* Duration, Budget, Group Size */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-100">
+                  <Label className="text-xl font-bold mb-6 block flex items-center">
+                    <Calendar className="h-6 w-6 mr-2 text-blue-600" />
+                    Trip Details
+                  </Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <Label className="text-base font-medium mb-2 block">Duration (days)</Label>
@@ -459,42 +592,49 @@ const AIPlanner = () => {
                     </Select>
                   </div>
                 </div>
+                </div>
 
                 {/* Travel Style */}
-                <div>
-                  <Label className="text-lg font-semibold mb-4 block">Travel Style</Label>
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
+                  <Label className="text-xl font-bold mb-4 block flex items-center">
+                    <Users className="h-6 w-6 mr-2 text-purple-600" />
+                    Travel Style
+                  </Label>
+                  <p className="text-gray-600 mb-6">Choose how you prefer to travel</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {travelStyles.map((style) => (
                       <div
                         key={style.id}
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        className={`p-6 border-2 rounded-xl cursor-pointer transition-all duration-200 hover:scale-105 ${
                           formData.travelStyle === style.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg'
+                            : 'border-gray-200 hover:border-purple-300 hover:bg-gradient-to-br hover:from-purple-25 hover:to-pink-25'
                         }`}
                         onClick={() => setFormData(prev => ({ ...prev, travelStyle: style.id }))}
                       >
-                        <h4 className="font-semibold mb-2">{style.title}</h4>
-                        <p className="text-sm text-muted-foreground">{style.description}</p>
+                        <h4 className="font-bold text-lg mb-2 text-gray-800">{style.title}</h4>
+                        <p className="text-gray-600">{style.description}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Interests */}
-                <div>
-                  <Label className="text-lg font-semibold mb-4 block">
-                    Your Interests (select all that apply)
+                <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border border-orange-100">
+                  <Label className="text-xl font-bold mb-4 block flex items-center">
+                    <Sparkles className="h-6 w-6 mr-2 text-orange-600" />
+                    Your Interests
                   </Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <p className="text-gray-600 mb-6">Select all activities and places that interest you</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {interestOptions.map((interest) => (
                       <Badge
                         key={interest}
                         variant={formData.interests.includes(interest) ? "default" : "outline"}
-                        className={`cursor-pointer p-3 text-center justify-center ${
+                        className={`cursor-pointer p-4 text-center justify-center transition-all duration-200 hover:scale-105 ${
                           formData.interests.includes(interest)
-                            ? 'bg-blue-600 hover:bg-blue-700'
-                            : 'hover:bg-gray-100'
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg'
+                            : 'hover:bg-gradient-to-r hover:from-orange-50 hover:to-red-50 hover:border-orange-300'
                         }`}
                         onClick={() => handleInterestToggle(interest)}
                       >
@@ -512,32 +652,34 @@ const AIPlanner = () => {
                 )}
 
                 {/* Generate Button */}
-                <div className="text-center pt-6">
+                <div className="text-center pt-8 bg-gradient-to-r from-indigo-50 to-purple-50 p-8 rounded-xl border border-indigo-100">
                   <Button
                     onClick={generateItinerary}
                     disabled={isGenerating || !user}
-                    className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 text-lg"
+                    className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-12 py-4 text-xl font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                   >
                     {isGenerating ? (
                       <>
-                        <Sparkles className="h-5 w-5 mr-2 animate-spin" />
-                        Generating Your Itinerary...
+                        <Sparkles className="h-6 w-6 mr-3 animate-spin" />
+                        Creating Your Perfect Itinerary...
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-5 w-5 mr-2" />
+                        <Sparkles className="h-6 w-6 mr-3" />
                         Generate My Itinerary with AI
                       </>
                     )}
                   </Button>
                   {!isGenerating && user && (
-                    <p className="text-sm text-muted-foreground mt-3">
-                      Powered by Gemini AI - This will take about 30 seconds to create your personalized plan
-                    </p>
+                    <div className="mt-6 bg-white/70 backdrop-blur-sm p-4 rounded-lg inline-block">
+                      <p className="text-sm text-gray-600">
+                        ✨ Powered by <strong>Gemini AI</strong> - Creating your personalized plan in ~30 seconds
+                      </p>
+                    </div>
                   )}
                   {!user && (
-                    <p className="text-sm text-red-500 mt-3">
-                      Please log in to use the AI Planner
+                    <p className="text-sm text-red-500 mt-4 bg-red-50 p-3 rounded-lg inline-block">
+                      🔐 Please log in to use the AI Planner
                     </p>
                   )}
                 </div>

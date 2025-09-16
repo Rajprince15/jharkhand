@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -109,24 +111,34 @@ const ChatBot = () => {
       {/* Chat Toggle Button */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-green-600 hover:bg-green-700 shadow-lg z-50"
+        className="fixed bottom-6 right-6 h-16 w-16 rounded-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 shadow-xl hover:shadow-2xl z-50 transition-all duration-200 hover:scale-110"
         size="icon"
       >
-        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {isOpen ? <X className="h-7 w-7" /> : <MessageCircle className="h-7 w-7" />}
+        {!isOpen && (
+          <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center">
+            <span className="text-xs text-white font-bold">!</span>
+          </div>
+        )}
       </Button>
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-80 h-96 shadow-2xl z-50 flex flex-col">
-          <CardHeader className="bg-green-600 text-white rounded-t-lg p-4 flex-shrink-0">
+        <Card className="fixed bottom-24 right-6 w-80 h-[480px] shadow-2xl z-50 flex flex-col border-0 bg-white/95 backdrop-blur-sm">
+          <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg p-4 flex-shrink-0">
             <CardTitle className="flex items-center space-x-2 text-lg">
-              <Bot className="h-5 w-5" />
-              <span>Jharkhand AI Assistant</span>
-              {user && (
-                <span className="text-xs bg-green-700 px-2 py-1 rounded-full ml-auto">
-                  Powered by Gemini
-                </span>
-              )}
+              <div className="bg-white/20 p-2 rounded-full">
+                <Bot className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <span className="font-bold">Jharkhand AI Assistant</span>
+                {user && (
+                  <div className="text-xs text-green-100 mt-1">
+                    ✨ Powered by Gemini AI
+                  </div>
+                )}
+              </div>
+              <div className="h-3 w-3 bg-green-400 rounded-full animate-pulse"></div>
             </CardTitle>
           </CardHeader>
           
@@ -139,16 +151,37 @@ const ChatBot = () => {
                   className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[250px] p-3 rounded-lg break-words ${
+                    className={`max-w-[270px] p-4 rounded-xl break-words shadow-sm ${
                       message.sender === 'user'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-800'
+                        ? 'bg-gradient-to-r from-green-600 to-blue-600 text-white'
+                        : 'bg-white border border-gray-200 text-gray-800'
                     }`}
                   >
                     <div className="flex items-start space-x-2">
                       {message.sender === 'bot' && <Bot className="h-4 w-4 mt-0.5 flex-shrink-0" />}
                       {message.sender === 'user' && <User className="h-4 w-4 mt-0.5 flex-shrink-0" />}
-                      <p className="text-sm leading-relaxed">{message.text}</p>
+                      {message.sender === 'bot' ? (
+                        <div className="text-sm leading-relaxed prose prose-sm max-w-none">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                              strong: ({ children }) => <strong className="font-bold text-gray-900">{children}</strong>,
+                              em: ({ children }) => <em className="italic">{children}</em>,
+                              ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
+                              ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+                              li: ({ children }) => <li className="mb-1">{children}</li>,
+                              h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                              h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                              h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                            }}
+                          >
+                            {message.text}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="text-sm leading-relaxed">{message.text}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -156,13 +189,14 @@ const ChatBot = () => {
               
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 text-gray-800 max-w-[250px] p-3 rounded-lg">
+                  <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 text-gray-800 max-w-[270px] p-4 rounded-xl shadow-sm">
                     <div className="flex items-center space-x-2">
-                      <Bot className="h-4 w-4" />
+                      <Bot className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm text-gray-600 mr-2">AI is thinking</span>
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   </div>
