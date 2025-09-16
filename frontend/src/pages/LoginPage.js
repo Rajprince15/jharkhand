@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -9,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { MapPin, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import LanguageToggle from '../components/LanguageToggle';
 
 const LoginPage = () => {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -26,6 +28,7 @@ const LoginPage = () => {
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -34,8 +37,8 @@ const LoginPage = () => {
     try {
       const user = await login(loginData.email, loginData.password);
       toast({
-        title: "Login Successful",
-        description: `Welcome back, ${user.name}!`,
+        title: t('loginSuccessful'),
+        description: `${t('welcomeBack')}, ${user.name}!`,
       });
       
       // Redirect based on user role
@@ -54,7 +57,7 @@ const LoginPage = () => {
       }
     } catch (error) {
       toast({
-        title: "Login Failed",
+        title: t('loginFailed'),
         description: error.message,
         variant: "destructive",
       });
@@ -69,8 +72,8 @@ const LoginPage = () => {
     
     if (registerData.password !== registerData.confirmPassword) {
       toast({
-        title: "Registration Failed",
-        description: "Passwords do not match",
+        title: t('registrationFailed'),
+        description: t('passwordsDoNotMatch'),
         variant: "destructive",
       });
       setLoading(false);
@@ -81,8 +84,8 @@ const LoginPage = () => {
       const { confirmPassword, ...userData } = registerData;
       const user = await register(userData);
       toast({
-        title: "Registration Successful",
-        description: `Welcome to Jharkhand Tourism, ${user.name}!`,
+        title: t('registrationSuccessful'),
+        description: `${t('welcomeToJharkhandTourism')}, ${user.name}!`,
       });
       
       // Redirect based on user role
@@ -101,7 +104,7 @@ const LoginPage = () => {
       }
     } catch (error) {
       toast({
-        title: "Registration Failed",
+        title: t('registrationFailed'),
         description: error.message,
         variant: "destructive",
       });
@@ -112,44 +115,49 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
+      {/* Language Toggle - Fixed Position */}
+      <div className="fixed top-4 right-4 z-10">
+        <LanguageToggle />
+      </div>
+
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="flex items-center justify-center space-x-2 mb-4">
             <MapPin className="h-8 w-8 text-green-600" />
             <span className="text-2xl font-bold text-foreground">
-              Explore <span className="text-green-600">Jharkhand</span>
+              {t('exploreJharkhand')}
             </span>
           </Link>
           <p className="text-muted-foreground">
-            Join us to explore the beauty of Jharkhand
+            {t('welcomeToJharkhand')}
           </p>
         </div>
 
         <Card className="shadow-xl">
           <CardHeader>
-            <CardTitle className="text-center">Welcome</CardTitle>
+            <CardTitle className="text-center">{t('welcome')}</CardTitle>
             <CardDescription className="text-center">
-              Sign in to your account or create a new one
+              {t('signInCreateAccount')}
             </CardDescription>
           </CardHeader>
           
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+                <TabsTrigger value="login">{t('login')}</TabsTrigger>
+                <TabsTrigger value="register">{t('register')}</TabsTrigger>
               </TabsList>
               
               {/* Login Tab */}
               <TabsContent value="login" className="space-y-4">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{t('email')}</Label>
                     <Input
                       id="email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder={t('enterEmail')}
                       value={loginData.email}
                       onChange={(e) => setLoginData({...loginData, email: e.target.value})}
                       required
@@ -157,12 +165,12 @@ const LoginPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">{t('password')}</Label>
                     <div className="relative">
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Enter your password"
+                        placeholder={t('enterPassword')}
                         value={loginData.password}
                         onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                         required
@@ -180,14 +188,14 @@ const LoginPage = () => {
                   </div>
                   
                   <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
-                    <strong>Demo Credentials:</strong><br />
-                    Tourist: tourist@example.com / password123<br />
-                    Provider: provider@example.com / password123<br />
-                    Admin: admin@example.com / password123
+                    <strong>{t('demoCredentials')}</strong><br />
+                    {t('tourist')}: tourist@example.com / password123<br />
+                    {t('provider')}: provider@example.com / password123<br />
+                    {t('admin')}: admin@example.com / password123
                   </div>
                   
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Signing in...' : 'Sign In'}
+                    {loading ? t('signingIn') : t('signIn')}
                   </Button>
                 </form>
               </TabsContent>
@@ -196,11 +204,11 @@ const LoginPage = () => {
               <TabsContent value="register" className="space-y-4">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="name">{t('fullName')}</Label>
                     <Input
                       id="name"
                       type="text"
-                      placeholder="Enter your full name"
+                      placeholder={t('enterFullName')}
                       value={registerData.name}
                       onChange={(e) => setRegisterData({...registerData, name: e.target.value})}
                       required
@@ -208,11 +216,11 @@ const LoginPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="reg-email">Email</Label>
+                    <Label htmlFor="reg-email">{t('email')}</Label>
                     <Input
                       id="reg-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder={t('enterEmail')}
                       value={registerData.email}
                       onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
                       required
@@ -220,11 +228,11 @@ const LoginPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone">{t('phoneNumber')}</Label>
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="Enter your phone number"
+                      placeholder={t('enterPhoneNumber')}
                       value={registerData.phone}
                       onChange={(e) => setRegisterData({...registerData, phone: e.target.value})}
                       required
@@ -232,24 +240,24 @@ const LoginPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
+                    <Label htmlFor="role">{t('role')}</Label>
                     <Select onValueChange={(value) => setRegisterData({...registerData, role: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select your role" />
+                        <SelectValue placeholder={t('selectRole')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="tourist">Tourist</SelectItem>
-                        <SelectItem value="provider">Service Provider</SelectItem>
+                        <SelectItem value="tourist">{t('tourist')}</SelectItem>
+                        <SelectItem value="provider">{t('serviceProvider')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="reg-password">Password</Label>
+                    <Label htmlFor="reg-password">{t('password')}</Label>
                     <Input
                       id="reg-password"
                       type="password"
-                      placeholder="Create a password"
+                      placeholder={t('createPassword')}
                       value={registerData.password}
                       onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
                       required
@@ -257,11 +265,11 @@ const LoginPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Label htmlFor="confirm-password">{t('confirmPassword')}</Label>
                     <Input
                       id="confirm-password"
                       type="password"
-                      placeholder="Confirm your password"
+                      placeholder={t('confirmYourPassword')}
                       value={registerData.confirmPassword}
                       onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
                       required
@@ -269,7 +277,7 @@ const LoginPage = () => {
                   </div>
                   
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Creating Account...' : 'Create Account'}
+                    {loading ? t('creatingAccount') : t('createAccount')}
                   </Button>
                 </form>
               </TabsContent>
@@ -279,7 +287,7 @@ const LoginPage = () => {
         
         <div className="text-center mt-6">
           <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
-            ← Back to Homepage
+            {t('backToHomepage')}
           </Link>
         </div>
       </div>

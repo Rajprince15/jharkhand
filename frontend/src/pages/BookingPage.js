@@ -4,13 +4,16 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { bookingsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
+import LanguageToggle from '../components/LanguageToggle';
 
 const BookingPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [selectedPackage, setSelectedPackage] = useState('heritage');
   const [basePrice, setBasePrice] = useState(15999);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -32,75 +35,75 @@ const BookingPage = () => {
   const packages = [
     {
       id: 'heritage',
-      name: 'Heritage Explorer',
+      name: t('heritageExplorer'),
       price: 15999,
-      duration: '5 Days / 4 Nights',
+      duration: `5 ${t('days')} / 4 ${t('nights')}`,
       provider_id: '1', // Ranchi City Tours
       destination_id: '1', // Ranchi
       features: [
-        'Visit Ranchi & Deoghar',
-        'Baidyanath Temple darshan',
-        'Rock Garden & Tagore Hill',
-        'AC accommodation',
-        'All meals included',
-        'Professional guide'
+        t('visitRanchiDeoghar'),
+        t('baidyanathTemple'),
+        t('rockGardenTagoreHill'),
+        t('acAccommodation'),
+        t('allMealsIncluded'),
+        t('professionalGuide')
       ]
     },
     {
       id: 'adventure',
-      name: 'Adventure Seeker',
+      name: t('adventureSeeker'),
       price: 22999,
-      duration: '7 Days / 6 Nights',
+      duration: `7 ${t('days')} / 6 ${t('nights')}`,
       provider_id: '2', // Netarhat Trekking Adventures
       destination_id: '2', // Netarhat
       features: [
-        'Netarhat & Betla National Park',
-        'Wildlife safari experience',
-        'Hundru & Dassam Falls',
-        'Trekking & camping',
-        'Premium accommodation',
-        'Adventure equipment'
+        t('netarhatBetla'),
+        t('wildlifeSafari'),
+        t('hundruDassamFalls'),
+        t('trekkingCamping'),
+        t('premiumAccommodation'),
+        t('adventureEquipment')
       ]
     },
     {
       id: 'spiritual',
-      name: 'Spiritual Journey',
+      name: t('spiritualJourney'),
       price: 18999,
-      duration: '6 Days / 5 Nights',
+      duration: `6 ${t('days')} / 5 ${t('nights')}`,
       provider_id: '4', // Parasnath Pilgrimage Guide
       destination_id: '4', // Parasnath Hill
       features: [
-        'Baidyanath Jyotirlinga',
-        'Parasnath Temple',
-        'Rajrappa Temple',
-        'Jagannath Temple',
-        'Spiritual guide included',
-        'Prayer ceremonies'
+        t('baidyanathJyotirlinga'),
+        t('parasnathTemple'),
+        t('rajrappaTemple'),
+        t('jagannathTemple'),
+        t('spiritualGuideIncluded'),
+        t('prayerCeremonies')
       ]
     },
     {
       id: 'premium',
-      name: 'Premium Experience',
+      name: t('premiumExperience'),
       price: 35999,
-      duration: '10 Days / 9 Nights',
+      duration: `10 ${t('days')} / 9 ${t('nights')}`,
       provider_id: '3', // Betla Safari Services (premium wildlife experience)
       destination_id: '3', // Betla National Park
       features: [
-        'Complete Jharkhand tour',
-        'Luxury resorts & hotels',
-        'Private transportation',
-        'Cultural performances',
-        'Photography sessions',
-        'Personal concierge'
+        t('completeJharkhandTour'),
+        t('luxuryResortsHotels'),
+        t('privateTransportation'),
+        t('culturalPerformances'),
+        t('photographySessions'),
+        t('personalConcierge')
       ]
     }
   ];
 
   const addons = [
-    { id: 'pickup', name: 'Airport Pickup/Drop', price: 2000 },
-    { id: 'insurance', name: 'Travel Insurance', price: 1500 },
-    { id: 'photography', name: 'Professional Photography', price: 5000 },
-    { id: 'meals', name: 'Premium Meals Upgrade', price: 3000 }
+    { id: 'pickup', name: t('airportPickupDrop'), price: 2000 },
+    { id: 'insurance', name: t('travelInsurance'), price: 1500 },
+    { id: 'photography', name: t('professionalPhotography'), price: 5000 },
+    { id: 'meals', name: t('premiumMealsUpgrade'), price: 3000 }
   ];
 
   useEffect(() => {
@@ -164,20 +167,20 @@ const BookingPage = () => {
     
     requiredFields.forEach(field => {
       if (!formData[field] || formData[field] === '') {
-        newErrors[field] = 'This field is required';
+        newErrors[field] = t('thisFieldRequired');
       }
     });
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (formData.email && !emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('validEmailAddress');
     }
 
     // Validate phone format
     const phoneRegex = /^[0-9]{10}$/;
     if (formData.phone && !phoneRegex.test(formData.phone.replace(/\s+/g, ''))) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number';
+      newErrors.phone = t('validPhoneNumber');
     }
 
     setErrors(newErrors);
@@ -191,8 +194,8 @@ const BookingPage = () => {
 
     if (!user) {
       toast({
-        title: "Authentication Required",
-        description: "Please log in to make a booking",
+        title: t('authenticationRequired'),
+        description: t('pleaseLoginToBook'),
         variant: "destructive",
       });
       navigate('/login');
@@ -242,16 +245,16 @@ const BookingPage = () => {
         setShowSuccessModal(true);
         
         toast({
-          title: "Booking Successful!",
-          description: `Your booking has been created with reference: ${ref}`,
+          title: t('bookingSuccessful'),
+          description: `${t('bookingCreatedWithRef')} ${ref}`,
         });
       }
       
     } catch (error) {
       console.error('Booking error:', error);
       toast({
-        title: "Booking Failed",
-        description: "There was an error creating your booking. Please try again.",
+        title: t('bookingFailed'),
+        description: t('bookingErrorMessage'),
         variant: "destructive",
       });
     } finally {
@@ -267,6 +270,11 @@ const BookingPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100">
+      {/* Language Toggle - Fixed Position */}
+      <div className="fixed top-4 right-4 z-10">
+        <LanguageToggle />
+      </div>
+
       {/* Floating background elements */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
         <div className="absolute top-[10%] left-[10%] w-5 h-5 bg-green-200 rounded-full opacity-30 animate-pulse"></div>
@@ -285,15 +293,15 @@ const BookingPage = () => {
               onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              {t('back')}
             </Button>
           </div>
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg">
-              Book Your Jharkhand Adventure
+              {t('bookYourJharkhandAdventure')}
             </h1>
             <p className="text-xl opacity-90">
-              Discover the untouched beauty of the land of forests
+              {t('discoverUntouchedBeauty')}
             </p>
           </div>
         </div>
@@ -305,7 +313,7 @@ const BookingPage = () => {
             {/* Package Selection */}
             <div className="mb-12">
               <h2 className="text-3xl font-bold text-center text-green-700 mb-8 relative">
-                Choose Your Adventure
+                {t('chooseYourAdventure')}
                 <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-20 h-1 bg-gradient-to-r from-green-600 to-green-400 rounded-full"></div>
               </h2>
               
@@ -345,13 +353,13 @@ const BookingPage = () => {
             {/* Booking Form */}
             <Card className="bg-gradient-to-br from-gray-50 to-white shadow-inner">
               <CardHeader>
-                <CardTitle className="text-2xl text-center text-green-700">Booking Details</CardTitle>
+                <CardTitle className="text-2xl text-center text-green-700">{t('bookingDetails')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-sm font-semibold text-green-700 mb-2">
-                      Full Name *
+                      {t('fullNameRequired')}
                     </label>
                     <input
                       type="text"
@@ -361,14 +369,14 @@ const BookingPage = () => {
                       className={`w-full px-4 py-3 border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                         errors.fullName ? 'border-red-300' : 'border-gray-200'
                       }`}
-                      placeholder="Enter your full name"
+                      placeholder={t('enterYourFullName')}
                     />
                     {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
                   </div>
                   
                   <div>
                     <label className="block text-sm font-semibold text-green-700 mb-2">
-                      Email Address *
+                      {t('emailAddressRequired')}
                     </label>
                     <input
                       type="email"
@@ -378,14 +386,14 @@ const BookingPage = () => {
                       className={`w-full px-4 py-3 border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                         errors.email ? 'border-red-300' : 'border-gray-200'
                       }`}
-                      placeholder="your.email@example.com"
+                      placeholder={t('yourEmailExample')}
                     />
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                   </div>
                   
                   <div>
                     <label className="block text-sm font-semibold text-green-700 mb-2">
-                      Phone Number *
+                      {t('phoneNumberRequired')}
                     </label>
                     <input
                       type="tel"
@@ -395,14 +403,14 @@ const BookingPage = () => {
                       className={`w-full px-4 py-3 border-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                         errors.phone ? 'border-red-300' : 'border-gray-200'
                       }`}
-                      placeholder="10-digit phone number"
+                      placeholder={t('tenDigitPhoneNumber')}
                     />
                     {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                   </div>
                   
                   <div>
                     <label className="block text-sm font-semibold text-green-700 mb-2">
-                      Number of Travelers *
+                      {t('numberOfTravelersRequired')}
                     </label>
                     <input
                       type="number"
@@ -420,7 +428,7 @@ const BookingPage = () => {
                   
                   <div>
                     <label className="block text-sm font-semibold text-green-700 mb-2">
-                      Departure Date *
+                      {t('departureDateRequired')}
                     </label>
                     <input
                       type="date"
@@ -437,7 +445,7 @@ const BookingPage = () => {
                   
                   <div>
                     <label className="block text-sm font-semibold text-green-700 mb-2">
-                      City of Origin
+                      {t('cityOfOrigin')}
                     </label>
                     <input
                       type="text"
@@ -445,14 +453,14 @@ const BookingPage = () => {
                       value={formData.cityOrigin}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="Delhi, Mumbai, etc."
+                      placeholder={t('delhiMumbaiEtc')}
                     />
                   </div>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-semibold text-green-700 mb-2">
-                    Special Requirements
+                    {t('specialRequirements')}
                   </label>
                   <textarea
                     id="requirements"
@@ -460,14 +468,14 @@ const BookingPage = () => {
                     onChange={handleInputChange}
                     rows="4"
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-vertical"
-                    placeholder="Dietary preferences, accessibility needs, etc."
+                    placeholder={t('dietaryPreferences')}
                   />
                 </div>
 
                 {/* Add-on Services */}
                 <Card className="bg-gradient-to-br from-green-50 to-white">
                   <CardHeader>
-                    <CardTitle className="text-xl text-green-700">Add-On Services</CardTitle>
+                    <CardTitle className="text-xl text-green-700">{t('addOnServices')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -494,7 +502,7 @@ const BookingPage = () => {
                   <CardContent className="p-6 text-center">
                     <div className="text-3xl font-bold mb-2">₹{totalPrice.toLocaleString()}</div>
                     <div className="text-green-100">
-                      {getPackageData(selectedPackage)?.name} package for {formData.travelers} person{formData.travelers > 1 ? 's' : ''}
+                      {getPackageData(selectedPackage)?.name} {t('packageFor')} {formData.travelers} {formData.travelers > 1 ? t('persons') : t('person')}
                     </div>
                   </CardContent>
                 </Card>
@@ -504,7 +512,7 @@ const BookingPage = () => {
                   disabled={isSubmitting}
                   className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  {isSubmitting ? 'Creating Booking...' : 'Book Your Adventure Now'}
+                  {isSubmitting ? t('creatingBooking') : t('bookYourAdventureNow')}
                 </Button>
               </CardContent>
             </Card>
@@ -512,11 +520,11 @@ const BookingPage = () => {
             {/* Testimonial */}
             <Card className="mt-12 text-center">
               <CardContent className="p-8">
-                <h3 className="text-2xl font-bold text-green-700 mb-6">What Our Travelers Say</h3>
+                <h3 className="text-2xl font-bold text-green-700 mb-6">{t('whatTravelersSay')}</h3>
                 <blockquote className="text-lg italic text-gray-700 max-w-2xl mx-auto mb-4">
-                  "An absolutely magical experience! Jharkhand's natural beauty and rich culture exceeded all expectations. The team made everything seamless and memorable."
+                  "{t('magicalExperience')}"
                 </blockquote>
-                <div className="text-green-600 font-semibold">- Priya Sharma, Delhi</div>
+                <div className="text-green-600 font-semibold">{t('priyaSharmaDelhi')}</div>
               </CardContent>
             </Card>
           </CardContent>
@@ -536,12 +544,12 @@ const BookingPage = () => {
               </button>
               
               <div className="text-6xl text-green-500 mb-6">✅</div>
-              <h2 className="text-2xl font-bold text-green-700 mb-4">Booking Confirmed!</h2>
+              <h2 className="text-2xl font-bold text-green-700 mb-4">{t('bookingConfirmedExclamation')}</h2>
               <p className="text-gray-600 mb-6">
-                Thank you for choosing Explore Jharkhand! We'll contact you within 24 hours to confirm your booking details and arrange payment.
+                {t('thankYouMessage')}
               </p>
               <p className="text-sm text-gray-500 mb-6">
-                Booking Reference: <strong className="text-green-600">{bookingRef}</strong>
+                {t('bookingReference')} <strong className="text-green-600">{bookingRef}</strong>
               </p>
               
               <div className="space-y-3">
@@ -549,7 +557,7 @@ const BookingPage = () => {
                   onClick={closeModal}
                   className="w-full bg-green-600 hover:bg-green-700"
                 >
-                  Continue Exploring
+                  {t('continueExploring')}
                 </Button>
                 <Button 
                   variant="outline"
@@ -559,7 +567,7 @@ const BookingPage = () => {
                   }}
                   className="w-full"
                 >
-                  Back to Home
+                  {t('backToHome')}
                 </Button>
               </div>
             </CardContent>

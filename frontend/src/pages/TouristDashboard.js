@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { MapPin, Heart, Calendar, LogOut, Star, Loader2 } from 'lucide-react';
 import { destinationsAPI, bookingsAPI, wishlistAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
+import LanguageToggle from '../components/LanguageToggle';
 
 const TouristDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [destinations, setDestinations] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [wishlist, setWishlist] = useState([]);
@@ -26,7 +29,7 @@ const TouristDashboard = () => {
     try {
       setLoading(true);
       const [destinationsData, bookingsData, wishlistData] = await Promise.all([
-        destinationsAPI.getAll(null, 6), // Get 6 destinations for recommendations
+        destinationsAPI.getAll(null, 6), // Get 6 destinations for recommendations  
         bookingsAPI.getUserBookings(),
         wishlistAPI.getAll()
       ]);
@@ -37,7 +40,7 @@ const TouristDashboard = () => {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast({
-        title: "Error",
+        title: t('errorOccurred'),
         description: "Failed to load dashboard data",
         variant: "destructive",
       });
@@ -66,16 +69,17 @@ const TouristDashboard = () => {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Tourist Dashboard</h1>
-            <p className="text-gray-600">Welcome back, {user.name}</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('dashboard')}</h1>
+            <p className="text-gray-600">{t('welcomeBack')}, {user.name}</p>
           </div>
           <div className="flex space-x-4">
+            <LanguageToggle variant="outline" />
             <Link to="/">
-              <Button variant="outline">Home</Button>
+              <Button variant="outline">{t('home')}</Button>
             </Link>
             <Button onClick={handleLogout} variant="outline">
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              {t('logout')}
             </Button>
           </div>
         </div>
@@ -86,7 +90,7 @@ const TouristDashboard = () => {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading your dashboard...</p>
+              <p className="text-muted-foreground">{t('loading')}</p>
             </div>
           </div>
         ) : (
@@ -97,7 +101,7 @@ const TouristDashboard = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                      <p className="text-sm font-medium text-gray-600">{t('totalBookings')}</p>
                       <p className="text-3xl font-bold text-gray-900">{bookings.length}</p>
                     </div>
                     <Calendar className="h-8 w-8 text-blue-600" />
@@ -109,7 +113,7 @@ const TouristDashboard = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Active Bookings</p>
+                      <p className="text-sm font-medium text-gray-600">{t('activeUsers')}</p>
                       <p className="text-3xl font-bold text-gray-900">
                         {bookings.filter(b => ['pending', 'confirmed'].includes(b.status)).length}
                       </p>
@@ -123,7 +127,7 @@ const TouristDashboard = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Wishlist Items</p>
+                      <p className="text-sm font-medium text-gray-600">{t('myWishlist')}</p>
                       <p className="text-3xl font-bold text-gray-900">{wishlist.length}</p>
                     </div>
                     <Heart className="h-8 w-8 text-red-600" />
@@ -137,10 +141,10 @@ const TouristDashboard = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="p-6 text-center">
                   <MapPin className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Explore Destinations</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('exploreDestinations')}</h3>
                   <p className="text-gray-600 mb-4">Discover amazing places in Jharkhand</p>
                   <Link to="/destinations">
-                    <Button className="bg-green-600 hover:bg-green-700">Browse</Button>
+                    <Button className="bg-green-600 hover:bg-green-700">{t('destinations')}</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -148,10 +152,10 @@ const TouristDashboard = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="p-6 text-center">
                   <Heart className="h-12 w-12 text-red-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">My Wishlist</h3>
-                  <p className="text-gray-600 mb-4">View your favorite destinations</p>
+                  <h3 className="text-lg font-semibold mb-2">{t('myWishlist')}</h3>
+                  <p className="text-gray-600 mb-4">{t('favoriteDestinations')}</p>
                   <Link to="/wishlist">
-                    <Button variant="outline">View Wishlist ({wishlist.length})</Button>
+                    <Button variant="outline">{t('viewDetails')} ({wishlist.length})</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -159,10 +163,10 @@ const TouristDashboard = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="p-6 text-center">
                   <Heart className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">AI Planner</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('aiPlanner')}</h3>
                   <p className="text-gray-600 mb-4">Get personalized travel itineraries</p>
                   <Link to="/ai-planner">
-                    <Button variant="outline">Plan Trip</Button>
+                    <Button variant="outline">{t('planYourTrip')}</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -170,10 +174,10 @@ const TouristDashboard = () => {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="p-6 text-center">
                   <Calendar className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">My Bookings</h3>
+                  <h3 className="text-lg font-semibold mb-2">{t('myBookings')}</h3>
                   <p className="text-gray-600 mb-4">View your travel bookings</p>
                   <Link to="/bookings">
-                    <Button variant="outline">View Bookings</Button>
+                    <Button variant="outline">{t('viewDetails')}</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -183,7 +187,7 @@ const TouristDashboard = () => {
               {/* Recent Bookings */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Recent Bookings</CardTitle>
+                  <CardTitle>{t('recentActivity')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {recentBookings.length > 0 ? (
@@ -204,7 +208,10 @@ const TouristDashboard = () => {
                               booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
                               'bg-red-100 text-red-800'
                             }`}>
-                              {booking.status}
+                              {booking.status === 'confirmed' ? t('confirmed') :
+                               booking.status === 'pending' ? t('pending') :
+                               booking.status === 'cancelled' ? t('cancelled') :
+                               booking.status}
                             </span>
                           </div>
                         </div>
@@ -213,7 +220,7 @@ const TouristDashboard = () => {
                   ) : (
                     <div className="text-center py-8">
                       <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">No bookings yet</p>
+                      <p className="text-gray-500">{t('noBookingsFound')}</p>
                       <Link to="/destinations">
                         <Button className="mt-4">Book Your First Trip</Button>
                       </Link>
@@ -225,7 +232,7 @@ const TouristDashboard = () => {
               {/* My Wishlist */}
               <Card>
                 <CardHeader>
-                  <CardTitle>My Wishlist</CardTitle>
+                  <CardTitle>{t('myWishlist')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {recentWishlistItems.length > 0 ? (
@@ -252,16 +259,16 @@ const TouristDashboard = () => {
                       ))}
                       <div className="text-center pt-4">
                         <Link to="/wishlist">
-                          <Button size="sm" variant="outline">View All</Button>
+                          <Button size="sm" variant="outline">{t('viewAll')}</Button>
                         </Link>
                       </div>
                     </div>
                   ) : (
                     <div className="text-center py-8">
                       <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">No wishlist items yet</p>
+                      <p className="text-gray-500">{t('wishlistEmpty')}</p>
                       <Link to="/destinations">
-                        <Button className="mt-4">Explore Destinations</Button>
+                        <Button className="mt-4">{t('exploreDestinations')}</Button>
                       </Link>
                     </div>
                   )}
@@ -295,7 +302,7 @@ const TouristDashboard = () => {
                             </div>
                           </div>
                           <Link to={`/destination/${destination.id}`}>
-                            <Button size="sm" variant="outline">View</Button>
+                            <Button size="sm" variant="outline">{t('viewDetails')}</Button>
                           </Link>
                         </div>
                       ))}
@@ -303,7 +310,7 @@ const TouristDashboard = () => {
                   ) : (
                     <div className="text-center py-8">
                       <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Loading recommendations...</p>
+                      <p className="text-gray-500">{t('loading')}</p>
                     </div>
                   )}
                 </CardContent>

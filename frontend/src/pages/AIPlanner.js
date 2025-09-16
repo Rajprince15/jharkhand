@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { useTranslation } from '../hooks/useTranslation';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -19,6 +20,7 @@ import html2canvas from 'html2canvas';
 const AIPlanner = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     destinations: [],
     duration: '',
@@ -43,30 +45,30 @@ const AIPlanner = () => {
   const travelStyles = [
     {
       id: 'relaxed',
-      title: 'Relaxed',
+      title: t('balanced'),
       description: 'Fewer activities, more leisure time'
     },
     {
       id: 'balanced',
-      title: 'Balanced',
+      title: t('balanced'),
       description: 'Mix of activities and relaxation'
     },
     {
       id: 'packed',
-      title: 'Packed',
+      title: t('luxury'),
       description: 'Maximum activities and experiences'
     }
   ];
 
   const interestOptions = [
-    'Adventure Sports',
-    'Cultural Sites',
-    'Nature & Wildlife',
+    t('adventureActivities'),
+    t('culturalSites'),
+    t('natureWildlife'),
     'Photography',
     'Food & Cuisine',
     'Shopping',
     'Nightlife',
-    'Religious Sites',
+    t('religiousSites'),
     'Museums',
     'Beaches',
     'Mountains',
@@ -250,7 +252,7 @@ const AIPlanner = () => {
     }
 
     if (formData.destinations.length === 0) {
-      setError('Please select at least one destination');
+      setError(t('noResultsFound'));
       return;
     }
 
@@ -310,7 +312,7 @@ const AIPlanner = () => {
                 </div>
               </div>
               <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                Your Perfect Itinerary
+                {t('yourPersonalizedItinerary')}
               </h1>
               <p className="text-2xl text-gray-600 max-w-3xl mx-auto">
                 ✨ Personalized travel plan for <span className="font-bold text-green-600">{generatedPlan.destination}</span>
@@ -333,21 +335,21 @@ const AIPlanner = () => {
                       <div className="flex justify-center mb-4">
                         <Calendar className="h-12 w-12 text-blue-600" />
                       </div>
-                      <p className="font-bold text-lg text-gray-800 mb-1">Duration</p>
-                      <p className="text-2xl font-bold text-blue-600">{generatedPlan.days} days</p>
+                      <p className="font-bold text-lg text-gray-800 mb-1">{t('duration')}</p>
+                      <p className="text-2xl font-bold text-blue-600">{generatedPlan.days} {t('days')}</p>
                     </div>
                     <div className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
                       <div className="flex justify-center mb-4">
                         <IndianRupee className="h-12 w-12 text-green-600" />
                       </div>
-                      <p className="font-bold text-lg text-gray-800 mb-1">Total Budget</p>
+                      <p className="font-bold text-lg text-gray-800 mb-1">Total {t('budget')}</p>
                       <p className="text-2xl font-bold text-green-600">₹{generatedPlan.budget?.toLocaleString()}</p>
                     </div>
                     <div className="text-center p-6 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl border border-red-100">
                       <div className="flex justify-center mb-4">
                         <MapPin className="h-12 w-12 text-red-600" />
                       </div>
-                      <p className="font-bold text-lg text-gray-800 mb-1">Destination</p>
+                      <p className="font-bold text-lg text-gray-800 mb-1">{t('destinations')}</p>
                       <p className="text-xl font-bold text-red-600">{generatedPlan.destination}</p>
                     </div>
                   </div>
@@ -359,7 +361,7 @@ const AIPlanner = () => {
                 <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-t-lg">
                   <CardTitle className="flex items-center text-2xl">
                     <Sparkles className="h-8 w-8 mr-3 text-white animate-pulse" />
-                    Your AI Generated Itinerary
+                    {t('yourPersonalizedItinerary')}
                   </CardTitle>
                   <p className="text-green-100 mt-2">Detailed day-by-day travel plan created just for you</p>
                 </CardHeader>
@@ -399,7 +401,7 @@ const AIPlanner = () => {
                     className="px-8 py-3 text-lg border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
                   >
                     <Sparkles className="h-5 w-5 mr-2" />
-                    Generate New Plan
+                    {t('planAnotherTrip')}
                   </Button>
                   <Button 
                     onClick={downloadItineraryPDF}
@@ -409,12 +411,12 @@ const AIPlanner = () => {
                     {isDownloading ? (
                       <>
                         <Download className="h-5 w-5 mr-2 animate-spin" />
-                        Creating Beautiful PDF...
+                        {t('downloadingPdf')}
                       </>
                     ) : (
                       <>
                         <Download className="h-5 w-5 mr-2" />
-                        Download Beautiful PDF
+                        {t('downloadPdf')}
                       </>
                     )}
                   </Button>
@@ -452,11 +454,10 @@ const AIPlanner = () => {
               </div>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              AI Travel Planner
+              {t('aiTravelPlanner')}
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Discover Jharkhand like never before! Let our advanced AI create a personalized itinerary 
-              based on your preferences, budget, and interests
+              {t('planPerfectTrip')}
             </p>
             <div className="mt-8 flex items-center justify-center space-x-4 text-sm text-gray-500">
               <div className="flex items-center">
@@ -478,9 +479,9 @@ const AIPlanner = () => {
                 <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-xl border border-green-100">
                   <Label className="text-xl font-bold mb-4 block flex items-center">
                     <MapPin className="h-6 w-6 mr-2 text-green-600" />
-                    Which destinations in Jharkhand would you like to visit?
+                    {t('whereWouldYouLike')}
                   </Label>
-                  <p className="text-gray-600 mb-6">Select one or more destinations that interest you</p>
+                  <p className="text-gray-600 mb-6">{t('selectDestinations')}</p>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {jharkhandDestinations.map((destination) => (
                       <Badge
@@ -510,19 +511,19 @@ const AIPlanner = () => {
                   </Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <Label className="text-base font-medium mb-2 block">Duration (days)</Label>
+                    <Label className="text-base font-medium mb-2 block">{t('howManyDays')}</Label>
                     <div className="space-y-2">
                       <Select onValueChange={(value) => setFormData(prev => ({ ...prev, duration: value }))}>
                         <SelectTrigger>
-                          <SelectValue placeholder="3 days" />
+                          <SelectValue placeholder={`3 ${t('days')}`} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="2 days">2 days</SelectItem>
-                          <SelectItem value="3 days">3 days</SelectItem>
-                          <SelectItem value="5 days">5 days</SelectItem>
-                          <SelectItem value="7 days">7 days</SelectItem>
-                          <SelectItem value="10 days">10 days</SelectItem>
-                          <SelectItem value="14 days">14 days</SelectItem>
+                          <SelectItem value="2 days">2 {t('days')}</SelectItem>
+                          <SelectItem value="3 days">3 {t('days')}</SelectItem>
+                          <SelectItem value="5 days">5 {t('days')}</SelectItem>
+                          <SelectItem value="7 days">7 {t('days')}</SelectItem>
+                          <SelectItem value="10 days">10 {t('days')}</SelectItem>
+                          <SelectItem value="14 days">14 {t('days')}</SelectItem>
                           <SelectItem value="custom">Custom</SelectItem>
                         </SelectContent>
                       </Select>
@@ -531,7 +532,7 @@ const AIPlanner = () => {
                           type="number"
                           min="1"
                           max="30"
-                          placeholder="Enter days (1-30)"
+                          placeholder={t('enterNumberOfDays')}
                           onChange={(e) => {
                             const days = parseInt(e.target.value);
                             if (days >= 1 && days <= 30) {
@@ -544,18 +545,18 @@ const AIPlanner = () => {
                   </div>
 
                   <div>
-                    <Label className="text-base font-medium mb-2 block">Budget (₹)</Label>
+                    <Label className="text-base font-medium mb-2 block">{t('budgetRange')}</Label>
                     <div className="space-y-2">
                       <Select onValueChange={(value) => setFormData(prev => ({ ...prev, budget: value }))}>
                         <SelectTrigger>
                           <SelectValue placeholder="₹25,000 - Standard" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="₹15,000 - Budget">₹15,000 - Budget</SelectItem>
+                          <SelectItem value="₹15,000 - Budget">₹15,000 - {t('budget')}</SelectItem>
                           <SelectItem value="₹25,000 - Standard">₹25,000 - Standard</SelectItem>
                           <SelectItem value="₹50,000 - Premium">₹50,000 - Premium</SelectItem>
-                          <SelectItem value="₹75,000 - Luxury">₹75,000 - Luxury</SelectItem>
-                          <SelectItem value="₹1,00,000+ - Ultra Luxury">₹1,00,000+ - Ultra Luxury</SelectItem>
+                          <SelectItem value="₹75,000 - Luxury">₹75,000 - {t('luxury')}</SelectItem>
+                          <SelectItem value="₹1,00,000+ - Ultra Luxury">₹1,00,000+ - Ultra {t('luxury')}</SelectItem>
                           <SelectItem value="custom">Custom Amount</SelectItem>
                         </SelectContent>
                       </Select>
@@ -577,17 +578,17 @@ const AIPlanner = () => {
                   </div>
 
                   <div>
-                    <Label className="text-base font-medium mb-2 block">Group Size</Label>
+                    <Label className="text-base font-medium mb-2 block">{t('groupSize')}</Label>
                     <Select onValueChange={(value) => setFormData(prev => ({ ...prev, groupSize: value }))}>
                       <SelectTrigger>
-                        <SelectValue placeholder="2 persons" />
+                        <SelectValue placeholder={`2 ${t('persons')}`} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1 person">1 person</SelectItem>
-                        <SelectItem value="2 persons">2 persons</SelectItem>
-                        <SelectItem value="3-4 persons">3-4 persons</SelectItem>
-                        <SelectItem value="5-6 persons">5-6 persons</SelectItem>
-                        <SelectItem value="7+ persons">7+ persons</SelectItem>
+                        <SelectItem value="1 person">1 {t('person')}</SelectItem>
+                        <SelectItem value="2 persons">2 {t('persons')}</SelectItem>
+                        <SelectItem value="3-4 persons">3-4 {t('persons')}</SelectItem>
+                        <SelectItem value="5-6 persons">5-6 {t('persons')}</SelectItem>
+                        <SelectItem value="7+ persons">7+ {t('persons')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -598,9 +599,9 @@ const AIPlanner = () => {
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
                   <Label className="text-xl font-bold mb-4 block flex items-center">
                     <Users className="h-6 w-6 mr-2 text-purple-600" />
-                    Travel Style
+                    {t('travelStyle')}
                   </Label>
-                  <p className="text-gray-600 mb-6">Choose how you prefer to travel</p>
+                  <p className="text-gray-600 mb-6">{t('selectTravelStyle')}</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {travelStyles.map((style) => (
                       <div
@@ -623,9 +624,9 @@ const AIPlanner = () => {
                 <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border border-orange-100">
                   <Label className="text-xl font-bold mb-4 block flex items-center">
                     <Sparkles className="h-6 w-6 mr-2 text-orange-600" />
-                    Your Interests
+                    {t('whatInterestsYou')}
                   </Label>
-                  <p className="text-gray-600 mb-6">Select all activities and places that interest you</p>
+                  <p className="text-gray-600 mb-6">{t('selectInterests')}</p>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {interestOptions.map((interest) => (
                       <Badge
@@ -661,12 +662,12 @@ const AIPlanner = () => {
                     {isGenerating ? (
                       <>
                         <Sparkles className="h-6 w-6 mr-3 animate-spin" />
-                        Creating Your Perfect Itinerary...
+                        {t('generatingItinerary')}
                       </>
                     ) : (
                       <>
                         <Sparkles className="h-6 w-6 mr-3" />
-                        Generate My Itinerary with AI
+                        {t('generateItinerary')}
                       </>
                     )}
                   </Button>
