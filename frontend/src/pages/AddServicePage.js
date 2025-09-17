@@ -4,21 +4,23 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { ArrowLeft, Upload, Plus, X } from 'lucide-react';
+import { providerManagementAPI } from '../services/api';
+import { useToast } from '../hooks/use-toast';
 
 const AddServicePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
-    serviceName: '',
+    name: '',
     category: '',
+    service_name: '',
     description: '',
     price: '',
     location: '',
     contact: '',
-    highlights: [],
-    images: []
+    image_url: ''
   });
-  const [newHighlight, setNewHighlight] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!user || user.role !== 'provider') {
@@ -27,14 +29,10 @@ const AddServicePage = () => {
   }
 
   const categories = [
-    'Accommodation',
-    'Transportation',
-    'Guide Services',
-    'Adventure Tours',
-    'Cultural Tours',
-    'Food & Dining',
-    'Photography Services',
-    'Equipment Rental'
+    'guide',
+    'transport', 
+    'accommodation',
+    'activity'
   ];
 
   const handleInputChange = (e) => {
@@ -45,40 +43,50 @@ const AddServicePage = () => {
     }));
   };
 
-  const addHighlight = () => {
-    if (newHighlight.trim() && formData.highlights.length < 5) {
-      setFormData(prev => ({
-        ...prev,
-        highlights: [...prev.highlights, newHighlight.trim()]
-      }));
-      setNewHighlight('');
-    }
-  };
-
-  const removeHighlight = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      highlights: prev.highlights.filter((_, i) => i !== index)
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // Here you would typically send the data to your backend API
-      console.log('Service data:', formData);
+      // Validate required fields
+      if (!formData.name || !formData.category || !formData.service_name || !formData.description || 
+          !formData.price || !formData.location || !formData.contact) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create service data matching backend ProviderCreate model
+      const serviceData = {
+        name: formData.name,
+        category: formData.category,
+        service_name: formData.service_name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        location: formData.location,
+        contact: formData.contact,
+        image_url: formData.image_url || 'https://images.pexels.com/photos/3184405/pexels-photo-3184405.jpeg?auto=compress&cs=tinysrgb&w=400'
+      };
+
+      // Call the backend API
+      await providerManagementAPI.create(serviceData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast({
+        title: "Success!",
+        description: "Service added successfully",
+      });
       
-      // Show success message and redirect
-      alert('Service added successfully!');
       navigate('/provider-dashboard');
     } catch (error) {
       console.error('Error adding service:', error);
-      alert('Failed to add service. Please try again.');
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || "Failed to add service. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -117,38 +125,53 @@ const AddServicePage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Service Name *
+                    Provider Name *
                   </label>
                   <input
                     type="text"
-                    name="serviceName"
-                    value={formData.serviceName}
+                    name="name"
+                    value={formData.name}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="e.g., Ranchi City Tour"
+                    placeholder="e.g., Ranchi Tours & Travels"
                     required
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category *
+                    Service Name *
                   </label>
-                  <select
-                    name="category"
-                    value={formData.category}
+                  <input
+                    type="text"
+                    name="service_name"
+                    value={formData.service_name}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="e.g., City Tour Package"
                     required
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(category => (
-                      <option key={category} value={category.toLowerCase().replace(' ', '_')}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category *
+                </label>
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required
+                >
+                  <option value="">Select Category</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Description */}
@@ -217,58 +240,22 @@ const AddServicePage = () => {
                 />
               </div>
 
-              {/* Highlights */}
+              {/* Image URL */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Service Highlights (Max 5)
+                  Service Image URL (Optional)
                 </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newHighlight}
-                    onChange={(e) => setNewHighlight(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Add a highlight..."
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addHighlight())}
-                  />
-                  <Button
-                    type="button"
-                    onClick={addHighlight}
-                    disabled={!newHighlight.trim() || formData.highlights.length >= 5}
-                    variant="outline"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {formData.highlights.map((highlight, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
-                    >
-                      {highlight}
-                      <button
-                        type="button"
-                        onClick={() => removeHighlight(index)}
-                        className="ml-2 text-green-600 hover:text-green-800"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Image Upload Placeholder */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Service Images
-                </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Image upload feature coming soon</p>
-                  <p className="text-sm text-gray-500">For now, please contact admin to add images</p>
-                </div>
+                <input
+                  type="url"
+                  name="image_url"
+                  value={formData.image_url}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="https://example.com/image.jpg"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Leave empty to use default image
+                </p>
               </div>
 
               {/* Submit Button */}

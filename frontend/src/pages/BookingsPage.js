@@ -3,14 +3,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Calendar, MapPin, User, Clock, ArrowLeft } from 'lucide-react';
+import { Calendar, MapPin, User, Clock, ArrowLeft, Star } from 'lucide-react';
 import { bookingsAPI } from '../services/api';
+import ReviewModal from '../components/ReviewModal';
 
 const BookingsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reviewModal, setReviewModal] = useState({
+    isOpen: false,
+    booking: null,
+    type: 'provider' // can be 'provider' or 'destination'
+  });
 
   useEffect(() => {
     if (!user) {
@@ -29,7 +35,9 @@ const BookingsPage = () => {
         const transformedBookings = response.map(booking => ({
           id: booking.id,
           destination: booking.destination_name || booking.package_name || 'Unknown Destination',
+          destination_id: booking.destination_id,
           provider: booking.provider_name || 'Unknown Provider',
+          provider_id: booking.provider_id,
           date: booking.check_in || booking.booking_date,
           status: booking.status,
           price: booking.total_price,
@@ -39,7 +47,8 @@ const BookingsPage = () => {
           guests: booking.guests,
           rooms: booking.rooms,
           specialRequests: booking.special_requests,
-          image: getImageForPackage(booking.package_type || 'heritage')
+          image: getImageForPackage(booking.package_type || 'heritage'),
+          hasReviewed: booking.has_reviewed || false // Track if user has already reviewed
         }));
         
         setBookings(transformedBookings);
@@ -64,6 +73,28 @@ const BookingsPage = () => {
       premium: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
     };
     return packageImages[packageType] || packageImages.heritage;
+  };
+
+  const openReviewModal = (booking, type) => {
+    setReviewModal({
+      isOpen: true,
+      booking: booking,
+      type: type
+    });
+  };
+
+  const closeReviewModal = () => {
+    setReviewModal({
+      isOpen: false,
+      booking: null,
+      type: 'provider'
+    });
+  };
+
+  const handleReviewSubmitted = () => {
+    // Refresh bookings after review submission
+    closeReviewModal();
+    // Could add a flag to mark as reviewed in the UI
   };
 
   const getStatusColor = (status) => {
@@ -184,6 +215,31 @@ const BookingsPage = () => {
                             Cancel Booking
                           </Button>
                         )}
+                        {booking.status === 'completed' && !booking.hasReviewed && (
+                          <div className="flex flex-col space-y-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full md:w-auto text-green-600 border-green-300 hover:bg-green-50"
+                              onClick={() => openReviewModal(booking, 'provider')}
+                            >
+                              <Star className="h-4 w-4 mr-1" />
+                              Review Service
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full md:w-auto text-blue-600 border-blue-300 hover:bg-blue-50"
+                              onClick={() => openReviewModal(booking, 'destination')}
+                            >
+                              <Star className="h-4 w-4 mr-1" />
+                              Review Destination
+                            </Button>
+                          </div>
+                        )}
+                        {booking.status === 'completed' && booking.hasReviewed && (
+                          <p className="text-sm text-gray-500 italic">Review submitted</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -193,6 +249,22 @@ const BookingsPage = () => {
           </div>
         )}
       </div>
+      
+      {/* Review Modal */}
+      {reviewModal.isOpen && reviewModal.booking && (
+        <ReviewModal
+          isOpen={reviewModal.isOpen}
+          onClose={closeReviewModal}
+          item={{
+            [reviewModal.type === 'destination' ? 'destination_id' : 'provider_id']: 
+              reviewModal.type === 'destination' ? reviewModal.booking.destination_id : reviewModal.booking.provider_id,
+            [reviewModal.type === 'destination' ? 'destination_name' : 'provider_name']: 
+              reviewModal.type === 'destination' ? reviewModal.booking.destination : reviewModal.booking.provider
+          }}
+          itemType={reviewModal.type}
+          onReviewSubmitted={handleReviewSubmitted}
+        />
+      )}
     </div>
   );
 };

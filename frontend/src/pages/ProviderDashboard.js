@@ -170,9 +170,11 @@ const ProviderDashboard = () => {
                         Add New Service
                       </Button>
                     </Link>
-                    <Button variant="outline" onClick={() => window.location.reload()}>
-                      Refresh Services
-                    </Button>
+                    <Link to="/view-services">
+                      <Button variant="outline">
+                        View Services & Reviews
+                      </Button>
+                    </Link>
                   </div>
                   {services.length > 0 && (
                     <div className="mt-4">

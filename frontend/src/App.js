@@ -15,6 +15,7 @@ import AIPlanner from "./pages/AIPlanner";
 import BookingsPage from "./pages/BookingsPage";
 import WishlistPage from "./pages/WishlistPage";
 import AddServicePage from "./pages/AddServicePage";
+import ViewServicesPage from "./pages/ViewServicesPage";
 import ProviderBookingsPage from "./pages/ProviderBookingsPage";
 import DestinationDetailPage from "./pages/DestinationDetailPage";
 import MapPage from "./pages/MapPage";
@@ -41,6 +42,7 @@ function App() {
               <Route path="/bookings" element={<BookingsPage />} />
               <Route path="/wishlist" element={<WishlistPage />} />
               <Route path="/add-service" element={<AddServicePage />} />
+              <Route path="/view-services" element={<ViewServicesPage />} />
               <Route path="/provider-bookings" element={<ProviderBookingsPage />} />
               <Route path="/destination/:id" element={<DestinationDetailPage />} />
               <Route path="/map" element={<MapPage />} />
