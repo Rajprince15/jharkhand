@@ -230,7 +230,7 @@ export const featuredArticles = [
 export const regions = [
   {
     id: 1,
-    name: 'Central Jharkhand',
+    name: 'East Jharkhand',
     description: 'Home to the capital city Ranchi with its urban charm and natural beauty',
     image: 'https://images.unsplash.com/photo-1672154702113-b65ccc7b1f0e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHxqaGFya2hhbmQlMjB0b3VyaXNtfGVufDB8fHx8MTc1NzMzNTU0MXww&ixlib=rb-4.1.0&q=85',
     highlights: ['Ranchi', 'Tagore Hill', 'Rock Garden']
