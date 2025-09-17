@@ -330,24 +330,52 @@ async def get_destination_detail(destination_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/providers")
-async def get_providers(category: Optional[str] = None, location: Optional[str] = None, limit: int = 50):
+async def get_providers(category: Optional[str] = None, location: Optional[str] = None, destination_id: Optional[str] = None, limit: int = 50):
     try:
         pool = await get_db()
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
-                query = "SELECT * FROM providers WHERE is_active = 1"
-                params = []
-                
-                if category:
-                    query += " AND category = %s"
-                    params.append(category)
-                
-                if location:
-                    query += " AND location LIKE %s"
-                    params.append(f"%{location}%")
-                
-                query += " LIMIT %s"
-                params.append(limit)
+                if destination_id:
+                    # Get providers for specific destination
+                    query = """
+                        SELECT p.*, 
+                               AVG(r.rating) as avg_rating,
+                               COUNT(r.id) as review_count
+                        FROM providers p
+                        INNER JOIN provider_destinations pd ON p.id = pd.provider_id
+                        LEFT JOIN reviews r ON p.id = r.provider_id
+                        WHERE p.is_active = 1 AND pd.destination_id = %s
+                    """
+                    params = [destination_id]
+                    
+                    if category:
+                        query += " AND p.category = %s"
+                        params.append(category)
+                        
+                    query += " GROUP BY p.id ORDER BY avg_rating DESC, p.rating DESC LIMIT %s"
+                    params.append(limit)
+                else:
+                    # Get all providers with optional filters
+                    query = """
+                        SELECT p.*, 
+                               AVG(r.rating) as avg_rating,
+                               COUNT(r.id) as review_count
+                        FROM providers p
+                        LEFT JOIN reviews r ON p.id = r.provider_id
+                        WHERE p.is_active = 1
+                    """
+                    params = []
+                    
+                    if category:
+                        query += " AND p.category = %s"
+                        params.append(category)
+                    
+                    if location:
+                        query += " AND p.location LIKE %s"
+                        params.append(f"%{location}%")
+                    
+                    query += " GROUP BY p.id ORDER BY avg_rating DESC, p.rating DESC LIMIT %s"
+                    params.append(limit)
                 
                 await cur.execute(query, params)
                 providers = await cur.fetchall()
@@ -917,6 +945,90 @@ async def create_provider(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Provider-Destination Management API
+@api_router.post("/providers/{provider_id}/destinations")
+async def add_provider_to_destination(
+    provider_id: str,
+    destination_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Link provider to a destination"""
+    try:
+        if current_user['role'] != 'provider':
+            raise HTTPException(status_code=403, detail="Only providers can manage their services")
+        
+        destination_id = destination_data.get('destination_id')
+        if not destination_id:
+            raise HTTPException(status_code=400, detail="destination_id is required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Check if provider belongs to current user
+                await cur.execute("SELECT user_id FROM providers WHERE id = %s", (provider_id,))
+                provider = await cur.fetchone()
+                if not provider or provider[0] != current_user['id']:
+                    raise HTTPException(status_code=404, detail="Provider not found or access denied")
+                
+                # Check if destination exists
+                await cur.execute("SELECT id FROM destinations WHERE id = %s", (destination_id,))
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Destination not found")
+                
+                # Check if relationship already exists
+                await cur.execute("""
+                    SELECT id FROM provider_destinations 
+                    WHERE provider_id = %s AND destination_id = %s
+                """, (provider_id, destination_id))
+                
+                if await cur.fetchone():
+                    raise HTTPException(status_code=400, detail="Provider already linked to this destination")
+                
+                # Create the relationship
+                pd_id = str(uuid.uuid4())
+                await cur.execute("""
+                    INSERT INTO provider_destinations (id, provider_id, destination_id)
+                    VALUES (%s, %s, %s)
+                """, (pd_id, provider_id, destination_id))
+                
+                return {"message": "Provider linked to destination successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/providers/{provider_id}/destinations/{destination_id}")
+async def remove_provider_from_destination(
+    provider_id: str,
+    destination_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove provider from destination"""
+    try:
+        if current_user['role'] != 'provider':
+            raise HTTPException(status_code=403, detail="Only providers can manage their services")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Check if provider belongs to current user
+                await cur.execute("SELECT user_id FROM providers WHERE id = %s", (provider_id,))
+                provider = await cur.fetchone()
+                if not provider or provider[0] != current_user['id']:
+                    raise HTTPException(status_code=404, detail="Provider not found or access denied")
+                
+                # Remove the relationship
+                await cur.execute("""
+                    DELETE FROM provider_destinations 
+                    WHERE provider_id = %s AND destination_id = %s
+                """, (provider_id, destination_id))
+                
+                return {"message": "Provider removed from destination successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/user/providers")
 async def get_user_providers(current_user: dict = Depends(get_current_user)):
     """Get all providers for current user"""
@@ -1121,6 +1233,29 @@ async def create_missing_tables():
         pool = await get_db()
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
+                # Create provider_destinations table
+                await cur.execute("""
+                    CREATE TABLE IF NOT EXISTS provider_destinations (
+                        id VARCHAR(255) PRIMARY KEY,
+                        provider_id VARCHAR(255) NOT NULL,
+                        destination_id VARCHAR(255) NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE,
+                        FOREIGN KEY (destination_id) REFERENCES destinations(id) ON DELETE CASCADE,
+                        UNIQUE KEY unique_provider_destination (provider_id, destination_id)
+                    )
+                """)
+                
+                # Create indexes
+                await cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_provider_destinations_provider 
+                    ON provider_destinations(provider_id)
+                """)
+                await cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_provider_destinations_destination 
+                    ON provider_destinations(destination_id)
+                """)
+                
                 # Create chat_logs table
                 await cur.execute("""
                     CREATE TABLE IF NOT EXISTS chat_logs (
