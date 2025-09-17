@@ -9,41 +9,9 @@ CREATE TABLE IF NOT EXISTS provider_destinations (
     UNIQUE KEY unique_provider_destination (provider_id, destination_id)
 );
 
--- Handle provider_id index safely
-SET @ix_exists := (
-    SELECT COUNT(1)
-    FROM INFORMATION_SCHEMA.STATISTICS
-    WHERE table_schema = DATABASE()
-      AND table_name = 'provider_destinations'
-      AND index_name = 'idx_provider_destinations_provider'
-);
-SET @sql := IF(@ix_exists > 0,
-    'DROP INDEX idx_provider_destinations_provider ON provider_destinations;',
-    'SELECT 1;'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-CREATE INDEX idx_provider_destinations_provider ON provider_destinations(provider_id);
-
--- Handle destination_id index safely
-SET @ix_exists := (
-    SELECT COUNT(1)
-    FROM INFORMATION_SCHEMA.STATISTICS
-    WHERE table_schema = DATABASE()
-      AND table_name = 'provider_destinations'
-      AND index_name = 'idx_provider_destinations_destination'
-);
-SET @sql := IF(@ix_exists > 0,
-    'DROP INDEX idx_provider_destinations_destination ON provider_destinations;',
-    'SELECT 1;'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-CREATE INDEX idx_provider_destinations_destination ON provider_destinations(destination_id);
+-- Create index for better performance
+CREATE INDEX IF NOT EXISTS idx_provider_destinations_provider ON provider_destinations(provider_id);
+CREATE INDEX IF NOT EXISTS idx_provider_destinations_destination ON provider_destinations(destination_id);
 
 -- Insert sample provider-destination relationships
 -- First, let's create some new providers with services for different destinations
@@ -72,17 +40,29 @@ INSERT INTO providers (id, user_id, name, category, service_name, description, p
 
 -- Now link providers to destinations
 INSERT INTO provider_destinations (id, provider_id, destination_id) VALUES
+-- Ranchi (destination id = '1')
 ('pd1', 'prov_ranchi_guide_1', '1'),
 ('pd2', 'prov_ranchi_transport_1', '1'),  
 ('pd3', 'prov_ranchi_hotel_1', '1'),
+
+-- Netarhat (destination id = '2')  
 ('pd4', 'prov_netarhat_guide_1', '2'),
 ('pd5', 'prov_netarhat_hotel_1', '2'),
+
+-- Betla National Park (destination id = '3')
 ('pd6', 'prov_betla_safari_1', '3'),
 ('pd7', 'prov_betla_guide_1', '3'),
+
+-- Parasnath Hill (destination id = '4')
 ('pd8', 'prov_parasnath_guide_1', '4'),
 ('pd9', 'prov_parasnath_transport_1', '4'),
+
+-- Dimna Lake (destination id = '10')
 ('pd10', 'prov_dimna_water_1', '10'),
 ('pd11', 'prov_dimna_restaurant_1', '10'),
+
+-- Some providers can serve multiple destinations
+-- Ranchi transport can also serve nearby Jonha Falls (id = '7')
 ('pd12', 'prov_ranchi_transport_1', '7');
 
 -- Sample regions table data (if not exists)
@@ -97,7 +77,7 @@ UPDATE destinations SET region = 'east' WHERE id IN ('1', '7');
 UPDATE destinations SET region = 'west' WHERE id = '2';  
 UPDATE destinations SET region = 'north' WHERE id IN ('3', '4');
 UPDATE destinations SET region = 'south' WHERE id = '10';
-UPDATE destinations SET region = 'east' WHERE id = '5';
-UPDATE destinations SET region = 'east' WHERE id = '6'; 
-UPDATE destinations SET region = 'south' WHERE id = '8';
-UPDATE destinations SET region = 'north' WHERE id = '9';
+UPDATE destinations SET region = 'east' WHERE id = '5'; -- Hazaribagh
+UPDATE destinations SET region = 'east' WHERE id = '6'; -- Dhanbad  
+UPDATE destinations SET region = 'south' WHERE id = '8'; -- Ramgarh
+UPDATE destinations SET region = 'north' WHERE id = '9'; -- Giridih

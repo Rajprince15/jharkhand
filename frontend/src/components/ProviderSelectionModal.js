@@ -34,10 +34,10 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [reviews, setReviews] = useState({});
   const [filters, setFilters] = useState({
-    category: '',
+    category: 'all',
     min_price: '',
     max_price: '',
-    min_rating: ''
+    min_rating: 'any'
   });
   
   const [bookingData, setBookingData] = useState({
@@ -97,7 +97,7 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
   const applyFilters = () => {
     let filtered = [...providers];
     
-    if (filters.category) {
+    if (filters.category && filters.category !== 'all') {
       filtered = filtered.filter(p => p.category === filters.category);
     }
     
@@ -109,7 +109,7 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
       filtered = filtered.filter(p => parseFloat(p.price) <= parseFloat(filters.max_price));
     }
     
-    if (filters.min_rating) {
+    if (filters.min_rating && filters.min_rating !== 'any') {
       filtered = filtered.filter(p => {
         const rating = p.avg_rating || p.rating;
         return parseFloat(rating) >= parseFloat(filters.min_rating);
@@ -199,10 +199,10 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
 
   const clearFilters = () => {
     setFilters({
-      category: '',
+      category: 'all',
       min_price: '',
       max_price: '',
-      min_rating: ''
+      min_rating: 'any'
     });
   };
 
@@ -333,7 +333,7 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     <SelectItem value="guide">Guide</SelectItem>
                     <SelectItem value="transport">Transport</SelectItem>
                     <SelectItem value="accommodation">Accommodation</SelectItem>
@@ -361,7 +361,7 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
                     <SelectValue placeholder="Min Rating" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any Rating</SelectItem>
+                    <SelectItem value="any">Any Rating</SelectItem>
                     <SelectItem value="4.5">4.5+ Stars</SelectItem>
                     <SelectItem value="4.0">4.0+ Stars</SelectItem>
                     <SelectItem value="3.5">3.5+ Stars</SelectItem>

@@ -17,7 +17,6 @@ CREATE INDEX idx_provider_destinations_provider ON provider_destinations(provide
 CREATE INDEX idx_provider_destinations_destination ON provider_destinations(destination_id);
 
 -- Insert sample providers with services for different destinations
--- Insert sample providers with services for different destinations
 INSERT INTO providers (id, user_id, name, category, service_name, description, price, rating, location, contact, image_url) VALUES
 -- Ranchi Providers
 ('prov_ranchi_guide_1', 'provider1', 'Ranchi Heritage Tours', 'guide', 'Complete Ranchi City Tour', 'Professional guided tours covering all major Ranchi attractions including Tagore Hill, Rock Garden, and Hundru Falls.', 2500, 4.8, 'Ranchi', '+91 98765 11111', 'https://images.pexels.com/photos/3184405/pexels-photo-3184405.jpeg?auto=compress&cs=tinysrgb&w=400'),
