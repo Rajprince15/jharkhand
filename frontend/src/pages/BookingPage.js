@@ -241,7 +241,9 @@ const BookingPage = () => {
         // Personal information from booking form
         booking_full_name: formData.fullName,
         booking_email: formData.email,
-        booking_phone: formData.phone
+        booking_phone: formData.phone,
+        // Reference number for provider lookup
+        reference_number: ref
       };
 
       console.log('Booking data being sent:', bookingData); // Debug log

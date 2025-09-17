@@ -584,6 +584,8 @@ class BookingCreate(BaseModel):
     booking_full_name: str = Field(..., min_length=1, description="Full name from booking form")
     booking_email: EmailStr = Field(..., description="Email from booking form")
     booking_phone: str = Field(..., min_length=10, description="Phone number from booking form")
+    # Reference number for customer/provider communication
+    reference_number: Optional[str] = Field(None, max_length=20, description="Frontend generated reference number (e.g., JH123456)")
     
     @field_validator('booking_date', 'check_in', 'check_out')
     @classmethod
@@ -648,14 +650,14 @@ async def create_booking(
                     INSERT INTO bookings (id, user_id, provider_id, destination_id, user_name, 
                                         provider_name, destination_name, booking_date, check_in, 
                                         check_out, guests, rooms, total_price, special_requests, status,
-                                        addons, booking_full_name, booking_email, booking_phone, city_origin)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        addons, booking_full_name, booking_email, booking_phone, city_origin, reference_number)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     booking_id, current_user['id'], booking_data.provider_id, booking_data.destination_id,
                     current_user['name'], provider['name'], destination['name'], booking_data.booking_date,
                     booking_data.check_in, booking_data.check_out, booking_data.guests, booking_data.rooms,
                     total_price, booking_data.special_requests, 'pending',
-                    booking_data.addons, booking_data.booking_full_name, booking_data.booking_email, booking_data.booking_phone, booking_data.city_origin
+                    booking_data.addons, booking_data.booking_full_name, booking_data.booking_email, booking_data.booking_phone, booking_data.city_origin, booking_data.reference_number
                 ))
                 
                 return {
