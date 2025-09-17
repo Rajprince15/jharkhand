@@ -110,6 +110,7 @@ class Provider(BaseModel):
     contact: str
     image_url: str
     is_active: bool
+    destination_id: Optional[str] = None
     created_at: datetime
 
 class Review(BaseModel):
@@ -329,6 +330,23 @@ async def get_destination_detail(destination_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/destinations/list/dropdown")
+async def get_destinations_for_dropdown():
+    """Get simplified list of destinations for dropdown selection"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    SELECT id, name, location 
+                    FROM destinations 
+                    ORDER BY name ASC
+                """)
+                destinations = await cur.fetchall()
+                return destinations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/providers")
 async def get_providers(category: Optional[str] = None, location: Optional[str] = None, destination_id: Optional[str] = None, limit: int = 50):
     try:
@@ -336,15 +354,17 @@ async def get_providers(category: Optional[str] = None, location: Optional[str] 
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 if destination_id:
-                    # Get providers for specific destination
+                    # Get providers for specific destination using destination_id relationship
                     query = """
                         SELECT p.*, 
+                               d.name as destination_name,
+                               d.location as destination_location,
                                AVG(r.rating) as avg_rating,
                                COUNT(r.id) as review_count
                         FROM providers p
-                        INNER JOIN provider_destinations pd ON p.id = pd.provider_id
+                        LEFT JOIN destinations d ON p.destination_id = d.id
                         LEFT JOIN reviews r ON p.id = r.provider_id
-                        WHERE p.is_active = 1 AND pd.destination_id = %s
+                        WHERE p.is_active = 1 AND p.destination_id = %s
                     """
                     params = [destination_id]
                     
@@ -358,9 +378,12 @@ async def get_providers(category: Optional[str] = None, location: Optional[str] 
                     # Get all providers with optional filters
                     query = """
                         SELECT p.*, 
+                               d.name as destination_name,
+                               d.location as destination_location,
                                AVG(r.rating) as avg_rating,
                                COUNT(r.id) as review_count
                         FROM providers p
+                        LEFT JOIN destinations d ON p.destination_id = d.id
                         LEFT JOIN reviews r ON p.id = r.provider_id
                         WHERE p.is_active = 1
                     """
@@ -371,8 +394,8 @@ async def get_providers(category: Optional[str] = None, location: Optional[str] 
                         params.append(category)
                     
                     if location:
-                        query += " AND p.location LIKE %s"
-                        params.append(f"%{location}%")
+                        query += " AND (p.location LIKE %s OR d.location LIKE %s)"
+                        params.extend([f"%{location}%", f"%{location}%"])
                     
                     query += " GROUP BY p.id ORDER BY avg_rating DESC, p.rating DESC LIMIT %s"
                     params.append(limit)
@@ -969,7 +992,7 @@ class ProviderCreate(BaseModel):
     service_name: str
     description: str
     price: float
-    location: str
+    destination_id: str  # Changed from location to destination_id
     contact: str
     image_url: Optional[str] = None
 
@@ -988,14 +1011,23 @@ async def create_provider(
         
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
+                # First get the destination location for backward compatibility
+                await cur.execute("SELECT location FROM destinations WHERE id = %s", (provider_data.destination_id,))
+                dest_result = await cur.fetchone()
+                
+                if not dest_result:
+                    raise HTTPException(status_code=400, detail="Invalid destination_id")
+                
+                destination_location = dest_result[0]
+                
                 await cur.execute("""
                     INSERT INTO providers (id, user_id, name, category, service_name, description, 
-                                         price, location, contact, image_url, is_active)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                         price, location, contact, image_url, is_active, destination_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     provider_id, current_user['id'], provider_data.name, provider_data.category,
                     provider_data.service_name, provider_data.description, provider_data.price,
-                    provider_data.location, provider_data.contact, provider_data.image_url, True
+                    destination_location, provider_data.contact, provider_data.image_url, True, provider_data.destination_id
                 ))
                 
                 return {
@@ -1126,11 +1158,20 @@ async def update_provider(
                 if not provider or provider[0] != current_user['id']:
                     raise HTTPException(status_code=404, detail="Provider not found or access denied")
                 
-                # Update provider
+                # Update provider  
                 update_fields = []
                 update_values = []
                 for field, value in provider_data.items():
-                    if field in ['name', 'category', 'service_name', 'description', 'price', 'location', 'contact', 'image_url']:
+                    if field == 'destination_id':
+                        # Get destination location for backward compatibility
+                        await cur.execute("SELECT location FROM destinations WHERE id = %s", (value,))
+                        dest_result = await cur.fetchone()
+                        if dest_result:
+                            update_fields.append("destination_id = %s")
+                            update_values.append(value)
+                            update_fields.append("location = %s")
+                            update_values.append(dest_result[0])
+                    elif field in ['name', 'category', 'service_name', 'description', 'price', 'contact', 'image_url']:
                         update_fields.append(f"{field} = %s")
                         update_values.append(value)
                 

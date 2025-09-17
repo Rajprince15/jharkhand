@@ -74,7 +74,7 @@ class ProviderCreate(BaseModel):
     service_name: str
     description: str
     price: float
-    location: str
+    destination_id: str  # Changed from location to destination_id
     contact: str
     image_url: Optional[str] = None
 
@@ -91,6 +91,7 @@ class Provider(BaseModel):
     contact: str
     image_url: Optional[str] = None
     is_active: bool
+    destination_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

@@ -89,6 +89,11 @@ export const destinationsAPI = {
   getById: async (id) => {
     const response = await api.get(`/destinations/${id}`);
     return response.data;
+  },
+
+  getForDropdown: async () => {
+    const response = await api.get('/destinations/list/dropdown');
+    return response.data;
   }
 };
 

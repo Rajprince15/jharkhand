@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { ArrowLeft, Upload, Plus, X } from 'lucide-react';
-import { providerManagementAPI } from '../services/api';
+import { providerManagementAPI, destinationsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 
 const AddServicePage = () => {
@@ -17,16 +17,39 @@ const AddServicePage = () => {
     service_name: '',
     description: '',
     price: '',
-    location: '',
+    destination_id: '',  // Changed from location to destination_id
     contact: '',
     image_url: ''
   });
   const [loading, setLoading] = useState(false);
+  const [destinations, setDestinations] = useState([]);
+  const [loadingDestinations, setLoadingDestinations] = useState(true);
 
   if (!user || user.role !== 'provider') {
     navigate('/provider-dashboard');
     return null;
   }
+
+  // Load destinations for dropdown
+  useEffect(() => {
+    const loadDestinations = async () => {
+      try {
+        const destinationsData = await destinationsAPI.getForDropdown();
+        setDestinations(destinationsData);
+      } catch (error) {
+        console.error('Error loading destinations:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load destinations",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingDestinations(false);
+      }
+    };
+
+    loadDestinations();
+  }, [toast]);
 
   const categories = [
     'guide',
@@ -50,7 +73,7 @@ const AddServicePage = () => {
     try {
       // Validate required fields
       if (!formData.name || !formData.category || !formData.service_name || !formData.description || 
-          !formData.price || !formData.location || !formData.contact) {
+          !formData.price || !formData.destination_id || !formData.contact) {
         toast({
           title: "Error",
           description: "Please fill in all required fields",
@@ -66,7 +89,7 @@ const AddServicePage = () => {
         service_name: formData.service_name,
         description: formData.description,
         price: parseFloat(formData.price),
-        location: formData.location,
+        destination_id: formData.destination_id,  // Changed from location to destination_id
         contact: formData.contact,
         image_url: formData.image_url || 'https://images.pexels.com/photos/3184405/pexels-photo-3184405.jpeg?auto=compress&cs=tinysrgb&w=400'
       };
@@ -210,17 +233,31 @@ const AddServicePage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
+                    Destination *
                   </label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="e.g., Ranchi, Jharkhand"
-                    required
-                  />
+                  {loadingDestinations ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+                      Loading destinations...
+                    </div>
+                  ) : (
+                    <select
+                      name="destination_id"
+                      value={formData.destination_id}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      required
+                    >
+                      <option value="">Select Destination</option>
+                      {destinations.map(dest => (
+                        <option key={dest.id} value={dest.id}>
+                          {dest.location}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-sm text-gray-500 mt-1">
+                    Choose the destination where your service will be available
+                  </p>
                 </div>
               </div>
 
