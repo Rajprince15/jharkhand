@@ -710,6 +710,64 @@ async def get_provider_bookings(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/provider/bookings/search")
+async def search_bookings_by_reference(
+    reference_number: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Search bookings by reference number for providers"""
+    try:
+        if current_user['role'] != 'provider':
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        if not reference_number or len(reference_number.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Reference number is required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Search for bookings by reference number for this provider
+                # First check if reference_number column exists, if not search by booking ID
+                await cur.execute("SHOW COLUMNS FROM bookings LIKE 'reference_number'")
+                reference_column_exists = await cur.fetchone()
+                
+                if reference_column_exists:
+                    # Search by reference_number column
+                    await cur.execute("""
+                        SELECT b.* FROM bookings b 
+                        JOIN providers p ON b.provider_id = p.id 
+                        WHERE p.user_id = %s AND b.reference_number = %s
+                        ORDER BY b.created_at DESC
+                    """, (current_user['id'], reference_number.strip()))
+                else:
+                    # Fallback: search by booking ID (which might be used as reference)
+                    await cur.execute("""
+                        SELECT b.* FROM bookings b 
+                        JOIN providers p ON b.provider_id = p.id 
+                        WHERE p.user_id = %s AND (b.id = %s OR b.id LIKE %s)
+                        ORDER BY b.created_at DESC
+                    """, (current_user['id'], reference_number.strip(), f"%{reference_number.strip()}%"))
+                
+                bookings = await cur.fetchall()
+                
+                if not bookings:
+                    return {
+                        "message": "No bookings found with the provided reference number",
+                        "reference_number": reference_number.strip(),
+                        "bookings": []
+                    }
+                
+                return {
+                    "message": f"Found {len(bookings)} booking(s) with reference number {reference_number.strip()}",
+                    "reference_number": reference_number.strip(),
+                    "bookings": bookings
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching bookings: {str(e)}")
+
 @api_router.put("/bookings/{booking_id}/status")
 async def update_booking_status(
     booking_id: str,

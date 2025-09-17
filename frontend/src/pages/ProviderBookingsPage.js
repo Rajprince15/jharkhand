@@ -3,14 +3,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Calendar, User, Phone, Mail, ArrowLeft, Eye, Check, X } from 'lucide-react';
+import { Calendar, User, Phone, Mail, ArrowLeft, Eye, Check, X, Search } from 'lucide-react';
+import { bookingsAPI } from '../services/api';
+import { useToast } from '../hooks/use-toast';
 
 const ProviderBookingsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (!user || user.role !== 'provider') {
@@ -18,65 +22,51 @@ const ProviderBookingsPage = () => {
       return;
     }
     
-    // Mock bookings data for provider
-    const mockBookings = [
-      {
-        id: '1',
-        serviceName: 'Ranchi City Tour',
-        customerName: 'Priya Sharma',
-        customerEmail: 'priya@example.com',
-        customerPhone: '+91 9876543210',
-        bookingDate: '2025-03-15',
-        createdAt: '2025-02-20',
-        status: 'confirmed',
-        price: 3000,
-        guests: 2,
-        specialRequests: 'Vegetarian lunch preferred'
-      },
-      {
-        id: '2',
-        serviceName: 'Netarhat Trek',
-        customerName: 'Rajesh Kumar',
-        customerEmail: 'rajesh@example.com',
-        customerPhone: '+91 9876543211',
-        bookingDate: '2025-03-20',
-        createdAt: '2025-02-22',
-        status: 'pending',
-        price: 2500,
-        guests: 4,
-        specialRequests: 'Need camping equipment'
-      },
-      {
-        id: '3',
-        serviceName: 'Betla Safari',
-        customerName: 'Sunita Devi',
-        customerEmail: 'sunita@example.com',
-        customerPhone: '+91 9876543212',
-        bookingDate: '2025-02-28',
-        createdAt: '2025-02-15',
-        status: 'completed',
-        price: 4000,
-        guests: 3,
-        specialRequests: 'Early morning safari preferred'
-      },
-      {
-        id: '4',
-        serviceName: 'Ranchi City Tour',
-        customerName: 'Amit Singh',
-        customerEmail: 'amit@example.com',
-        customerPhone: '+91 9876543213',
-        bookingDate: '2025-04-10',
-        createdAt: '2025-02-25',
-        status: 'cancelled',
-        price: 3000,
-        guests: 1,
-        specialRequests: 'None'
-      }
-    ];
-    
-    setBookings(mockBookings);
-    setLoading(false);
+    fetchProviderBookings();
   }, [user, navigate]);
+
+  const fetchProviderBookings = async () => {
+    try {
+      setLoading(true);
+      // Fetch real bookings from API
+      const response = await bookingsAPI.getProviderBookings();
+      console.log('Fetched provider bookings:', response);
+      
+      // Transform database response to match frontend format
+      const transformedBookings = response.map(booking => ({
+        id: booking.id,
+        serviceName: booking.provider_name || 'Unknown Service',
+        customerName: booking.booking_full_name || booking.user_name || 'Unknown Customer',
+        customerEmail: booking.booking_email || 'Not provided',
+        customerPhone: booking.booking_phone || 'Not provided',
+        bookingDate: booking.check_in || booking.booking_date,
+        createdAt: booking.created_at,
+        status: booking.status,
+        price: booking.total_price,
+        guests: booking.guests,
+        rooms: booking.rooms,
+        specialRequests: booking.special_requests || 'None',
+        destinationName: booking.destination_name,
+        packageType: booking.package_type,
+        packageName: booking.package_name,
+        addons: booking.addons ? JSON.parse(booking.addons) : [],
+        cityOrigin: booking.city_origin,
+        referenceNumber: booking.reference_number || booking.id.substring(0, 8)
+      }));
+      
+      setBookings(transformedBookings);
+    } catch (error) {
+      console.error('Error fetching provider bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load bookings data",
+        variant: "destructive",
+      });
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -88,14 +78,110 @@ const ProviderBookingsPage = () => {
     }
   };
 
-  const updateBookingStatus = (bookingId, newStatus) => {
-    setBookings(prev => prev.map(booking => 
-      booking.id === bookingId ? { ...booking, status: newStatus } : booking
-    ));
+  const updateBookingStatus = async (bookingId, newStatus) => {
+    try {
+      await bookingsAPI.updateStatus(bookingId, newStatus);
+      // Refresh the bookings data after updating
+      await fetchProviderBookings();
+      toast({
+        title: "Success",
+        description: `Booking ${newStatus} successfully`,
+      });
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update booking status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const searchBookings = async () => {
+    if (!searchTerm.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a reference number to search",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/provider/bookings/search?reference_number=${encodeURIComponent(searchTerm.trim())}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      
+      const data = await response.json();
+      console.log('Search results:', data);
+      
+      if (data.bookings && data.bookings.length > 0) {
+        const transformedBookings = data.bookings.map(booking => ({
+          id: booking.id,
+          serviceName: booking.provider_name || 'Unknown Service',
+          customerName: booking.booking_full_name || booking.user_name || 'Unknown Customer',
+          customerEmail: booking.booking_email || 'Not provided',
+          customerPhone: booking.booking_phone || 'Not provided',
+          bookingDate: booking.check_in || booking.booking_date,
+          createdAt: booking.created_at,
+          status: booking.status,
+          price: booking.total_price,
+          guests: booking.guests,
+          rooms: booking.rooms,
+          specialRequests: booking.special_requests || 'None',
+          destinationName: booking.destination_name,
+          packageType: booking.package_type,
+          packageName: booking.package_name,
+          addons: booking.addons ? JSON.parse(booking.addons) : [],
+          cityOrigin: booking.city_origin,
+          referenceNumber: booking.reference_number || booking.id.substring(0, 8)
+        }));
+        
+        setBookings(transformedBookings);
+        toast({
+          title: "Success",
+          description: data.message,
+        });
+      } else {
+        setBookings([]);
+        toast({
+          title: "No Results",
+          description: data.message || "No bookings found with this reference number",
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error('Error searching bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search bookings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetSearch = () => {
+    setSearchTerm('');
+    fetchProviderBookings();
   };
 
   const filteredBookings = bookings.filter(booking => 
-    filter === 'all' || booking.status === filter
+    (filter === 'all' || booking.status === filter) &&
+    (searchTerm === '' || 
+     booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+     booking.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+     booking.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   if (loading) {
@@ -135,6 +221,37 @@ const ProviderBookingsPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Search Bar */}
+        <div className="mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search by reference number, customer name, or service..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={searchBookings} className="bg-green-600 hover:bg-green-700">
+                    <Search className="h-4 w-4 mr-2" />
+                    Search
+                  </Button>
+                  <Button onClick={resetSearch} variant="outline">
+                    View All
+                  </Button>
+                  <Button onClick={fetchProviderBookings} variant="outline">
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Filter Tabs */}
         <div className="mb-6">
           <div className="flex space-x-4 border-b">
@@ -182,7 +299,7 @@ const ProviderBookingsPage = () => {
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                            {booking.serviceName}
+                            {booking.packageName || booking.serviceName}
                           </h3>
                           <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
                             <span className="flex items-center">
@@ -190,7 +307,14 @@ const ProviderBookingsPage = () => {
                               {new Date(booking.bookingDate).toLocaleDateString()}
                             </span>
                             <span>{booking.guests} guests</span>
+                            {booking.rooms && <span>{booking.rooms} rooms</span>}
                           </div>
+                          {booking.destinationName && (
+                            <p className="text-sm text-gray-600">Destination: {booking.destinationName}</p>
+                          )}
+                          {booking.referenceNumber && (
+                            <p className="text-sm text-gray-500">Reference: {booking.referenceNumber}</p>
+                          )}
                         </div>
                         <div className="mt-2 md:mt-0">
                           <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
@@ -223,6 +347,11 @@ const ProviderBookingsPage = () => {
                           <div className="space-y-1 text-sm text-gray-600">
                             <div>Price: <span className="font-medium text-green-600">₹{booking.price.toLocaleString()}</span></div>
                             <div>Booked on: {new Date(booking.createdAt).toLocaleDateString()}</div>
+                            {booking.packageType && <div>Package: <span className="capitalize">{booking.packageType}</span></div>}
+                            {booking.cityOrigin && <div>From: {booking.cityOrigin}</div>}
+                            {booking.addons && booking.addons.length > 0 && (
+                              <div>Add-ons: {booking.addons.join(', ')}</div>
+                            )}
                             <div>Special Requests: {booking.specialRequests}</div>
                           </div>
                         </div>
