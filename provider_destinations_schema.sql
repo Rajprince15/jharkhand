@@ -1,4 +1,6 @@
--- Create provider_destinations junction table for many-to-many relationship
+-- =====================================================
+-- SCHEMA: provider_destinations junction table
+-- =====================================================
 CREATE TABLE IF NOT EXISTS provider_destinations (
     id VARCHAR(255) PRIMARY KEY,
     provider_id VARCHAR(255) NOT NULL,
@@ -9,20 +11,27 @@ CREATE TABLE IF NOT EXISTS provider_destinations (
     UNIQUE KEY unique_provider_destination (provider_id, destination_id)
 );
 
--- Create index for better performance
-CREATE INDEX IF NOT EXISTS idx_provider_destinations_provider ON provider_destinations(provider_id);
-CREATE INDEX IF NOT EXISTS idx_provider_destinations_destination ON provider_destinations(destination_id);
+-- =====================================================
+-- OPTIONAL INDEXES (safe: won’t error if already exist)
+-- =====================================================
+-- Create index on provider_id if not exists
+CREATE INDEX IF NOT EXISTS idx_provider_destinations_provider 
+    ON provider_destinations(provider_id);
 
--- Insert sample provider-destination relationships
--- First, let's create some new providers with services for different destinations
+-- Create index on destination_id if not exists
+CREATE INDEX IF NOT EXISTS idx_provider_destinations_destination 
+    ON provider_destinations(destination_id);
 
+-- =====================================================
+-- INSERT PROVIDERS
+-- =====================================================
 INSERT INTO providers (id, user_id, name, category, service_name, description, price, rating, location, contact, image_url) VALUES
 -- Ranchi Providers
 ('prov_ranchi_guide_1', 'provider1', 'Ranchi Heritage Tours', 'guide', 'Complete Ranchi City Tour', 'Professional guided tours covering all major Ranchi attractions including Tagore Hill, Rock Garden, and Hundru Falls.', 2500, 4.8, 'Ranchi', '+91 98765 11111', 'https://images.pexels.com/photos/3184405/pexels-photo-3184405.jpeg?auto=compress&cs=tinysrgb&w=400'),
 ('prov_ranchi_transport_1', 'provider2', 'Ranchi Cab Services', 'transport', 'Private Car Rental', 'Comfortable AC cars for Ranchi sightseeing with experienced drivers.', 3000, 4.6, 'Ranchi', '+91 98765 22222', 'https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?auto=compress&cs=tinysrgb&w=400'),
 ('prov_ranchi_hotel_1', 'provider1', 'Ranchi Stay Inn', 'accommodation', 'Budget Hotel Accommodation', 'Clean and comfortable budget accommodation in heart of Ranchi city.', 1800, 4.4, 'Ranchi', '+91 98765 33333', 'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=400'),
 
--- Netarhat Providers  
+-- Netarhat Providers
 ('prov_netarhat_guide_1', 'provider1', 'Netarhat Hill Adventures', 'guide', 'Netarhat Trekking & Sunrise Tours', 'Experience the Queen of Chotanagpur with guided treks and sunrise point visits.', 2800, 4.9, 'Netarhat', '+91 98765 44444', 'https://images.pexels.com/photos/261187/pexels-photo-261187.jpeg?auto=compress&cs=tinysrgb&w=400'),
 ('prov_netarhat_hotel_1', 'provider2', 'Hill View Resort Netarhat', 'accommodation', 'Hill Station Resort', 'Beautiful resort with panoramic views of Netarhat hills and valleys.', 4500, 4.7, 'Netarhat', '+91 98765 55555', 'https://images.pexels.com/photos/338504/pexels-photo-338504.jpeg?auto=compress&cs=tinysrgb&w=400'),
 
@@ -38,46 +47,45 @@ INSERT INTO providers (id, user_id, name, category, service_name, description, p
 ('prov_dimna_water_1', 'provider1', 'Dimna Lake Water Sports', 'activity', 'Boating & Water Activities', 'Boating, kayaking and other water sports at beautiful Dimna Lake.', 1800, 4.5, 'Dimna Lake', '+91 98765 10101', 'https://images.pexels.com/photos/1423370/pexels-photo-1423370.jpeg?auto=compress&cs=tinysrgb&w=400'),
 ('prov_dimna_restaurant_1', 'provider2', 'Lakeview Restaurant', 'accommodation', 'Lakeside Dining Experience', 'Multi-cuisine restaurant with beautiful lake views and fresh local ingredients.', 1200, 4.3, 'Dimna Lake', '+91 98765 20202', 'https://images.pexels.com/photos/1579739/pexels-photo-1579739.jpeg?auto=compress&cs=tinysrgb&w=400');
 
--- Now link providers to destinations
+-- =====================================================
+-- INSERT PROVIDER-DESTINATION LINKS
+-- =====================================================
 INSERT INTO provider_destinations (id, provider_id, destination_id) VALUES
--- Ranchi (destination id = '1')
 ('pd1', 'prov_ranchi_guide_1', '1'),
-('pd2', 'prov_ranchi_transport_1', '1'),  
+('pd2', 'prov_ranchi_transport_1', '1'),
 ('pd3', 'prov_ranchi_hotel_1', '1'),
-
--- Netarhat (destination id = '2')  
 ('pd4', 'prov_netarhat_guide_1', '2'),
 ('pd5', 'prov_netarhat_hotel_1', '2'),
-
--- Betla National Park (destination id = '3')
 ('pd6', 'prov_betla_safari_1', '3'),
 ('pd7', 'prov_betla_guide_1', '3'),
-
--- Parasnath Hill (destination id = '4')
 ('pd8', 'prov_parasnath_guide_1', '4'),
 ('pd9', 'prov_parasnath_transport_1', '4'),
-
--- Dimna Lake (destination id = '10')
 ('pd10', 'prov_dimna_water_1', '10'),
 ('pd11', 'prov_dimna_restaurant_1', '10'),
-
--- Some providers can serve multiple destinations
--- Ranchi transport can also serve nearby Jonha Falls (id = '7')
 ('pd12', 'prov_ranchi_transport_1', '7');
 
--- Sample regions table data (if not exists)
+-- =====================================================
+-- REGIONS DATA
+-- =====================================================
 INSERT IGNORE INTO regions (id, name, description, image_url, highlights) VALUES 
 ('1', 'East Jharkhand', 'Eastern region of Jharkhand featuring the capital city and major attractions', 'https://images.pexels.com/photos/2418977/pexels-photo-2418977.jpeg?auto=compress&cs=tinysrgb&w=800', '["Ranchi", "Jonha Falls", "Urban Culture", "Government Seat"]'),
-('2', 'West Jharkhand', 'Western region known for hill stations and natural beauty', 'https://images.pexels.com/photos/414171/pexels-photo-414171.jpeg?auto=compress&cs=tinysrgb&w=800', '["Netarhat", "Hill Stations", "Sunrise Points", "Cool Climate"]'),  
+('2', 'West Jharkhand', 'Western region known for hill stations and natural beauty', 'https://images.pexels.com/photos/414171/pexels-photo-414171.jpeg?auto=compress&cs=tinysrgb&w=800', '["Netarhat", "Hill Stations", "Sunrise Points", "Cool Climate"]'),
 ('3', 'North Jharkhand', 'Northern region with wildlife sanctuaries and religious sites', 'https://images.pexels.com/photos/1459399/pexels-photo-1459399.jpeg?auto=compress&cs=tinysrgb&w=800', '["Betla National Park", "Parasnath Hill", "Wildlife", "Pilgrimage"]'),
 ('4', 'South Jharkhand', 'Southern region with industrial heritage and lakes', 'https://images.pexels.com/photos/1423370/pexels-photo-1423370.jpeg?auto=compress&cs=tinysrgb&w=800', '["Dimna Lake", "Jamshedpur", "Industrial Tourism", "Lakes"]');
 
--- Update destinations with region information if not present
+-- =====================================================
+-- ENSURE DESTINATIONS HAS `region` COLUMN
+-- =====================================================
+ALTER TABLE destinations 
+    ADD COLUMN IF NOT EXISTS region VARCHAR(50);
+
+-- =====================================================
+-- UPDATE DESTINATIONS WITH REGION MAPPING
+-- =====================================================
 UPDATE destinations SET region = 'east' WHERE id IN ('1', '7');
-UPDATE destinations SET region = 'west' WHERE id = '2';  
+UPDATE destinations SET region = 'west' WHERE id = '2';
 UPDATE destinations SET region = 'north' WHERE id IN ('3', '4');
 UPDATE destinations SET region = 'south' WHERE id = '10';
-UPDATE destinations SET region = 'east' WHERE id = '5'; -- Hazaribagh
-UPDATE destinations SET region = 'east' WHERE id = '6'; -- Dhanbad  
-UPDATE destinations SET region = 'south' WHERE id = '8'; -- Ramgarh
-UPDATE destinations SET region = 'north' WHERE id = '9'; -- Giridih
+UPDATE destinations SET region = 'east' WHERE id IN ('5', '6');
+UPDATE destinations SET region = 'south' WHERE id = '8';
+UPDATE destinations SET region = 'north' WHERE id = '9';
