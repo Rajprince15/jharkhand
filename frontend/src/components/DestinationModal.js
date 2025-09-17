@@ -204,7 +204,7 @@ const DestinationModal = ({ destination, isOpen, onClose }) => {
                 <div className="space-y-3">
                   <Button 
                     onClick={handleSelectProvider}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
                   >
                     Select Service Provider
                   </Button>

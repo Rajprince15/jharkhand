@@ -19,7 +19,7 @@ import {
   MessageCircle,
   X 
 } from 'lucide-react';
-import { providersAPI, reviewsAPI, bookingsAPI } from '../services/api';
+import { providersAPI, reviewsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 
 const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
@@ -30,8 +30,6 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
   const [providers, setProviders] = useState([]);
   const [filteredProviders, setFilteredProviders] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState(null);
-  const [showBookingForm, setShowBookingForm] = useState(false);
   const [reviews, setReviews] = useState({});
   const [filters, setFilters] = useState({
     category: 'all',
@@ -39,17 +37,6 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
     max_price: '',
     min_rating: 'any'
   });
-  
-  const [bookingData, setBookingData] = useState({
-    booking_date: '',
-    check_in: '',
-    check_out: '',
-    guests: 2,
-    rooms: 1,
-    special_requests: ''
-  });
-
-  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen && destination) {
@@ -137,64 +124,17 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
       return;
     }
     
-    setSelectedProvider(provider);
-    setShowBookingForm(true);
+    // Navigate to BookingPage with provider and destination data
+    navigate('/booking', {
+      state: {
+        selectedProvider: provider,
+        destination: destination,
+        fromProvider: true
+      }
+    });
     
-    // Set default dates
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const dayAfter = new Date(tomorrow);
-    dayAfter.setDate(dayAfter.getDate() + 1);
-    
-    setBookingData(prev => ({
-      ...prev,
-      booking_date: tomorrow.toISOString().split('T')[0],
-      check_in: tomorrow.toISOString().split('T')[0],
-      check_out: dayAfter.toISOString().split('T')[0]
-    }));
-  };
-
-  const handleBookingSubmit = async () => {
-    try {
-      setBookingLoading(true);
-      
-      const bookingPayload = {
-        provider_id: selectedProvider.id,
-        destination_id: destination.id,
-        booking_date: bookingData.booking_date,
-        check_in: bookingData.check_in,
-        check_out: bookingData.check_out,
-        guests: parseInt(bookingData.guests),
-        rooms: parseInt(bookingData.rooms),
-        special_requests: bookingData.special_requests,
-        package_type: 'custom',
-        package_name: `${selectedProvider.service_name} - ${destination.name}`,
-        calculated_price: parseFloat(selectedProvider.price),
-        addons: JSON.stringify([])
-      };
-      
-      await bookingsAPI.create(bookingPayload);
-      
-      toast({
-        title: "Booking Successful!",
-        description: `Your booking with ${selectedProvider.name} has been confirmed.`,
-      });
-      
-      onClose();
-      setShowBookingForm(false);
-      setSelectedProvider(null);
-      
-    } catch (error) {
-      console.error('Booking error:', error);
-      toast({
-        title: "Booking Failed",
-        description: error.response?.data?.detail || "Failed to create booking. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setBookingLoading(false);
-    }
+    // Close the modal
+    onClose();
   };
 
   const clearFilters = () => {
@@ -213,119 +153,18 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">
-            {showBookingForm ? `Book ${selectedProvider?.name}` : `Service Providers for ${destination.name}`}
+            Service Providers for {destination.name}
           </DialogTitle>
         </DialogHeader>
 
-        {showBookingForm ? (
-          // Booking Form
-          <div className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg">{selectedProvider.name}</h3>
-                  <p className="text-green-600 font-medium">{selectedProvider.service_name}</p>
-                  <div className="flex items-center mt-1">
-                    <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                    <span className="text-sm">{selectedProvider.avg_rating || selectedProvider.rating}</span>
-                    <span className="text-sm text-gray-500 ml-2">{selectedProvider.location}</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center text-green-600 font-bold text-xl">
-                    <IndianRupee className="h-5 w-5 mr-1" />
-                    <span>{parseFloat(selectedProvider.price).toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-              </div>
+        {/* Provider Selection */}
+        <div className="space-y-6">
+          {/* Filters */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex items-center gap-2 mb-4">
+              <Filter className="h-4 w-4 text-blue-600" />
+              <span className="font-medium">Filter Providers</span>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Booking Date</label>
-                <Input
-                  type="date"
-                  value={bookingData.booking_date}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, booking_date: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Guests</label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={bookingData.guests}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, guests: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Check-in Date</label>
-                <Input
-                  type="date"
-                  value={bookingData.check_in}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, check_in: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Check-out Date</label>
-                <Input
-                  type="date"
-                  value={bookingData.check_out}
-                  min={bookingData.check_in}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, check_out: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Special Requests</label>
-              <textarea
-                className="w-full p-3 border border-gray-300 rounded-md resize-none"
-                rows="3"
-                placeholder="Any special requirements or notes..."
-                value={bookingData.special_requests}
-                onChange={(e) => setBookingData(prev => ({ ...prev, special_requests: e.target.value }))}
-              />
-            </div>
-
-            <div className="flex justify-between pt-6">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowBookingForm(false);
-                  setSelectedProvider(null);
-                }}
-              >
-                Back to Providers
-              </Button>
-              <Button 
-                onClick={handleBookingSubmit}
-                disabled={bookingLoading || !bookingData.booking_date || !bookingData.check_in || !bookingData.check_out}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {bookingLoading ? 'Creating Booking...' : 'Confirm Booking'}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          // Provider Selection
-          <div className="space-y-6">
-            {/* Filters */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center gap-2 mb-4">
-                <Filter className="h-4 w-4 text-blue-600" />
-                <span className="font-medium">Filter Providers</span>
-              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <Select value={filters.category} onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}>
@@ -445,10 +284,10 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
                       
                       <Button 
                         onClick={() => handleProviderSelect(provider)}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
                         size="sm"
                       >
-                        Select Provider
+                        Book Now
                       </Button>
                     </CardContent>
                   </Card>
@@ -456,7 +295,6 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
               </div>
             )}
           </div>
-        )}
       </DialogContent>
     </Dialog>
   );
