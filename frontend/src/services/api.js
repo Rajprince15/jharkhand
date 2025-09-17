@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // Use environment variable, fallback to '/api' if not set
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
-const API_BASE = `${BACKEND_URL}/api`;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '/api';
+const API_BASE = BACKEND_URL; 
 
 // Create axios instance
 const api = axios.create({
