@@ -3,9 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { useToast } from '../hooks/use-toast';
-import ProviderSelectionModal from '../components/ProviderSelectionModal';
-import { destinationsAPI } from '../services/api';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -16,8 +13,11 @@ import {
   Users, 
   Camera,
   Clock,
-  IndianRupee
+  IndianRupee,
+  Loader2
 } from 'lucide-react';
+import { destinationsAPI, wishlistAPI } from '../services/api';
+import { useToast } from '../hooks/use-toast';
 
 const DestinationDetailPage = () => {
   const { id } = useParams();
@@ -27,22 +27,55 @@ const DestinationDetailPage = () => {
   const [destination, setDestination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [showProviderSelection, setShowProviderSelection] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   useEffect(() => {
     fetchDestination();
-  }, [id]);
+    if (user && user.role === 'tourist') {
+      checkWishlistStatus();
+    }
+  }, [id, user]);
 
   const fetchDestination = async () => {
     try {
       setLoading(true);
       const data = await destinationsAPI.getById(id);
-      setDestination(data);
+      
+      // Parse highlights if it's a JSON string
+      let highlights = [];
+      if (data.highlights) {
+        try {
+          highlights = typeof data.highlights === 'string' ? JSON.parse(data.highlights) : data.highlights;
+        } catch (e) {
+          highlights = [];
+        }
+      }
+      
+      setDestination({
+        ...data,
+        highlights: highlights,
+        // Add some additional details for the detail page
+        gallery: [
+          data.image_url,
+          'https://images.unsplash.com/photo-1544735716-392fe2489ffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+          'https://images.unsplash.com/photo-1551632811-561732d1e306?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+        ],
+        bestTimeToVisit: 'October to March',
+        duration: '2-3 days',
+        difficulty: 'Easy',
+        activities: ['Sightseeing', 'Photography', 'Cultural Tours', 'Nature Walks'],
+        facilities: ['Parking', 'Restrooms', 'Food Court', 'Guide Services'],
+        nearbyAttractions: [
+          { name: 'Ranchi Lake', distance: '5 km' },
+          { name: 'Jagannath Temple', distance: '8 km' },
+          { name: 'Rock Garden', distance: '3 km' }
+        ]
+      });
     } catch (error) {
       console.error('Error fetching destination:', error);
       toast({
         title: "Error",
-        description: "Failed to load destination details. Please try again.",
+        description: "Failed to load destination details",
         variant: "destructive",
       });
     } finally {
@@ -50,34 +83,80 @@ const DestinationDetailPage = () => {
     }
   };
 
-  const handleWishlistToggle = () => {
+  const checkWishlistStatus = async () => {
+    try {
+      const data = await wishlistAPI.checkStatus(id);
+      setIsWishlisted(data.is_wishlisted);
+    } catch (error) {
+      console.error('Error checking wishlist status:', error);
+    }
+  };
+
+  const handleWishlistToggle = async () => {
     if (!user) {
       navigate('/login');
       return;
     }
-    setIsWishlisted(!isWishlisted);
+
+    if (user.role !== 'tourist') {
+      toast({
+        title: "Access Denied",
+        description: "Only tourists can manage wishlist",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setWishlistLoading(true);
+      
+      if (isWishlisted) {
+        await wishlistAPI.remove(id);
+        setIsWishlisted(false);
+        toast({
+          title: "Success",
+          description: "Removed from wishlist",
+        });
+      } else {
+        await wishlistAPI.add(id);
+        setIsWishlisted(true);
+        toast({
+          title: "Success",
+          description: "Added to wishlist",
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.detail || "Failed to update wishlist",
+        variant: "destructive",
+      });
+    } finally {
+      setWishlistLoading(false);
+    }
   };
 
   const handleBookNow = () => {
     if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please login to book destinations",
-        variant: "destructive",
-      });
       navigate('/login');
       return;
     }
-    
-    setShowProviderSelection(true);
+    // Navigate to booking page with destination info
+    navigate('/booking', { 
+      state: { 
+        destination: destination,
+        isDestinationBooking: true 
+      }
+    });
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading destination details...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading destination details...</p>
         </div>
       </div>
     );
@@ -123,9 +202,14 @@ const DestinationDetailPage = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleWishlistToggle}
+                disabled={wishlistLoading}
                 className={isWishlisted ? 'text-red-600 border-red-300' : ''}
               >
-                <Heart className={`h-4 w-4 mr-2 ${isWishlisted ? 'fill-current' : ''}`} />
+                {wishlistLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Heart className={`h-4 w-4 mr-2 ${isWishlisted ? 'fill-current' : ''}`} />
+                )}
                 {isWishlisted ? 'Saved' : 'Save'}
               </Button>
               <Button variant="outline" size="sm">
@@ -304,13 +388,6 @@ const DestinationDetailPage = () => {
           </div>
         </div>
       </div>
-
-      {/* Provider Selection Modal */}
-      <ProviderSelectionModal
-        isOpen={showProviderSelection}
-        onClose={() => setShowProviderSelection(false)}
-        destination={destination}
-      />
     </div>
   );
 };

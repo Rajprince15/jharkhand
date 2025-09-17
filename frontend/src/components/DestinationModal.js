@@ -7,7 +7,6 @@ import { Button } from './ui/button';
 import { Star, MapPin, IndianRupee, Calendar, Users, X, Heart } from 'lucide-react';
 import { wishlistAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
-import ProviderSelectionModal from './ProviderSelectionModal';
 
 const DestinationModal = ({ destination, isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -15,22 +14,12 @@ const DestinationModal = ({ destination, isOpen, onClose }) => {
   const { toast } = useToast();
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
-  const [showProviderSelection, setShowProviderSelection] = useState(false);
   
   if (!destination) return null;
 
   const handleBookNow = () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please login to book destinations",
-        variant: "destructive",
-      });
-      navigate('/login');
-      return;
-    }
-    
-    setShowProviderSelection(true);
+    navigate('/booking');
+    onClose();
   };
 
   const handleAddToWishlist = async () => {
@@ -94,8 +83,7 @@ const DestinationModal = ({ destination, isOpen, onClose }) => {
   };
 
   return (
-    <>
-      <Dialog open={isOpen && !showProviderSelection} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
@@ -203,10 +191,9 @@ const DestinationModal = ({ destination, isOpen, onClose }) => {
               <div className="space-y-3">
                 <Button 
                   onClick={handleBookNow}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
-                  size="lg"
+                  className="w-full bg-green-600 hover:bg-green-700"
                 >
-                  Choose Service Provider
+                  Book Now
                 </Button>
                 {user && user.role === 'tourist' && (
                   <Button 
@@ -250,14 +237,6 @@ const DestinationModal = ({ destination, isOpen, onClose }) => {
         </div>
       </DialogContent>
     </Dialog>
-
-    {/* Provider Selection Modal */}
-    <ProviderSelectionModal
-      destination={destination}
-      isOpen={showProviderSelection}
-      onClose={() => setShowProviderSelection(false)}
-    />
-  </>
   );
 };
 

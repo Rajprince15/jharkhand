@@ -5,9 +5,8 @@ import L from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { MapPin, Star, ArrowLeft, Filter, Search } from 'lucide-react';
-import { destinationsAPI } from '../services/api';
+import { destinations } from '../data/mock';
 import { useTranslation } from '../hooks/useTranslation';
-import { useToast } from '../hooks/use-toast';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default markers in React Leaflet
@@ -41,9 +40,6 @@ const createCustomIcon = (category) => {
 
 const MapPage = () => {
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const [destinations, setDestinations] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filteredDestinations, setFilteredDestinations] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,52 +52,31 @@ const MapPage = () => {
     [25.3, 87.5]  // Northeast corner
   ];
 
-  // Default coordinates for each region - approximate locations
-  const regionCoordinates = {
-    'east': [23.3441, 85.3096], // Ranchi area
-    'west': [23.6068, 84.4740], // Netarhat area  
-    'north': [24.1853, 86.1761], // Giridih area
-    'south': [22.8046, 86.2029], // Jamshedpur area
-  };
+  // Add coordinates to destinations (use existing coordinates from mock data)
+  const destinationsWithCoords = destinations.map(dest => ({
+    ...dest,
+    coordinates: dest.coordinates ? [dest.coordinates.lat, dest.coordinates.lng] : getCoordinatesForDestination(dest.name)
+  }));
+
+  function getCoordinatesForDestination(name) {
+    // Fallback coordinates for destinations without coordinates
+    const coords = {
+      'Dassam Falls': [23.2556, 85.4806],
+      'Hundru Falls': [23.4167, 85.5833],
+      'Jagannath Temple': [23.3441, 85.3096],
+      'Hazaribagh Lake': [23.9959, 85.3594],
+      'Dalma Wildlife Sanctuary': [22.8411, 86.1464],
+    };
+    
+    // Return coordinates if found, otherwise return random coordinates within Jharkhand
+    return coords[name] || [
+      23.0 + Math.random() * 2.3,
+      84.0 + Math.random() * 3.5
+    ];
+  }
 
   useEffect(() => {
-    fetchDestinations();
-  }, []);
-
-  const fetchDestinations = async () => {
-    try {
-      setLoading(true);
-      const data = await destinationsAPI.getAll();
-      
-      // Add coordinates to destinations based on their region
-      const destinationsWithCoords = data.map(dest => {
-        const baseCoords = regionCoordinates[dest.region] || regionCoordinates['east'];
-        
-        // Add small random offset to avoid overlapping markers
-        const latOffset = (Math.random() - 0.5) * 0.1;
-        const lngOffset = (Math.random() - 0.5) * 0.1;
-        
-        return {
-          ...dest,
-          coordinates: [baseCoords[0] + latOffset, baseCoords[1] + lngOffset]
-        };
-      });
-      
-      setDestinations(destinationsWithCoords);
-    } catch (error) {
-      console.error('Error fetching destinations:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load destinations on map. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    let filtered = destinations;
+    let filtered = destinationsWithCoords;
 
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(dest => dest.category === selectedCategory);
@@ -115,7 +90,7 @@ const MapPage = () => {
     }
 
     setFilteredDestinations(filtered);
-  }, [selectedCategory, searchTerm, destinations]);
+  }, [selectedCategory, searchTerm]);
 
   const categories = ['all', ...new Set(destinations.map(dest => dest.category))];
 
@@ -280,73 +255,64 @@ const MapPage = () => {
             <Card>
               <CardContent className="p-0">
                 <div className="h-[600px] w-full rounded-lg overflow-hidden">
-                  {loading ? (
-                    <div className="flex items-center justify-center h-full bg-gray-100">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-                        <p className="text-gray-600">{t('loadingMap')}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <MapContainer
-                      center={jharkhandCenter}
-                      zoom={8}
-                      style={{ height: '100%', width: '100%' }}
-                      bounds={mapBounds}
-                    >
-                      <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution="Jharkhand Tourism Map"
-                      />
-                      
-                      {filteredDestinations.map((destination) => (
-                        <Marker
-                          key={destination.id}
-                          position={destination.coordinates}
-                          icon={createCustomIcon(destination.category)}
-                          eventHandlers={{
-                            click: () => setSelectedDestination(destination),
-                          }}
-                        >
-                          <Popup>
-                            <div className="max-w-xs">
-                              <img
-                                src={destination.image_url}
-                                alt={destination.name}
-                                className="w-full h-20 object-cover rounded mb-2"
-                              />
-                              <h3 className="font-semibold text-gray-900 mb-1">
-                                {destination.name}
-                              </h3>
-                              <div className="flex items-center text-gray-600 mb-2">
-                                <MapPin className="h-3 w-3 mr-1" />
-                                <span className="text-xs">{destination.location}</span>
-                              </div>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center">
-                                  <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
-                                  <span className="text-xs">{destination.rating}</span>
-                                </div>
-                                {destination.price && (
-                                  <span className="text-xs font-semibold text-green-600">
-                                    ₹{destination.price}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-600 mb-3 line-clamp-2">
-                                {destination.description}
-                              </p>
-                              <Link to={`/destination/${destination.id}`}>
-                                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
-                                  {t('viewDetails')}
-                                </Button>
-                              </Link>
+                  <MapContainer
+                    center={jharkhandCenter}
+                    zoom={8}
+                    style={{ height: '100%', width: '100%' }}
+                    bounds={mapBounds}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution="Jharkhand Tourism Map"
+                    />
+                    
+                    {filteredDestinations.map((destination) => (
+                      <Marker
+                        key={destination.id}
+                        position={destination.coordinates}
+                        icon={createCustomIcon(destination.category)}
+                        eventHandlers={{
+                          click: () => setSelectedDestination(destination),
+                        }}
+                      >
+                        <Popup>
+                          <div className="max-w-xs">
+                            <img
+                              src={destination.image_url}
+                              alt={destination.name}
+                              className="w-full h-20 object-cover rounded mb-2"
+                            />
+                            <h3 className="font-semibold text-gray-900 mb-1">
+                              {destination.name}
+                            </h3>
+                            <div className="flex items-center text-gray-600 mb-2">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              <span className="text-xs">{destination.location}</span>
                             </div>
-                          </Popup>
-                        </Marker>
-                      ))}
-                    </MapContainer>
-                  )}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center">
+                                <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
+                                <span className="text-xs">{destination.rating}</span>
+                              </div>
+                              {destination.price && (
+                                <span className="text-xs font-semibold text-green-600">
+                                  ₹{destination.price}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+                              {destination.description}
+                            </p>
+                            <Link to={`/destination/${destination.id}`}>
+                              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
+                                {t('viewDetails')}
+                              </Button>
+                            </Link>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ))}
+                  </MapContainer>
                 </div>
               </CardContent>
             </Card>

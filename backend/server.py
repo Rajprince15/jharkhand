@@ -330,63 +330,23 @@ async def get_destination_detail(destination_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/providers")
-async def get_providers(
-    category: Optional[str] = None, 
-    location: Optional[str] = None, 
-    destination_id: Optional[str] = None,
-    min_price: Optional[float] = None,
-    max_price: Optional[float] = None,
-    min_rating: Optional[float] = None,
-    limit: int = 50
-):
+async def get_providers(category: Optional[str] = None, location: Optional[str] = None, limit: int = 50):
     try:
         pool = await get_db()
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
-                # Base query with review count and average rating
-                query = """
-                    SELECT p.*, 
-                           COALESCE(AVG(r.rating), p.rating) as avg_rating,
-                           COUNT(r.id) as review_count
-                    FROM providers p
-                    LEFT JOIN reviews r ON p.id = r.provider_id
-                    WHERE p.is_active = 1
-                """
+                query = "SELECT * FROM providers WHERE is_active = 1"
                 params = []
                 
                 if category:
-                    query += " AND p.category = %s"
+                    query += " AND category = %s"
                     params.append(category)
                 
                 if location:
-                    query += " AND p.location LIKE %s"
+                    query += " AND location LIKE %s"
                     params.append(f"%{location}%")
                 
-                if destination_id:
-                    # Get destination location to match providers in same area
-                    query += """ AND (p.location LIKE (
-                        SELECT CONCAT('%', SUBSTRING_INDEX(location, ',', 1), '%') 
-                        FROM destinations WHERE id = %s
-                    ) OR p.id IN (
-                        SELECT DISTINCT provider_id FROM bookings WHERE destination_id = %s
-                    ))"""
-                    params.extend([destination_id, destination_id])
-                
-                if min_price is not None:
-                    query += " AND p.price >= %s"
-                    params.append(min_price)
-                
-                if max_price is not None:
-                    query += " AND p.price <= %s"
-                    params.append(max_price)
-                
-                query += " GROUP BY p.id"
-                
-                if min_rating is not None:
-                    query += " HAVING avg_rating >= %s"
-                    params.append(min_rating)
-                
-                query += " ORDER BY avg_rating DESC, p.created_at DESC LIMIT %s"
+                query += " LIMIT %s"
                 params.append(limit)
                 
                 await cur.execute(query, params)
@@ -1023,7 +983,7 @@ async def create_review(
     review_data: ReviewCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new review - only allowed for completed bookings"""
+    """Create a new review"""
     try:
         if not review_data.destination_id and not review_data.provider_id:
             raise HTTPException(status_code=400, detail="Either destination_id or provider_id is required")
@@ -1032,57 +992,10 @@ async def create_review(
             raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
         
         pool = await get_db()
+        review_id = str(uuid.uuid4())
         
         async with pool.acquire() as conn:
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                # Check if user has completed bookings for this destination/provider
-                completed_booking_query = """
-                    SELECT COUNT(*) as booking_count FROM bookings 
-                    WHERE user_id = %s AND status = 'completed'
-                """
-                params = [current_user['id']]
-                
-                if review_data.destination_id:
-                    completed_booking_query += " AND destination_id = %s"
-                    params.append(review_data.destination_id)
-                
-                if review_data.provider_id:
-                    completed_booking_query += " AND provider_id = %s"
-                    params.append(review_data.provider_id)
-                
-                await cur.execute(completed_booking_query, params)
-                result = await cur.fetchone()
-                
-                if result['booking_count'] == 0:
-                    entity_type = "destination" if review_data.destination_id else "provider"
-                    raise HTTPException(
-                        status_code=403, 
-                        detail=f"You can only review a {entity_type} after completing a booking"
-                    )
-                
-                # Check if user has already reviewed this destination/provider
-                existing_review_query = """
-                    SELECT COUNT(*) as review_count FROM reviews 
-                    WHERE user_id = %s
-                """
-                params = [current_user['id']]
-                
-                if review_data.destination_id:
-                    existing_review_query += " AND destination_id = %s"
-                    params.append(review_data.destination_id)
-                
-                if review_data.provider_id:
-                    existing_review_query += " AND provider_id = %s"
-                    params.append(review_data.provider_id)
-                
-                await cur.execute(existing_review_query, params)
-                result = await cur.fetchone()
-                
-                if result['review_count'] > 0:
-                    raise HTTPException(status_code=400, detail="You have already reviewed this item")
-                
-                # Create the review
-                review_id = str(uuid.uuid4())
+            async with conn.cursor() as cur:
                 await cur.execute("""
                     INSERT INTO reviews (id, user_id, destination_id, provider_id, rating, comment)
                     VALUES (%s, %s, %s, %s, %s, %s)
@@ -1112,41 +1025,6 @@ async def create_review(
                 }
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.get("/user/eligible-reviews")
-async def get_eligible_reviews(current_user: dict = Depends(get_current_user)):
-    """Get destinations and providers eligible for review by current user"""
-    try:
-        pool = await get_db()
-        async with pool.acquire() as conn:
-            async with conn.cursor(aiomysql.DictCursor) as cur:
-                # Get completed bookings that haven't been reviewed yet
-                query = """
-                    SELECT DISTINCT
-                        b.destination_id,
-                        b.destination_name,
-                        b.provider_id,
-                        b.provider_name,
-                        b.id as booking_id,
-                        b.booking_date,
-                        CASE WHEN dr.id IS NULL THEN 1 ELSE 0 END as can_review_destination,
-                        CASE WHEN pr.id IS NULL THEN 1 ELSE 0 END as can_review_provider
-                    FROM bookings b
-                    LEFT JOIN reviews dr ON (dr.user_id = %s AND dr.destination_id = b.destination_id)
-                    LEFT JOIN reviews pr ON (pr.user_id = %s AND pr.provider_id = b.provider_id)
-                    WHERE b.user_id = %s AND b.status = 'completed'
-                    AND (dr.id IS NULL OR pr.id IS NULL)
-                    ORDER BY b.booking_date DESC
-                """
-                
-                await cur.execute(query, [current_user['id'], current_user['id'], current_user['id']])
-                eligible_items = await cur.fetchall()
-                
-                return {
-                    "eligible_reviews": eligible_items
-                }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
