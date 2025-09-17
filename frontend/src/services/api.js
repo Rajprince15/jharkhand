@@ -94,10 +94,13 @@ export const destinationsAPI = {
 
 // Providers API
 export const providersAPI = {
-  getAll: async (category = null, location = null, limit = 50) => {
+  getAll: async (filters = {}) => {
+    const { category = null, location = null, destination_id = null, limit = 50 } = filters;
     const params = new URLSearchParams();
+    
     if (category) params.append('category', category);
     if (location) params.append('location', location);
+    if (destination_id) params.append('destination_id', destination_id);
     params.append('limit', limit.toString());
     
     const response = await api.get(`/providers?${params.toString()}`);
