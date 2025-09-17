@@ -234,12 +234,14 @@ const BookingPage = () => {
         check_out: checkOutDate.toISOString().split('T')[0], // Calculate check-out date
         guests: parseInt(formData.travelers),
         rooms: Math.ceil(parseInt(formData.travelers) / 2), // Estimate rooms needed (2 guests per room)
-        special_requests: `${formData.requirements || ''}${formData.requirements && formData.cityOrigin ? '\n' : ''}${formData.cityOrigin ? 'Origin: ' + formData.cityOrigin : ''}${formData.addons.length > 0 ? '\nAdd-ons: ' + formData.addons.join(', ') : ''}`.trim(),
-        // Package-related fields
-        package_type: selectedPackage,
-        package_name: packageData.name,
+        special_requests: formData.requirements || '', // Keep only actual requirements
+        city_origin: formData.cityOrigin || '', // Separate field for city of origin
         calculated_price: totalPrice, // Send the frontend calculated price
-        addons: JSON.stringify(formData.addons) // Store selected addons as JSON
+        addons: JSON.stringify(formData.addons), // Store selected addons as JSON
+        // Personal information from booking form
+        booking_full_name: formData.fullName,
+        booking_email: formData.email,
+        booking_phone: formData.phone
       };
 
       console.log('Booking data being sent:', bookingData); // Debug log
@@ -329,11 +331,18 @@ const BookingPage = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <h3 className="text-2xl font-bold text-green-700 mb-2">{getPackageData(selectedPackage)?.name}</h3>
+                      <h3 className="text-2xl font-bold text-green-700 mb-2">
+                        {selectedProvider ? selectedProvider.service_name : getPackageData(selectedPackage)?.name}
+                      </h3>
                       <p className="text-lg text-blue-600 font-medium mb-2">{getPackageData(selectedPackage)?.duration}</p>
-                      <p className="text-gray-600 mb-3">Experience the best of Jharkhand with our carefully curated package</p>
+                      <p className="text-gray-600 mb-3">
+                        {selectedProvider 
+                          ? `${selectedProvider.description} - ${selectedProvider.location}`
+                          : "Experience the best of Jharkhand with our carefully curated package"
+                        }
+                      </p>
                       <div className="flex items-center text-sm text-gray-500">
-                        <span className="mr-4">🏞️ Premium Package</span>
+                        <span className="mr-4">🏞️ {selectedProvider ? 'Service Provider' : 'Premium Package'}</span>
                         <span className="mr-4">⭐ Highly Rated</span>
                         <span>📞 24/7 Support</span>
                       </div>
@@ -509,7 +518,7 @@ const BookingPage = () => {
                   <CardContent className="space-y-4">
                     <div className="bg-white p-4 rounded-lg border border-green-200">
                       <h4 className="font-semibold text-green-700 mb-2">
-                        {getPackageData(selectedPackage)?.name}
+                        {selectedProvider ? selectedProvider.service_name : getPackageData(selectedPackage)?.name}
                       </h4>
                       <p className="text-sm text-gray-600 mb-2">
                         {getPackageData(selectedPackage)?.duration}

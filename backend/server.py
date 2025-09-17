@@ -577,11 +577,13 @@ class BookingCreate(BaseModel):
     guests: int = Field(default=1, ge=1, le=20, description="Number of guests (1-20)")
     rooms: int = Field(default=1, ge=1, le=10, description="Number of rooms (1-10)")
     special_requests: Optional[str] = Field(None, max_length=500, description="Special requests")
-    # Package information fields
-    package_type: Optional[str] = Field(None, description="Package type (heritage, adventure, spiritual, premium)")
-    package_name: Optional[str] = Field(None, description="Package name")
+    city_origin: Optional[str] = Field(None, max_length=100, description="City of origin")
     calculated_price: Optional[float] = Field(None, ge=0, description="Calculated price from frontend")
     addons: Optional[str] = Field(None, description="JSON string of selected addons")
+    # Personal information from booking form
+    booking_full_name: str = Field(..., min_length=1, description="Full name from booking form")
+    booking_email: EmailStr = Field(..., description="Email from booking form")
+    booking_phone: str = Field(..., min_length=10, description="Phone number from booking form")
     
     @field_validator('booking_date', 'check_in', 'check_out')
     @classmethod
@@ -641,27 +643,27 @@ async def create_booking(
                 else:
                     total_price = (provider['price'] + destination['price']) * booking_data.guests
                 
-                # Create booking with package information
+                # Create booking with personal information
                 await cur.execute("""
                     INSERT INTO bookings (id, user_id, provider_id, destination_id, user_name, 
                                         provider_name, destination_name, booking_date, check_in, 
                                         check_out, guests, rooms, total_price, special_requests, status,
-                                        package_type, package_name, addons)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        addons, booking_full_name, booking_email, booking_phone, city_origin)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     booking_id, current_user['id'], booking_data.provider_id, booking_data.destination_id,
                     current_user['name'], provider['name'], destination['name'], booking_data.booking_date,
                     booking_data.check_in, booking_data.check_out, booking_data.guests, booking_data.rooms,
                     total_price, booking_data.special_requests, 'pending',
-                    booking_data.package_type, booking_data.package_name, booking_data.addons
+                    booking_data.addons, booking_data.booking_full_name, booking_data.booking_email, booking_data.booking_phone, booking_data.city_origin
                 ))
                 
                 return {
                     "id": booking_id,
                     "status": "pending",
                     "total_price": total_price,
-                    "package_type": booking_data.package_type,
-                    "package_name": booking_data.package_name,
+                    "booking_full_name": booking_data.booking_full_name,
+                    "booking_email": booking_data.booking_email,
                     "message": "Booking created successfully"
                 }
     except HTTPException:
@@ -1245,6 +1247,16 @@ async def create_missing_tables():
                         UNIQUE KEY unique_provider_destination (provider_id, destination_id)
                     )
                 """)
+                
+                # Add city_origin column to bookings table if it doesn't exist
+                try:
+                    await cur.execute("""
+                        ALTER TABLE bookings ADD COLUMN city_origin VARCHAR(100) DEFAULT NULL COMMENT 'City of origin for the booking'
+                    """)
+                    print("Added city_origin column to bookings table")
+                except Exception as e:
+                    if "Duplicate column name" not in str(e):
+                        print(f"Error adding city_origin column: {str(e)}")
                 
                 # Create indexes
                 await cur.execute("""
