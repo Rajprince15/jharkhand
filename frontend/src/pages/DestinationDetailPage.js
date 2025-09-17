@@ -3,6 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { useToast } from '../hooks/use-toast';
+import ProviderSelectionModal from '../components/ProviderSelectionModal';
+import { destinationsAPI } from '../services/api';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -15,42 +18,37 @@ import {
   Clock,
   IndianRupee
 } from 'lucide-react';
-import { destinations } from '../data/mock';
 
 const DestinationDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [destination, setDestination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [showProviderSelection, setShowProviderSelection] = useState(false);
 
   useEffect(() => {
-    // Find destination by ID from mock data
-    const foundDestination = destinations.find(dest => dest.id === id);
-    if (foundDestination) {
-      setDestination({
-        ...foundDestination,
-        // Add some additional details for the detail page
-        gallery: [
-          foundDestination.image_url,
-          'https://images.unsplash.com/photo-1544735716-392fe2489ffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
-          'https://images.unsplash.com/photo-1551632811-561732d1e306?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-        ],
-        bestTimeToVisit: 'October to March',
-        duration: '2-3 days',
-        difficulty: 'Easy',
-        activities: ['Sightseeing', 'Photography', 'Cultural Tours', 'Nature Walks'],
-        facilities: ['Parking', 'Restrooms', 'Food Court', 'Guide Services'],
-        nearbyAttractions: [
-          { name: 'Ranchi Lake', distance: '5 km' },
-          { name: 'Jagannath Temple', distance: '8 km' },
-          { name: 'Rock Garden', distance: '3 km' }
-        ]
-      });
-    }
-    setLoading(false);
+    fetchDestination();
   }, [id]);
+
+  const fetchDestination = async () => {
+    try {
+      setLoading(true);
+      const data = await destinationsAPI.getById(id);
+      setDestination(data);
+    } catch (error) {
+      console.error('Error fetching destination:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load destination details. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleWishlistToggle = () => {
     if (!user) {
@@ -62,16 +60,16 @@ const DestinationDetailPage = () => {
 
   const handleBookNow = () => {
     if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to book destinations",
+        variant: "destructive",
+      });
       navigate('/login');
       return;
     }
-    // Navigate to booking page with destination info
-    navigate('/booking', { 
-      state: { 
-        destination: destination,
-        isDestinationBooking: true 
-      }
-    });
+    
+    setShowProviderSelection(true);
   };
 
   if (loading) {
@@ -306,6 +304,13 @@ const DestinationDetailPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Provider Selection Modal */}
+      <ProviderSelectionModal
+        isOpen={showProviderSelection}
+        onClose={() => setShowProviderSelection(false)}
+        destination={destination}
+      />
     </div>
   );
 };

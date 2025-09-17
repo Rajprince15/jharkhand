@@ -94,14 +94,23 @@ export const destinationsAPI = {
 
 // Providers API
 export const providersAPI = {
-  getAll: async (category = null, location = null, limit = 50) => {
+  getAll: async (filters = {}) => {
     const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    if (location) params.append('location', location);
-    params.append('limit', limit.toString());
+    if (filters.category) params.append('category', filters.category);
+    if (filters.location) params.append('location', filters.location);
+    if (filters.destination_id) params.append('destination_id', filters.destination_id);
+    if (filters.min_price !== undefined) params.append('min_price', filters.min_price);
+    if (filters.max_price !== undefined) params.append('max_price', filters.max_price);
+    if (filters.min_rating !== undefined) params.append('min_rating', filters.min_rating);
+    if (filters.limit) params.append('limit', filters.limit.toString());
     
     const response = await api.get(`/providers?${params.toString()}`);
     return response.data;
+  },
+
+  // Legacy method for backward compatibility
+  getAllLegacy: async (category = null, location = null, limit = 50) => {
+    return this.getAll({ category, location, limit });
   }
 };
 
@@ -119,6 +128,11 @@ export const reviewsAPI = {
 
   create: async (reviewData) => {
     const response = await api.post('/reviews', reviewData);
+    return response.data;
+  },
+
+  getEligibleReviews: async () => {
+    const response = await api.get('/user/eligible-reviews');
     return response.data;
   }
 };

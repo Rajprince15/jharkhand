@@ -3,14 +3,21 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Calendar, MapPin, User, Clock, ArrowLeft } from 'lucide-react';
-import { bookingsAPI } from '../services/api';
+import { Calendar, MapPin, User, Clock, ArrowLeft, Star, MessageCircle } from 'lucide-react';
+import { bookingsAPI, reviewsAPI } from '../services/api';
+import { useToast } from '../hooks/use-toast';
+import ReviewModal from '../components/ReviewModal';
 
 const BookingsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [eligibleReviews, setEligibleReviews] = useState([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedReviewItem, setSelectedReviewItem] = useState(null);
+  const [reviewItemType, setReviewItemType] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -18,42 +25,118 @@ const BookingsPage = () => {
       return;
     }
     
-    const fetchBookings = async () => {
-      try {
-        setLoading(true);
-        // Fetch real bookings from API
-        const response = await bookingsAPI.getUserBookings();
-        console.log('Fetched bookings:', response);
-        
-        // Transform database response to match frontend format
-        const transformedBookings = response.map(booking => ({
-          id: booking.id,
-          destination: booking.destination_name || booking.package_name || 'Unknown Destination',
-          provider: booking.provider_name || 'Unknown Provider',
-          date: booking.check_in || booking.booking_date,
-          status: booking.status,
-          price: booking.total_price,
-          packageType: booking.package_type,
-          packageName: booking.package_name,
-          addons: booking.addons ? JSON.parse(booking.addons) : [],
-          guests: booking.guests,
-          rooms: booking.rooms,
-          specialRequests: booking.special_requests,
-          image: getImageForPackage(booking.package_type || 'heritage')
-        }));
-        
-        setBookings(transformedBookings);
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
-        // Set empty array on error instead of showing mock data
-        setBookings([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchBookings();
+    fetchEligibleReviews();
   }, [user, navigate]);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      // Fetch real bookings from API
+      const response = await bookingsAPI.getUserBookings();
+      console.log('Fetched bookings:', response);
+      
+      // Transform database response to match frontend format
+      const transformedBookings = response.map(booking => ({
+        id: booking.id,
+        destination: booking.destination_name || booking.package_name || 'Unknown Destination',
+        provider: booking.provider_name || 'Unknown Provider',
+        date: booking.check_in || booking.booking_date,
+        status: booking.status,
+        price: booking.total_price,
+        packageType: booking.package_type,
+        packageName: booking.package_name,
+        addons: booking.addons ? JSON.parse(booking.addons) : [],
+        guests: booking.guests,
+        rooms: booking.rooms,
+        specialRequests: booking.special_requests,
+        image: getImageForPackage(booking.package_type || 'heritage'),
+        destination_id: booking.destination_id,
+        provider_id: booking.provider_id,
+        booking_date: booking.booking_date
+      }));
+      
+      setBookings(transformedBookings);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      // Set empty array on error instead of showing mock data
+      setBookings([]);
+      toast({
+        title: "Error",
+        description: "Failed to load bookings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEligibleReviews = async () => {
+    try {
+      const response = await reviewsAPI.getEligibleReviews();
+      setEligibleReviews(response.eligible_reviews || []);
+    } catch (error) {
+      console.error('Error fetching eligible reviews:', error);
+    }
+  };
+
+  const handleReviewDestination = (booking) => {
+    const eligibleItem = eligibleReviews.find(item => 
+      item.destination_id === booking.destination_id && item.can_review_destination
+    );
+    
+    if (!eligibleItem) {
+      toast({
+        title: "Review Not Available",
+        description: "You can only review destinations after completing your booking.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedReviewItem(eligibleItem);
+    setReviewItemType('destination');
+    setShowReviewModal(true);
+  };
+
+  const handleReviewProvider = (booking) => {
+    const eligibleItem = eligibleReviews.find(item => 
+      item.provider_id === booking.provider_id && item.can_review_provider
+    );
+    
+    if (!eligibleItem) {
+      toast({
+        title: "Review Not Available",
+        description: "You can only review providers after completing your booking.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedReviewItem(eligibleItem);
+    setReviewItemType('provider');
+    setShowReviewModal(true);
+  };
+
+  const handleReviewSubmitted = () => {
+    fetchEligibleReviews(); // Refresh eligible reviews
+    toast({
+      title: "Review Submitted",
+      description: "Thank you for sharing your experience!",
+    });
+  };
+
+  const canReviewDestination = (booking) => {
+    return booking.status === 'completed' && eligibleReviews.some(item => 
+      item.destination_id === booking.destination_id && item.can_review_destination
+    );
+  };
+
+  const canReviewProvider = (booking) => {
+    return booking.status === 'completed' && eligibleReviews.some(item => 
+      item.provider_id === booking.provider_id && item.can_review_provider
+    );
+  };
 
   // Helper function to get appropriate image based on package type
   const getImageForPackage = (packageType) => {
@@ -184,6 +267,33 @@ const BookingsPage = () => {
                             Cancel Booking
                           </Button>
                         )}
+                        {/* Review Buttons for Completed Bookings */}
+                        {booking.status === 'completed' && (
+                          <div className="space-y-2 mt-2">
+                            {canReviewDestination(booking) && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full md:w-auto text-blue-600 border-blue-300 hover:bg-blue-50"
+                                onClick={() => handleReviewDestination(booking)}
+                              >
+                                <Star className="h-3 w-3 mr-1" />
+                                Review Destination
+                              </Button>
+                            )}
+                            {canReviewProvider(booking) && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full md:w-auto text-green-600 border-green-300 hover:bg-green-50"
+                                onClick={() => handleReviewProvider(booking)}
+                              >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                Review Provider
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -193,6 +303,15 @@ const BookingsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        item={selectedReviewItem}
+        itemType={reviewItemType}
+        onReviewSubmitted={handleReviewSubmitted}
+      />
     </div>
   );
 };

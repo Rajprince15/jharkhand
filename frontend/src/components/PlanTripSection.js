@@ -1,15 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { useTranslation } from '../hooks/useTranslation';
-import { destinations } from '../data/mock';
+import { destinationsAPI } from '../services/api';
 import { Calendar, Users, MapPin, Star } from 'lucide-react';
 
 const PlanTripSection = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [showRecommendation, setShowRecommendation] = useState(false);
+  const [destinations, setDestinations] = useState([]);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    fetchDestinations();
+  }, []);
+
+  const fetchDestinations = async () => {
+    try {
+      const data = await destinationsAPI.getAll();
+      setDestinations(data);
+    } catch (error) {
+      console.error('Error fetching destinations:', error);
+      // Keep empty array if fetch fails
+      setDestinations([]);
+    }
+  };
 
   const questions = [
     {
