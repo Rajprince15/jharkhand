@@ -1,9 +1,64 @@
-import React from 'react';
-import { regions } from '../data/mock';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { regionsAPI } from '../services/api';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
+import { Loader2 } from 'lucide-react';
 
 const RegionsSection = () => {
+  const navigate = useNavigate();
+  const [regions, setRegions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchRegions();
+  }, []);
+
+  const fetchRegions = async () => {
+    try {
+      setLoading(true);
+      const data = await regionsAPI.getAll();
+      setRegions(data);
+    } catch (error) {
+      console.error('Error fetching regions:', error);
+      setError('Failed to load regions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegionClick = (regionId) => {
+    navigate(`/destinations?region=${regionId}`);
+  };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading regions...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center py-20">
+            <p className="text-red-500">{error}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
@@ -19,10 +74,14 @@ const RegionsSection = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {regions.map((region) => (
-            <Card key={region.id} className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-500">
+            <Card 
+              key={region.id} 
+              className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer"
+              onClick={() => handleRegionClick(region.id)}
+            >
               <div className="relative">
                 <img
-                  src={region.image}
+                  src={region.image_url}
                   alt={region.name}
                   className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
                 />
@@ -44,7 +103,10 @@ const RegionsSection = () => {
         </div>
 
         <div className="text-center mt-12">
-          <Button className="bg-green-600 hover:bg-green-700">
+          <Button 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={() => navigate('/destinations')}
+          >
             Explore All Regions
           </Button>
         </div>

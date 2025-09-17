@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import DestinationModal from '../components/DestinationModal';
-import { destinationsAPI } from '../services/api';
+import { destinationsAPI, regionsAPI } from '../services/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Star, MapPin, IndianRupee, Filter, Loader2 } from 'lucide-react';
+import { Star, MapPin, IndianRupee, Filter, Loader2, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../hooks/use-toast';
@@ -15,33 +15,53 @@ const DestinationsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [destinations, setDestinations] = useState([]);
   const [filteredDestinations, setFilteredDestinations] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedRegion, setSelectedRegion] = useState('All');
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [regions, setRegions] = useState([]);
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    fetchDestinations();
+    // Get region from URL parameter
+    const regionParam = searchParams.get('region');
+    if (regionParam) {
+      setSelectedRegion(regionParam);
+    }
+    fetchData();
   }, []);
 
-  const fetchDestinations = async () => {
+  useEffect(() => {
+    // Filter destinations when region or category changes
+    filterDestinations();
+  }, [destinations, selectedCategory, selectedRegion]);
+
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await destinationsAPI.getAll();
-      setDestinations(data);
-      setFilteredDestinations(data);
+      
+      // Fetch regions and destinations
+      const [destinationsData, regionsData] = await Promise.all([
+        destinationsAPI.getAll(),
+        regionsAPI.getAll()
+      ]);
+      
+      setDestinations(destinationsData);
+      setRegions(regionsData);
       
       // Extract unique categories
-      const uniqueCategories = [...new Set(data.map(d => d.category))];
+      const uniqueCategories = [...new Set(destinationsData.map(d => d.category))];
       setCategories([t('all'), ...uniqueCategories]);
+      
     } catch (error) {
-      console.error('Error fetching destinations:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: "Error",
-        description: "Failed to load destinations. Please try again.",
+        description: "Failed to load data. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -49,13 +69,47 @@ const DestinationsPage = () => {
     }
   };
 
+  const filterDestinations = () => {
+    let filtered = destinations;
+
+    // Filter by category
+    if (selectedCategory !== 'All' && selectedCategory !== t('all')) {
+      filtered = filtered.filter(d => d.category === selectedCategory);
+    }
+
+    // Filter by region
+    if (selectedRegion !== 'All' && selectedRegion !== t('all')) {
+      filtered = filtered.filter(d => d.region === selectedRegion);
+    }
+
+    setFilteredDestinations(filtered);
+  };
+
   const handleCategoryFilter = (category) => {
     setSelectedCategory(category);
-    if (category === t('all') || category === 'All') {
-      setFilteredDestinations(destinations);
+  };
+
+  const handleRegionFilter = (region) => {
+    setSelectedRegion(region);
+    // Update URL parameter
+    if (region === 'All') {
+      searchParams.delete('region');
     } else {
-      setFilteredDestinations(destinations.filter(d => d.category === category));
+      searchParams.set('region', region);
     }
+    setSearchParams(searchParams);
+  };
+
+  const clearRegionFilter = () => {
+    setSelectedRegion('All');
+    searchParams.delete('region');
+    setSearchParams(searchParams);
+  };
+
+  const getRegionDisplayName = (regionId) => {
+    if (regionId === 'All') return 'All Regions';
+    const region = regions.find(r => r.id === regionId);
+    return region ? region.name : regionId;
   };
 
   const handleLearnMore = (destination) => {
@@ -96,6 +150,42 @@ const DestinationsPage = () => {
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
               {t('exploreMostBeautiful')}
             </p>
+          </div>
+
+          {/* Region Filter (if active) */}
+          {selectedRegion !== 'All' && (
+            <div className="flex justify-center mb-6">
+              <div className="flex items-center bg-green-100 text-green-800 px-4 py-2 rounded-full">
+                <span className="mr-2">📍 {getRegionDisplayName(selectedRegion)}</span>
+                <button 
+                  onClick={clearRegionFilter}
+                  className="hover:bg-green-200 rounded-full p-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Region Filters */}
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            <Button
+              variant={selectedRegion === 'All' ? "default" : "outline"}
+              onClick={() => handleRegionFilter('All')}
+              className={selectedRegion === 'All' ? "bg-blue-600 hover:bg-blue-700" : ""}
+            >
+              All Regions
+            </Button>
+            {regions.map((region) => (
+              <Button
+                key={region.id}
+                variant={selectedRegion === region.id ? "default" : "outline"}
+                onClick={() => handleRegionFilter(region.id)}
+                className={selectedRegion === region.id ? "bg-blue-600 hover:bg-blue-700" : ""}
+              >
+                {region.name}
+              </Button>
+            ))}
           </div>
 
           {/* Category Filters */}

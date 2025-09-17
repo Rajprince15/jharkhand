@@ -248,17 +248,50 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         "phone": current_user['phone']
     }
 
-@api_router.get("/destinations")
-async def get_destinations(category: Optional[str] = None, limit: int = 50):
+@api_router.get("/regions")
+async def get_regions():
+    """Get all regions in Jharkhand"""
     try:
         pool = await get_db()
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
-                if category:
-                    await cur.execute("SELECT * FROM destinations WHERE category = %s LIMIT %s", (category, limit))
-                else:
-                    await cur.execute("SELECT * FROM destinations LIMIT %s", (limit,))
+                await cur.execute("SELECT * FROM regions ORDER BY name")
+                regions = await cur.fetchall()
                 
+                # Parse JSON highlights
+                for region in regions:
+                    if region['highlights']:
+                        region['highlights'] = json.loads(region['highlights'])
+                    else:
+                        region['highlights'] = []
+                
+                return regions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/destinations")
+async def get_destinations(category: Optional[str] = None, region: Optional[str] = None, limit: int = 50):
+    """Get destinations with optional category and region filtering"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Build query with filters
+                query = "SELECT * FROM destinations WHERE 1=1"
+                params = []
+                
+                if category:
+                    query += " AND category = %s"
+                    params.append(category)
+                
+                if region:
+                    query += " AND region = %s"
+                    params.append(region)
+                
+                query += " LIMIT %s"
+                params.append(limit)
+                
+                await cur.execute(query, params)
                 destinations = await cur.fetchall()
                 
                 # Parse JSON highlights

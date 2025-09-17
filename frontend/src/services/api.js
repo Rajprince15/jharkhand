@@ -66,11 +66,20 @@ export const authAPI = {
 
 
 
+// Regions API
+export const regionsAPI = {
+  getAll: async () => {
+    const response = await api.get('/regions');
+    return response.data;
+  }
+};
+
 // Destinations API
 export const destinationsAPI = {
-  getAll: async (category = null, limit = 50) => {
+  getAll: async (category = null, region = null, limit = 50) => {
     const params = new URLSearchParams();
     if (category) params.append('category', category);
+    if (region) params.append('region', region);
     params.append('limit', limit.toString());
     
     const response = await api.get(`/destinations?${params.toString()}`);
