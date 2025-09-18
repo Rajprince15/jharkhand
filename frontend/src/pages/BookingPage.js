@@ -284,11 +284,24 @@ const BookingPage = () => {
       
       if (response) {
         setBookingRef(ref);
-        setShowSuccessModal(true);
+        
+        // Navigate to payment page instead of showing success modal
+        navigate(`/payment/${response.id}`, {
+          state: {
+            bookingData: {
+              ...response,
+              ...bookingData,
+              id: response.id,
+              reference_number: ref,
+              package_name: packageData.name,
+              package_type: selectedPackage
+            }
+          }
+        });
         
         toast({
           title: t('bookingSuccessful'),
-          description: `${t('bookingCreatedWithRef')} ${ref}`,
+          description: `${t('bookingCreatedWithRef')} ${ref}. Redirecting to payment...`,
         });
       }
       

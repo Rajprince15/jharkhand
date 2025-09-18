@@ -1634,6 +1634,463 @@ async def get_all_bookings(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Payment API - Import payment models and service
+from models.payment_models import (
+    PaymentCreate, PaymentVerification, PaymentStatusUpdate, 
+    UPIQRRequest, PaymentResponse, AdminPaymentApproval, PaymentStatus
+)
+from services.payment_service import PaymentService
+
+# Initialize payment service
+payment_service = PaymentService()
+
+# Payment Management API
+@api_router.post("/payments/create", response_model=PaymentResponse)
+async def create_payment(
+    payment_data: PaymentCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new payment request for a booking"""
+    try:
+        pool = await get_db()
+        payment_id = str(uuid.uuid4())
+        
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Verify booking exists and belongs to user
+                await cur.execute("""
+                    SELECT id, total_price, status, booking_full_name, booking_phone 
+                    FROM bookings 
+                    WHERE id = %s AND user_id = %s
+                """, (payment_data.booking_id, current_user['id']))
+                
+                booking = await cur.fetchone()
+                if not booking:
+                    raise HTTPException(status_code=404, detail="Booking not found")
+                
+                # Check if payment already exists for this booking
+                await cur.execute("SELECT id FROM payments WHERE booking_id = %s", (payment_data.booking_id,))
+                existing_payment = await cur.fetchone()
+                if existing_payment:
+                    raise HTTPException(status_code=400, detail="Payment already exists for this booking")
+                
+                # Generate payment reference and UPI QR code
+                transaction_ref = payment_service.generate_payment_reference()
+                qr_data = payment_service.generate_upi_qr_code(
+                    amount=payment_data.amount,
+                    transaction_ref=transaction_ref,
+                    customer_name=booking['booking_full_name'] or current_user['name']
+                )
+                
+                # Create payment record
+                await cur.execute("""
+                    INSERT INTO payments (
+                        id, booking_id, amount, status, payment_method, 
+                        transaction_reference, upi_id, qr_code_data, expires_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    payment_id, payment_data.booking_id, payment_data.amount,
+                    PaymentStatus.PENDING, payment_data.payment_method,
+                    transaction_ref, payment_data.upi_id or payment_service.upi_id,
+                    json.dumps(qr_data), qr_data['expires_at']
+                ))
+                
+                # Update booking status to payment_required
+                await cur.execute("""
+                    UPDATE bookings 
+                    SET status = 'payment_required', payment_status = 'required', 
+                        payment_amount = %s, payment_deadline = %s
+                    WHERE id = %s
+                """, (payment_data.amount, qr_data['expires_at'], payment_data.booking_id))
+                
+                return PaymentResponse(
+                    id=payment_id,
+                    booking_id=payment_data.booking_id,
+                    amount=payment_data.amount,
+                    status=PaymentStatus.PENDING,
+                    payment_method=payment_data.payment_method,
+                    upi_qr_code=qr_data['qr_code_base64'],
+                    upi_payment_url=qr_data['upi_url'],
+                    transaction_reference=transaction_ref,
+                    created_at=datetime.utcnow(),
+                    expires_at=qr_data['expires_at']
+                )
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create payment: {str(e)}")
+
+@api_router.post("/payments/generate-qr")
+async def generate_payment_qr(
+    qr_request: UPIQRRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate UPI QR code for payment"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Verify booking exists and belongs to user
+                await cur.execute("""
+                    SELECT id, total_price, status 
+                    FROM bookings 
+                    WHERE id = %s AND user_id = %s
+                """, (qr_request.booking_id, current_user['id']))
+                
+                booking = await cur.fetchone()
+                if not booking:
+                    raise HTTPException(status_code=404, detail="Booking not found")
+                
+                # Generate payment reference and QR code
+                transaction_ref = payment_service.generate_payment_reference()
+                qr_data = payment_service.generate_upi_qr_code(
+                    amount=qr_request.amount,
+                    transaction_ref=transaction_ref,
+                    customer_name=qr_request.customer_name
+                )
+                
+                # Add payment instructions
+                instructions = payment_service.get_payment_instructions()
+                
+                return {
+                    **qr_data,
+                    "instructions": instructions,
+                    "booking_id": qr_request.booking_id,
+                    "customer_name": qr_request.customer_name,
+                    "customer_phone": qr_request.customer_phone
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate QR code: {str(e)}")
+
+@api_router.post("/payments/verify")
+async def verify_payment(
+    verification_data: PaymentVerification,
+    current_user: dict = Depends(get_current_user)
+):
+    """Submit payment verification with transaction ID"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Get payment details
+                await cur.execute("""
+                    SELECT p.*, b.user_id, b.booking_full_name 
+                    FROM payments p 
+                    JOIN bookings b ON p.booking_id = b.id 
+                    WHERE p.id = %s
+                """, (verification_data.payment_id,))
+                
+                payment = await cur.fetchone()
+                if not payment:
+                    raise HTTPException(status_code=404, detail="Payment not found")
+                
+                # Verify user owns the booking
+                if payment['user_id'] != current_user['id']:
+                    raise HTTPException(status_code=403, detail="Unauthorized access")
+                
+                # Validate transaction ID format
+                if not payment_service.validate_transaction_id(verification_data.transaction_id):
+                    raise HTTPException(status_code=400, detail="Invalid transaction ID format")
+                
+                # Check if payment is expired
+                if payment_service.is_payment_expired(payment['created_at']):
+                    raise HTTPException(status_code=400, detail="Payment request has expired")
+                
+                # Update payment with verification details
+                await cur.execute("""
+                    UPDATE payments 
+                    SET upi_transaction_id = %s, status = 'verification_required',
+                        customer_note = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (
+                    verification_data.transaction_id,
+                    verification_data.customer_note,
+                    verification_data.payment_id
+                ))
+                
+                # Update booking status
+                await cur.execute("""
+                    UPDATE bookings 
+                    SET status = 'payment_pending', payment_status = 'pending'
+                    WHERE id = %s
+                """, (payment['booking_id'],))
+                
+                # Log the verification attempt
+                await cur.execute("""
+                    INSERT INTO payment_logs (id, payment_id, action, old_status, new_status, user_id, user_role, details)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    str(uuid.uuid4()), verification_data.payment_id, 'customer_verification',
+                    payment['status'], 'verification_required', current_user['id'], 'customer',
+                    json.dumps({
+                        "transaction_id": verification_data.transaction_id,
+                        "amount": verification_data.amount,
+                        "customer_note": verification_data.customer_note
+                    })
+                ))
+                
+                return {
+                    "message": "Payment verification submitted successfully",
+                    "payment_id": verification_data.payment_id,
+                    "transaction_id": verification_data.transaction_id,
+                    "status": "verification_required",
+                    "next_steps": "Our team will verify your payment within 24 hours. You will receive a confirmation once approved."
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to verify payment: {str(e)}")
+
+@api_router.get("/payments/{payment_id}")
+async def get_payment_details(
+    payment_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get payment details"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    SELECT p.*, b.user_id, b.booking_full_name, b.total_price as booking_amount
+                    FROM payments p 
+                    JOIN bookings b ON p.booking_id = b.id 
+                    WHERE p.id = %s
+                """, (payment_id,))
+                
+                payment = await cur.fetchone()
+                if not payment:
+                    raise HTTPException(status_code=404, detail="Payment not found")
+                
+                # Check access permissions
+                if payment['user_id'] != current_user['id'] and current_user['role'] != 'admin':
+                    raise HTTPException(status_code=403, detail="Unauthorized access")
+                
+                # Parse QR code data if exists
+                if payment['qr_code_data']:
+                    payment['qr_code_data'] = json.loads(payment['qr_code_data'])
+                
+                return payment
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/payments/booking/{booking_id}")
+async def get_payment_by_booking(
+    booking_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get payment details for a booking"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Verify booking belongs to user
+                await cur.execute("""
+                    SELECT user_id FROM bookings WHERE id = %s
+                """, (booking_id,))
+                
+                booking = await cur.fetchone()
+                if not booking:
+                    raise HTTPException(status_code=404, detail="Booking not found")
+                
+                if booking['user_id'] != current_user['id'] and current_user['role'] != 'admin':
+                    raise HTTPException(status_code=403, detail="Unauthorized access")
+                
+                # Get payment details
+                await cur.execute("""
+                    SELECT * FROM payments WHERE booking_id = %s ORDER BY created_at DESC
+                """, (booking_id,))
+                
+                payments = await cur.fetchall()
+                
+                # Parse QR code data for each payment
+                for payment in payments:
+                    if payment['qr_code_data']:
+                        payment['qr_code_data'] = json.loads(payment['qr_code_data'])
+                
+                return payments
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Admin Payment Management
+@api_router.get("/admin/payments")
+async def get_all_payments(
+    status: Optional[str] = None,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all payments for admin review"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                query = """
+                    SELECT p.*, b.booking_full_name, b.booking_email, b.booking_phone, 
+                           b.package_name, u.name as user_name, u.email as user_email
+                    FROM payments p 
+                    JOIN bookings b ON p.booking_id = b.id 
+                    JOIN users u ON b.user_id = u.id
+                """
+                params = []
+                
+                if status:
+                    query += " WHERE p.status = %s"
+                    params.append(status)
+                
+                query += " ORDER BY p.created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                await cur.execute(query, params)
+                payments = await cur.fetchall()
+                
+                return payments
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/payments/approve")
+async def approve_payment(
+    approval_data: AdminPaymentApproval,
+    current_user: dict = Depends(get_current_user)
+):
+    """Approve or reject payment verification"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Get payment details
+                await cur.execute("""
+                    SELECT p.*, b.booking_id 
+                    FROM payments p 
+                    JOIN bookings b ON p.booking_id = b.id 
+                    WHERE p.id = %s
+                """, (approval_data.payment_id,))
+                
+                payment = await cur.fetchone()
+                if not payment:
+                    raise HTTPException(status_code=404, detail="Payment not found")
+                
+                old_status = payment['status']
+                
+                if approval_data.action == "approve":
+                    new_status = PaymentStatus.COMPLETED
+                    booking_status = "paid"
+                    booking_payment_status = "completed"
+                    
+                    # Update payment
+                    await cur.execute("""
+                        UPDATE payments 
+                        SET status = %s, admin_note = %s, verified_amount = %s,
+                            verified_by = %s, verified_at = CURRENT_TIMESTAMP,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (
+                        new_status, approval_data.admin_note,
+                        approval_data.verified_amount or payment['amount'],
+                        current_user['id'], approval_data.payment_id
+                    ))
+                    
+                    message = "Payment approved and booking confirmed"
+                    
+                elif approval_data.action == "reject":
+                    new_status = PaymentStatus.FAILED
+                    booking_status = "payment_required"
+                    booking_payment_status = "failed"
+                    
+                    # Update payment
+                    await cur.execute("""
+                        UPDATE payments 
+                        SET status = %s, admin_note = %s, verified_by = %s,
+                            verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (
+                        new_status, approval_data.admin_note,
+                        current_user['id'], approval_data.payment_id
+                    ))
+                    
+                    message = "Payment rejected. Customer will need to retry payment."
+                
+                # Update booking status
+                await cur.execute("""
+                    UPDATE bookings 
+                    SET status = %s, payment_status = %s
+                    WHERE id = %s
+                """, (booking_status, booking_payment_status, payment['booking_id']))
+                
+                # Log admin action
+                await cur.execute("""
+                    INSERT INTO payment_logs (id, payment_id, action, old_status, new_status, user_id, user_role, details)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    str(uuid.uuid4()), approval_data.payment_id, f'admin_{approval_data.action}',
+                    old_status, new_status, current_user['id'], 'admin',
+                    json.dumps({
+                        "action": approval_data.action,
+                        "admin_note": approval_data.admin_note,
+                        "verified_amount": approval_data.verified_amount
+                    })
+                ))
+                
+                return {
+                    "message": message,
+                    "payment_id": approval_data.payment_id,
+                    "action": approval_data.action,
+                    "new_status": new_status,
+                    "admin_note": approval_data.admin_note
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process payment approval: {str(e)}")
+
+@api_router.get("/admin/payments/pending")
+async def get_pending_payments(current_user: dict = Depends(get_current_user)):
+    """Get payments pending admin approval"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    SELECT p.*, b.booking_full_name, b.booking_email, b.booking_phone,
+                           b.package_name, b.total_price as booking_amount, u.name as user_name
+                    FROM payments p 
+                    JOIN bookings b ON p.booking_id = b.id 
+                    JOIN users u ON b.user_id = u.id
+                    WHERE p.status = 'verification_required'
+                    ORDER BY p.created_at ASC
+                """)
+                
+                pending_payments = await cur.fetchall()
+                return pending_payments
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 

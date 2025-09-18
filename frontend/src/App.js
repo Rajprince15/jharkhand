@@ -11,6 +11,7 @@ import ProvidersPage from "./pages/ProvidersPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminServicesPage from "./pages/AdminServicesPage";
 import AdminDestinationsPage from "./pages/AdminDestinationsPage";
+import AdminPaymentsPage from "./pages/AdminPaymentsPage";
 import ProviderDashboard from "./pages/ProviderDashboard";
 import TouristDashboard from "./pages/TouristDashboard";
 import AIPlanner from "./pages/AIPlanner";
@@ -26,6 +27,7 @@ import SustainableTripPage from "./pages/SustainableTripPage";
 import PracticalTipsPage from "./pages/PracticalTipsPage";
 import AboutUsPage from "./pages/AboutUsPage";
 import BookingPage from "./pages/BookingPage";
+import PaymentPage from "./pages/PaymentPage";
 import { Toaster } from "./components/ui/toaster";
 function App() {
   return (
@@ -58,6 +60,8 @@ function App() {
               <Route path="/travel-tips" element={<PracticalTipsPage />} />
               <Route path="/about-us" element={<AboutUsPage />} />
               <Route path="/booking" element={<BookingPage />} />
+              <Route path="/payment/:bookingId" element={<PaymentPage />} />
+              <Route path="/admin/payments" element={<AdminPaymentsPage />} />
             </Routes>
           <Toaster />
         </BrowserRouter>
