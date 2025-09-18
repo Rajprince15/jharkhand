@@ -192,6 +192,33 @@ export const adminAPI = {
   getAllBookings: async () => {
     const response = await api.get('/admin/bookings');
     return response.data;
+  },
+
+  // Destination Management
+  createDestination: async (destinationData) => {
+    const response = await api.post('/admin/destinations', destinationData);
+    return response.data;
+  },
+
+  updateDestination: async (destinationId, destinationData) => {
+    const response = await api.put(`/admin/destinations/${destinationId}`, destinationData);
+    return response.data;
+  },
+
+  deleteDestination: async (destinationId) => {
+    const response = await api.delete(`/admin/destinations/${destinationId}`);
+    return response.data;
+  },
+
+  // Provider Management
+  deleteProvider: async (providerId) => {
+    const response = await api.delete(`/admin/providers/${providerId}`);
+    return response.data;
+  },
+
+  toggleProviderStatus: async (providerId) => {
+    const response = await api.put(`/admin/providers/${providerId}/status`);
+    return response.data;
   }
 };
 

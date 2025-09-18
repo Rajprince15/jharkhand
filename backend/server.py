@@ -1387,6 +1387,217 @@ async def get_admin_stats(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Admin Destinations Management
+class DestinationCreate(BaseModel):
+    name: str
+    location: str
+    description: str
+    image_url: str
+    price: float
+    category: str
+    region: str
+    highlights: List[str]
+
+class DestinationUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    price: Optional[float] = None
+    category: Optional[str] = None
+    region: Optional[str] = None
+    highlights: Optional[List[str]] = None
+
+@api_router.post("/admin/destinations")
+async def create_destination(destination_data: DestinationCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new destination (Admin only)"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        destination_id = str(uuid.uuid4())
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    INSERT INTO destinations (id, name, location, description, image_url, price, category, region, highlights, rating, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    destination_id,
+                    destination_data.name,
+                    destination_data.location,
+                    destination_data.description,
+                    destination_data.image_url,
+                    destination_data.price,
+                    destination_data.category,
+                    destination_data.region,
+                    json.dumps(destination_data.highlights),
+                    0.0,  # Default rating
+                    datetime.now()
+                ))
+                await conn.commit()
+                
+                return {
+                    "id": destination_id,
+                    "message": "Destination created successfully"
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/admin/destinations/{destination_id}")
+async def update_destination(destination_id: str, destination_data: DestinationUpdate, current_user: dict = Depends(get_current_user)):
+    """Update a destination (Admin only)"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check if destination exists
+                await cur.execute("SELECT id FROM destinations WHERE id = %s", (destination_id,))
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Destination not found")
+                
+                # Build update query dynamically
+                update_fields = []
+                values = []
+                
+                if destination_data.name is not None:
+                    update_fields.append("name = %s")
+                    values.append(destination_data.name)
+                if destination_data.location is not None:
+                    update_fields.append("location = %s")
+                    values.append(destination_data.location)
+                if destination_data.description is not None:
+                    update_fields.append("description = %s")
+                    values.append(destination_data.description)
+                if destination_data.image_url is not None:
+                    update_fields.append("image_url = %s")
+                    values.append(destination_data.image_url)
+                if destination_data.price is not None:
+                    update_fields.append("price = %s")
+                    values.append(destination_data.price)
+                if destination_data.category is not None:
+                    update_fields.append("category = %s")
+                    values.append(destination_data.category)
+                if destination_data.region is not None:
+                    update_fields.append("region = %s")
+                    values.append(destination_data.region)
+                if destination_data.highlights is not None:
+                    update_fields.append("highlights = %s")
+                    values.append(json.dumps(destination_data.highlights))
+                
+                if not update_fields:
+                    raise HTTPException(status_code=400, detail="No fields to update")
+                
+                values.append(destination_id)
+                query = f"UPDATE destinations SET {', '.join(update_fields)} WHERE id = %s"
+                
+                await cur.execute(query, values)
+                await conn.commit()
+                
+                return {"message": "Destination updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/admin/destinations/{destination_id}")
+async def delete_destination(destination_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a destination (Admin only)"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check if destination exists
+                await cur.execute("SELECT id FROM destinations WHERE id = %s", (destination_id,))
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Destination not found")
+                
+                # Check if destination has active bookings
+                await cur.execute("SELECT COUNT(*) as count FROM bookings WHERE destination_id = %s AND status IN ('pending', 'confirmed')", (destination_id,))
+                result = await cur.fetchone()
+                if result['count'] > 0:
+                    raise HTTPException(status_code=400, detail="Cannot delete destination with active bookings")
+                
+                # Delete destination
+                await cur.execute("DELETE FROM destinations WHERE id = %s", (destination_id,))
+                await conn.commit()
+                
+                return {"message": "Destination deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Admin Provider/Service Management
+@api_router.delete("/admin/providers/{provider_id}")
+async def delete_provider(provider_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a provider/service (Admin only)"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check if provider exists
+                await cur.execute("SELECT id FROM providers WHERE id = %s", (provider_id,))
+                if not await cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                # Check if provider has active bookings
+                await cur.execute("SELECT COUNT(*) as count FROM bookings WHERE provider_id = %s AND status IN ('pending', 'confirmed')", (provider_id,))
+                result = await cur.fetchone()
+                if result['count'] > 0:
+                    raise HTTPException(status_code=400, detail="Cannot delete provider with active bookings")
+                
+                # Delete provider
+                await cur.execute("DELETE FROM providers WHERE id = %s", (provider_id,))
+                await conn.commit()
+                
+                return {"message": "Provider deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/admin/providers/{provider_id}/status")
+async def toggle_provider_status(provider_id: str, current_user: dict = Depends(get_current_user)):
+    """Toggle provider active status (Admin only)"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check if provider exists and get current status
+                await cur.execute("SELECT id, is_active FROM providers WHERE id = %s", (provider_id,))
+                provider = await cur.fetchone()
+                if not provider:
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                # Toggle status
+                new_status = not provider['is_active']
+                await cur.execute("UPDATE providers SET is_active = %s WHERE id = %s", (new_status, provider_id))
+                await conn.commit()
+                
+                return {
+                    "message": f"Provider {'activated' if new_status else 'deactivated'} successfully",
+                    "is_active": new_status
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/admin/users")
 async def get_all_users(current_user: dict = Depends(get_current_user)):
     """Get all users for admin"""

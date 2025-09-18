@@ -129,15 +129,15 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div className="bg-white shadow-lg border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="text-gray-600">Welcome back, {user.name}</p>
+            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-600 mt-1">Welcome back, {user.name}</p>
           </div>
-          <Button onClick={handleLogout} variant="outline">
+          <Button onClick={handleLogout} variant="outline" className="hover:bg-gray-50">
             <LogOut className="h-4 w-4 mr-2" />
             Logout
           </Button>
@@ -157,14 +157,35 @@ const AdminDashboard = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {statsData.map((stat, index) => (
-                <Card key={index}>
+                <Card key={index} className={`hover:shadow-lg transition-shadow duration-300 ${
+                  index === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' :
+                  index === 1 ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' :
+                  index === 2 ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white' :
+                  index === 3 ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' :
+                  index === 4 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white' :
+                  'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white'
+                }`}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                        <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                        <p className={`text-sm font-medium ${
+                          index === 0 ? 'text-blue-100' :
+                          index === 1 ? 'text-green-100' :
+                          index === 2 ? 'text-purple-100' :
+                          index === 3 ? 'text-orange-100' :
+                          index === 4 ? 'text-emerald-100' :
+                          'text-yellow-100'
+                        }`}>{stat.title}</p>
+                        <p className="text-3xl font-bold">{stat.value}</p>
                       </div>
-                      <stat.icon className={`h-8 w-8 ${stat.color}`} />
+                      <stat.icon className={`h-8 w-8 ${
+                        index === 0 ? 'text-blue-200' :
+                        index === 1 ? 'text-green-200' :
+                        index === 2 ? 'text-purple-200' :
+                        index === 3 ? 'text-orange-200' :
+                        index === 4 ? 'text-emerald-200' :
+                        'text-yellow-200'
+                      }`} />
                     </div>
                   </CardContent>
                 </Card>
@@ -173,40 +194,50 @@ const AdminDashboard = () => {
 
             {/* Management Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>User Management</CardTitle>
+              <Card className="hover:shadow-lg transition-shadow duration-300">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
+                  <CardTitle className="text-blue-900">User Management</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-4">Manage registered users and their roles</p>
-                  <Button className="w-full" onClick={() => window.location.reload()}>
+                  <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" onClick={() => window.location.reload()}>
                     View All Users
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Content Management</CardTitle>
+              <Card className="hover:shadow-lg transition-shadow duration-300">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
+                  <CardTitle className="text-green-900">Content Management</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-4">Manage destinations and provider listings</p>
                   <div className="space-y-2">
-                    <Button variant="outline" className="w-full">Add Destination</Button>
+                    <Link to="/admin/destinations">
+                      <Button className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700">
+                        Manage Destinations
+                      </Button>
+                    </Link>
                     <Link to="/admin/services">
-                      <Button variant="outline" className="w-full">Manage Services</Button>
+                      <Button variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-50">
+                        Manage Services
+                      </Button>
                     </Link>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Analytics</CardTitle>
+              <Card className="hover:shadow-lg transition-shadow duration-300">
+                <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50">
+                  <CardTitle className="text-orange-900">System Analytics</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-4">View detailed analytics and reports</p>
-                  <Button variant="outline" className="w-full" onClick={fetchDashboardData}>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-orange-300 text-orange-700 hover:bg-orange-50" 
+                    onClick={fetchDashboardData}
+                  >
                     Refresh Data
                   </Button>
                 </CardContent>
