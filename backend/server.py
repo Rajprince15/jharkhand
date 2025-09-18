@@ -1397,15 +1397,24 @@ async def create_missing_tables():
                     if "Duplicate column name" not in str(e):
                         print(f"Error adding city_origin column: {str(e)}")
                 
-                # Create indexes
-                await cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_provider_destinations_provider 
-                    ON provider_destinations(provider_id)
-                """)
-                await cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_provider_destinations_destination 
-                    ON provider_destinations(destination_id)
-                """)
+                # Create indexes with error handling
+                try:
+                    await cur.execute("""
+                        CREATE INDEX idx_provider_destinations_provider 
+                        ON provider_destinations(provider_id)
+                    """)
+                except Exception as idx_e:
+                    if "Duplicate key name" not in str(idx_e):
+                        print(f"Warning: Could not create index idx_provider_destinations_provider: {str(idx_e)}")
+                
+                try:
+                    await cur.execute("""
+                        CREATE INDEX idx_provider_destinations_destination 
+                        ON provider_destinations(destination_id)
+                    """)
+                except Exception as idx_e:
+                    if "Duplicate key name" not in str(idx_e):
+                        print(f"Warning: Could not create index idx_provider_destinations_destination: {str(idx_e)}")
                 
                 # Create chat_logs table
                 await cur.execute("""
