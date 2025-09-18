@@ -166,6 +166,11 @@ export const providerManagementAPI = {
     return response.data;
   },
 
+  getById: async (providerId) => {
+    const response = await api.get(`/providers/${providerId}`);
+    return response.data;
+  },
+
   update: async (providerId, providerData) => {
     const response = await api.put(`/providers/${providerId}`, providerData);
     return response.data;

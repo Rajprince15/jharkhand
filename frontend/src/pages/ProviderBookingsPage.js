@@ -15,6 +15,10 @@ const ProviderBookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [detailsModal, setDetailsModal] = useState({
+    isOpen: false,
+    booking: null
+  });
 
   useEffect(() => {
     if (!user || user.role !== 'provider') {
@@ -175,6 +179,20 @@ const ProviderBookingsPage = () => {
     fetchProviderBookings();
   };
 
+  const openDetailsModal = (booking) => {
+    setDetailsModal({
+      isOpen: true,
+      booking: booking
+    });
+  };
+
+  const closeDetailsModal = () => {
+    setDetailsModal({
+      isOpen: false,
+      booking: null
+    });
+  };
+
   const filteredBookings = bookings.filter(booking => 
     (filter === 'all' || booking.status === filter) &&
     (searchTerm === '' || 
@@ -307,7 +325,7 @@ const ProviderBookingsPage = () => {
                               {new Date(booking.bookingDate).toLocaleDateString()}
                             </span>
                             <span>{booking.guests} guests</span>
-                            {booking.rooms && <span>{booking.rooms} rooms</span>}
+                            
                           </div>
                           {booking.destinationName && (
                             <p className="text-sm text-gray-600">Destination: {booking.destinationName}</p>
@@ -360,7 +378,11 @@ const ProviderBookingsPage = () => {
 
                     <div className="mt-4 lg:mt-0 lg:ml-6">
                       <div className="flex flex-col space-y-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => openDetailsModal(booking)}
+                        >
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
                         </Button>
@@ -405,6 +427,202 @@ const ProviderBookingsPage = () => {
           </div>
         )}
       </div>
+      
+      {/* Booking Details Modal */}
+      {detailsModal.isOpen && detailsModal.booking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-screen overflow-y-auto">
+            <div className="p-6">
+              {/* Modal Header */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {detailsModal.booking.packageName || detailsModal.booking.serviceName}
+                  </h2>
+                  <p className="text-gray-600 mt-1">Booking Details - Provider View</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Ref: {detailsModal.booking.referenceNumber}
+                  </p>
+                </div>
+                <button
+                  onClick={closeDetailsModal}
+                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Status Badge */}
+              <div className="mb-6">
+                <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(detailsModal.booking.status)}`}>
+                  {detailsModal.booking.status.charAt(0).toUpperCase() + detailsModal.booking.status.slice(1)}
+                </span>
+              </div>
+
+              {/* Booking Information Grid */}
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Left Column - Customer Information */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
+                    <div className="space-y-3 text-sm bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-2 text-gray-500" />
+                        <span className="text-gray-600 w-20">Name:</span>
+                        <span className="font-medium">{detailsModal.booking.customerName}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Mail className="h-4 w-4 mr-2 text-gray-500" />
+                        <span className="text-gray-600 w-20">Email:</span>
+                        <span className="font-medium">{detailsModal.booking.customerEmail}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Phone className="h-4 w-4 mr-2 text-gray-500" />
+                        <span className="text-gray-600 w-20">Phone:</span>
+                        <span className="font-medium">{detailsModal.booking.customerPhone}</span>
+                      </div>
+                      {detailsModal.booking.cityOrigin && (
+                        <div className="flex items-center">
+                          <span className="text-gray-600 w-20 ml-6">From:</span>
+                          <span className="font-medium">{detailsModal.booking.cityOrigin}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Trip Details</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Booking ID:</span>
+                        <span className="font-medium">#{detailsModal.booking.id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Check-in Date:</span>
+                        <span className="font-medium">{new Date(detailsModal.booking.bookingDate).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Booked on:</span>
+                        <span className="font-medium">{new Date(detailsModal.booking.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Guests:</span>
+                        <span className="font-medium">{detailsModal.booking.guests} person(s)</span>
+                      </div>
+                      
+                      {detailsModal.booking.destinationName && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Destination:</span>
+                          <span className="font-medium">{detailsModal.booking.destinationName}</span>
+                        </div>
+                      )}
+                      {detailsModal.booking.packageType && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Package Type:</span>
+                          <span className="font-medium capitalize">{detailsModal.booking.packageType}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column - Service & Payment Information */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Add-ons & Services</h3>
+                    <div className="space-y-2">
+                      {detailsModal.booking.addons && detailsModal.booking.addons.length > 0 ? (
+                        detailsModal.booking.addons.map((addon, index) => (
+                          <div key={index} className="flex items-center text-sm">
+                            <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                            <span className="capitalize">{addon}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 text-sm">No add-ons selected</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Payment Information</h3>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-lg font-semibold text-gray-900">Total Amount:</span>
+                        <span className="text-2xl font-bold text-green-600">₹{detailsModal.booking.price.toLocaleString()}</span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Payment status: {detailsModal.booking.status === 'completed' ? 'Completed' : 'Pending'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {detailsModal.booking.specialRequests && detailsModal.booking.specialRequests !== 'None' && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">Special Requests</h3>
+                      <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-400">
+                        {detailsModal.booking.specialRequests}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-8 flex justify-between">
+                <div className="flex space-x-3">
+                  <Button variant="outline" onClick={closeDetailsModal}>
+                    Close
+                  </Button>
+                  <Button variant="outline" className="text-blue-600 border-blue-300 hover:bg-blue-50">
+                    Contact Customer
+                  </Button>
+                </div>
+                
+                <div className="flex space-x-3">
+                  {detailsModal.booking.status === 'pending' && (
+                    <>
+                      <Button 
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => {
+                          updateBookingStatus(detailsModal.booking.id, 'confirmed');
+                          closeDetailsModal();
+                        }}
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Confirm Booking
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        onClick={() => {
+                          updateBookingStatus(detailsModal.booking.id, 'cancelled');
+                          closeDetailsModal();
+                        }}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Decline Booking
+                      </Button>
+                    </>
+                  )}
+                  
+                  {detailsModal.booking.status === 'confirmed' && (
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        updateBookingStatus(detailsModal.booking.id, 'completed');
+                        closeDetailsModal();
+                      }}
+                    >
+                      Mark as Complete
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

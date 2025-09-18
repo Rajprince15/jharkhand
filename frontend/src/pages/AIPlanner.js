@@ -420,13 +420,7 @@ const AIPlanner = () => {
                       </>
                     )}
                   </Button>
-                  <Button 
-                    onClick={() => navigate('/booking')}
-                    className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    <MapPin className="h-5 w-5 mr-2" />
-                    Book This Trip
-                  </Button>
+                  
                 </div>
                 <p className="text-gray-600 mt-4">
                   💡 Save your itinerary as PDF or book your perfect Jharkhand adventure now!

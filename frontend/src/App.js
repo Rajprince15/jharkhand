@@ -16,6 +16,7 @@ import BookingsPage from "./pages/BookingsPage";
 import WishlistPage from "./pages/WishlistPage";
 import AddServicePage from "./pages/AddServicePage";
 import ViewServicesPage from "./pages/ViewServicesPage";
+import EditServicePage from "./pages/EditServicePage";
 import ProviderBookingsPage from "./pages/ProviderBookingsPage";
 import DestinationDetailPage from "./pages/DestinationDetailPage";
 import MapPage from "./pages/MapPage";
@@ -43,6 +44,7 @@ function App() {
               <Route path="/wishlist" element={<WishlistPage />} />
               <Route path="/add-service" element={<AddServicePage />} />
               <Route path="/view-services" element={<ViewServicesPage />} />
+              <Route path="/edit-service/:serviceId" element={<EditServicePage />} />
               <Route path="/provider-bookings" element={<ProviderBookingsPage />} />
               <Route path="/destination/:id" element={<DestinationDetailPage />} />
               <Route path="/map" element={<MapPage />} />

@@ -159,6 +159,30 @@ backend:
         agent: "main"
         comment: "MariaDB installed and configured on port 3001. Database running with user's exact credentials configuration."
 
+  - task: "Edit Service Button Functionality Fix"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/EditServicePage.js, frontend/src/services/api.js, frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "FIXED MAJOR BUG: Edit Service button in ViewServicesPage was non-functional - navigating to non-existent route. Created complete EditServicePage component with full CRUD functionality, added getById API method, and configured proper routing. EditServicePage includes form pre-population, validation, service status toggle, and seamless navigation back to services list."
+
+  - task: "View Details Button Functionality Fix"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/BookingsPage.js, frontend/src/pages/ProviderBookingsPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "FIXED MAJOR BUG: View Details buttons in both tourist and provider booking dashboards were non-functional. Added comprehensive modal functionality with detailed booking information display, customer details, pricing info, add-ons, special requests, and action buttons for booking management. Both dashboards now have fully functional view details modals."
+
 frontend:
   - task: "Frontend API Services Update"
     implemented: true
