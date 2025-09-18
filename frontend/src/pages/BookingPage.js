@@ -19,10 +19,9 @@ const BookingPage = () => {
   // Extract data from navigation state
   const { selectedProvider, destination, fromProvider } = location.state || {};
   const [selectedPackage, setSelectedPackage] = useState('heritage');
-  const [basePrice, setBasePrice] = useState(15999);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
-  const [totalPrice, setTotalPrice] = useState(15999);
+  const [totalPrice, setTotalPrice] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [providers, setProviders] = useState([]);
   const [destinations, setDestinations] = useState([]);
@@ -53,6 +52,15 @@ const BookingPage = () => {
         setDestinations(destinationsData);
         console.log('Fetched providers:', providersData);
         console.log('Fetched destinations:', destinationsData);
+        
+        // Log specific Netarhat provider data
+        const netarhatProvider = providersData.find(p => 
+          p.name.toLowerCase().includes('netarhat') || 
+          p.location.toLowerCase().includes('netarhat') ||
+          p.category === 'Adventure'
+        );
+        console.log('Netarhat/Adventure provider found:', netarhatProvider);
+        
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({
@@ -68,12 +76,15 @@ const BookingPage = () => {
     fetchData();
   }, [toast]);
 
-  // Create packages dynamically based on fetched providers
-  const packages = providers.length > 0 ? [
+  // Create packages dynamically based on fetched providers with REAL PROVIDER PRICES
+  const packages = providers.length > 0 && destinations.length > 0 ? [
     {
       id: 'heritage',
       name: t('heritageExplorer'),
-      price: 15999,
+      get price() {
+        const provider = providers.find(p => p.category === 'Heritage' || p.category === 'heritage') || providers[0];
+        return provider ? provider.price : 0;
+      },
       provider_id: providers.find(p => p.category === 'Heritage' || p.category === 'heritage')?.id || providers[0]?.id,
       destination_id: destinations.find(d => d.name?.toLowerCase().includes('ranchi'))?.id || destinations[0]?.id,
       features: [
@@ -88,7 +99,11 @@ const BookingPage = () => {
     {
       id: 'adventure',
       name: t('adventureSeeker'),
-      price: 22999,
+      get price() {
+        const provider = providers.find(p => p.category === 'Adventure' || p.category === 'adventure') || providers[1];
+        console.log('Adventure package provider found:', provider);
+        return provider ? provider.price : 0;
+      },
       provider_id: providers.find(p => p.category === 'Adventure' || p.category === 'adventure')?.id || providers[1]?.id,
       destination_id: destinations.find(d => d.name?.toLowerCase().includes('netarhat'))?.id || destinations[1]?.id,
       features: [
@@ -103,7 +118,10 @@ const BookingPage = () => {
     {
       id: 'spiritual',
       name: t('spiritualJourney'),
-      price: 18999,
+      get price() {
+        const provider = providers.find(p => p.category === 'Spiritual' || p.category === 'spiritual') || providers[2];
+        return provider ? provider.price : 0;
+      },
       provider_id: providers.find(p => p.category === 'Spiritual' || p.category === 'spiritual')?.id || providers[2]?.id,
       destination_id: destinations.find(d => d.name?.toLowerCase().includes('deoghar') || d.name?.toLowerCase().includes('parasnath'))?.id || destinations[2]?.id,
       features: [
@@ -118,8 +136,11 @@ const BookingPage = () => {
     {
       id: 'premium',
       name: t('premiumExperience'),
-      price: 35999,
-      provider_id: providers.find(p => p.category === 'Premium' || p.category === 'premium')?.id || providers[3]?.id,
+      get price() {
+        const provider = providers.find(p => p.category === 'Wildlife' || p.category === 'Nature') || providers[3];
+        return provider ? provider.price : 0;
+      },
+      provider_id: providers.find(p => p.category === 'Wildlife' || p.category === 'Nature')?.id || providers[3]?.id,
       destination_id: destinations.find(d => d.name?.toLowerCase().includes('betla') || d.name?.toLowerCase().includes('hazaribagh'))?.id || destinations[3]?.id,
       features: [
         t('completeJharkhandTour'),
@@ -141,7 +162,14 @@ const BookingPage = () => {
 
   useEffect(() => {
     updatePrice();
-  }, [selectedPackage, formData.travelers, formData.addons]);
+  }, [selectedPackage, formData.travelers, formData.addons, providers, destinations]);
+
+  // Initialize price when packages are loaded
+  useEffect(() => {
+    if (packages.length > 0) {
+      updatePrice();
+    }
+  }, [packages]);
 
   useEffect(() => {
     // Set minimum date to today
@@ -151,13 +179,14 @@ const BookingPage = () => {
 
   const updatePrice = () => {
     const travelers = parseInt(formData.travelers) || 1;
-    let newTotalPrice = basePrice * travelers;
+    const selectedPackageData = getPackageData(selectedPackage);
+    let newTotalPrice = selectedPackageData ? selectedPackageData.price * travelers : 0;
     
     // Add addon prices
     formData.addons.forEach(addonId => {
       const addon = addons.find(a => a.id === addonId);
       if (addon) {
-        newTotalPrice += addon.price;
+        newTotalPrice += addon.price * travelers;
       }
     });
 
@@ -166,7 +195,7 @@ const BookingPage = () => {
 
   const handlePackageSelect = (packageData) => {
     setSelectedPackage(packageData.id);
-    setBasePrice(packageData.price);
+    // Remove basePrice setter as we now use dynamic pricing
   };
 
   const handleInputChange = (e) => {
@@ -267,7 +296,7 @@ const BookingPage = () => {
         rooms: Math.ceil(parseInt(formData.travelers) / 2), // Estimate rooms needed (2 guests per room)
         special_requests: formData.requirements || '', // Keep only actual requirements
         city_origin: formData.cityOrigin || '', // Separate field for city of origin
-        calculated_price: totalPrice, // Send the frontend calculated price
+        calculated_price: null, // Don't send calculated price - let backend use real provider+destination prices
         addons: JSON.stringify(formData.addons), // Store selected addons as JSON
         // Personal information from booking form
         booking_full_name: formData.fullName,
@@ -294,7 +323,9 @@ const BookingPage = () => {
               id: response.id,
               reference_number: ref,
               package_name: packageData.name,
-              package_type: selectedPackage
+              package_type: selectedPackage,
+              total_price: totalPrice, // Pass the frontend calculated total price
+              calculated_price: totalPrice // Also pass as calculated_price for compatibility
             }
           }
         });
@@ -409,7 +440,7 @@ const BookingPage = () => {
                     </div>
                     <div className="text-right">
                       <div className="text-3xl font-bold text-green-600 mb-2">
-                        ₹{basePrice.toLocaleString()}
+                        ₹{getPackageData(selectedPackage)?.price?.toLocaleString() || '0'}
                       </div>
                       <p className="text-sm text-gray-500">per person</p>
                     </div>
@@ -585,7 +616,7 @@ const BookingPage = () => {
                       </p>
                       <div className="flex justify-between items-center">
                         <span>{t('basePrice')}</span>
-                        <span className="font-semibold">₹{basePrice.toLocaleString()}</span>
+                        <span className="font-semibold">₹{getPackageData(selectedPackage)?.price?.toLocaleString() || '0'}</span>
                       </div>
                     </div>
 
@@ -597,7 +628,7 @@ const BookingPage = () => {
                       
                       <div className="flex justify-between">
                         <span>{t('packageCost')}:</span>
-                        <span>₹{(basePrice * parseInt(formData.travelers || 1)).toLocaleString()}</span>
+                        <span>₹{((getPackageData(selectedPackage)?.price || 0) * parseInt(formData.travelers || 1)).toLocaleString()}</span>
                       </div>
 
                       {formData.addons.length > 0 && (
