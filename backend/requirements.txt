@@ -18,3 +18,5 @@ pymysql==1.1.2
 emergentintegrations>=0.1.0
 litellm>=1.77.1
 httpx
+aiohttp>=3.12.0
+fastuuid

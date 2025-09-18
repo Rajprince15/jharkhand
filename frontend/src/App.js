@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import DestinationsPage from "./pages/DestinationsPage";
 import ProvidersPage from "./pages/ProvidersPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminServicesPage from "./pages/AdminServicesPage";
 import ProviderDashboard from "./pages/ProviderDashboard";
 import TouristDashboard from "./pages/TouristDashboard";
 import AIPlanner from "./pages/AIPlanner";
@@ -38,6 +39,8 @@ function App() {
               <Route path="/providers" element={<ProvidersPage />} />
               <Route path="/ai-planner" element={<AIPlanner />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin-dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/services" element={<AdminServicesPage />} />
               <Route path="/provider-dashboard" element={<ProviderDashboard />} />
               <Route path="/tourist-dashboard" element={<TouristDashboard />} />
               <Route path="/bookings" element={<BookingsPage />} />

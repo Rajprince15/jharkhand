@@ -1141,6 +1141,44 @@ async def get_user_providers(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/providers/{provider_id}")
+async def get_provider_by_id(
+    provider_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get provider by ID - for editing purposes"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check ownership
+                await cur.execute("SELECT user_id FROM providers WHERE id = %s", (provider_id,))
+                provider_check = await cur.fetchone()
+                if not provider_check or provider_check['user_id'] != current_user['id']:
+                    raise HTTPException(status_code=404, detail="Provider not found or access denied")
+                
+                # Get provider details with destination info
+                query = """
+                    SELECT p.*, 
+                           d.name as destination_name,
+                           d.location as destination_location
+                    FROM providers p
+                    LEFT JOIN destinations d ON p.destination_id = d.id
+                    WHERE p.id = %s
+                """
+                await cur.execute(query, (provider_id,))
+                provider = await cur.fetchone()
+                
+                if not provider:
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                return provider
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.put("/providers/{provider_id}")
 async def update_provider(
     provider_id: str,
@@ -1171,7 +1209,7 @@ async def update_provider(
                             update_values.append(value)
                             update_fields.append("location = %s")
                             update_values.append(dest_result[0])
-                    elif field in ['name', 'category', 'service_name', 'description', 'price', 'contact', 'image_url']:
+                    elif field in ['name', 'category', 'service_name', 'description', 'price', 'contact', 'image_url', 'is_active']:
                         update_fields.append(f"{field} = %s")
                         update_values.append(value)
                 

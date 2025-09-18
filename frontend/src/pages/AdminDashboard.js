@@ -193,7 +193,9 @@ const AdminDashboard = () => {
                   <p className="text-gray-600 mb-4">Manage destinations and provider listings</p>
                   <div className="space-y-2">
                     <Button variant="outline" className="w-full">Add Destination</Button>
-                    <Button variant="outline" className="w-full">Manage Providers</Button>
+                    <Link to="/admin/services">
+                      <Button variant="outline" className="w-full">Manage Services</Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
@@ -267,6 +269,13 @@ const AdminDashboard = () => {
                             <div>
                               <p className="font-medium">{provider.name}</p>
                               <p className="text-sm text-gray-600 capitalize">{provider.category}</p>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                provider.is_active 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {provider.is_active ? 'Active' : 'Inactive'}
+                              </span>
                             </div>
                           </div>
                           <div className="flex items-center space-x-1">

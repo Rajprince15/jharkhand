@@ -162,14 +162,29 @@ backend:
   - task: "Edit Service Button Functionality Fix"
     implemented: true
     working: "NA"
-    file: "frontend/src/pages/EditServicePage.js, frontend/src/services/api.js, frontend/src/App.js"
+    file: "frontend/src/pages/EditServicePage.js, frontend/src/services/api.js, frontend/src/App.js, backend/server.py"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
+        comment: "CRITICAL MISSING BACKEND ENDPOINT FIXED: ✅ Root cause identified - frontend's providerManagementAPI.getById() method was calling GET /providers/{id} but backend had no such endpoint ✅ Added missing GET /providers/{provider_id} endpoint in backend with proper ownership validation ✅ Endpoint returns full provider details with destination info for form pre-population ✅ EditServicePage routing confirmed working (/edit-service/:serviceId) ✅ Backend restarted successfully. Ready for testing the complete edit functionality."
+      - working: "NA"
+        agent: "main"
         comment: "FIXED MAJOR BUG: Edit Service button in ViewServicesPage was non-functional - navigating to non-existent route. Created complete EditServicePage component with full CRUD functionality, added getById API method, and configured proper routing. EditServicePage includes form pre-population, validation, service status toggle, and seamless navigation back to services list."
+
+  - task: "Service Status Management Enhancement"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/EditServicePage.js, frontend/src/pages/AdminDashboard.js, frontend/src/pages/AdminServicesPage.js, frontend/src/App.js, backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "COMPREHENSIVE SERVICE STATUS MANAGEMENT IMPLEMENTED: ✅ EditServicePage already had status toggle UI (is_active checkbox) ✅ Fixed backend PUT /providers/{id} endpoint to handle is_active field updates ✅ Enhanced AdminDashboard to display service status badges (Active/Inactive) ✅ Created dedicated AdminServicesPage (/admin/services) with comprehensive service management: filtering by status, category, destination; search functionality; detailed service cards with status indicators ✅ Added routing and navigation links ✅ Admin can now monitor all service statuses and providers can control their service availability ✅ Both frontend and backend services restarted successfully. Ready for testing."
 
   - task: "View Details Button Functionality Fix"
     implemented: true

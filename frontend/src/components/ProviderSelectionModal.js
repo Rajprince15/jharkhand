@@ -287,7 +287,7 @@ const ProviderSelectionModal = ({ destination, isOpen, onClose }) => {
                         className="w-full bg-green-600 hover:bg-green-700 text-white"
                         size="sm"
                       >
-                        Book Now
+                        Select
                       </Button>
                     </CardContent>
                   </Card>
