@@ -1645,7 +1645,7 @@ from services.payment_service import PaymentService
 payment_service = PaymentService()
 
 # Payment Management API (COMMENTED OUT TO FIX MODULE ISSUE)
-@api_router.post("/payments/create", response_model=PaymentResponse)
+@api_router.post("/payments/create")
 async def create_payment(
     payment_data: PaymentCreate,
     current_user: dict = Depends(get_current_user)
@@ -1683,6 +1683,9 @@ async def create_payment(
                 )
                 
                 # Create payment record
+                qr_data_for_db = qr_data.copy()
+                qr_data_for_db['expires_at'] = qr_data['expires_at'].isoformat() if qr_data['expires_at'] else None
+                
                 await cur.execute("""
                     INSERT INTO payments (
                         id, booking_id, amount, status, payment_method, 
@@ -1692,7 +1695,7 @@ async def create_payment(
                     payment_id, payment_data.booking_id, payment_data.amount,
                     PaymentStatus.PENDING, payment_data.payment_method,
                     transaction_ref, payment_data.upi_id or payment_service.upi_id,
-                    json.dumps(qr_data), qr_data['expires_at']
+                    json.dumps(qr_data_for_db), qr_data['expires_at']
                 ))
                 
                 # Update booking status to payment_required
@@ -1703,18 +1706,18 @@ async def create_payment(
                     WHERE id = %s
                 """, (payment_data.amount, qr_data['expires_at'], payment_data.booking_id))
                 
-                return PaymentResponse(
-                    id=payment_id,
-                    booking_id=payment_data.booking_id,
-                    amount=payment_data.amount,
-                    status=PaymentStatus.PENDING,
-                    payment_method=payment_data.payment_method,
-                    upi_qr_code=qr_data['qr_code_base64'],
-                    upi_payment_url=qr_data['upi_url'],
-                    transaction_reference=transaction_ref,
-                    created_at=datetime.utcnow(),
-                    expires_at=qr_data['expires_at']
-                )
+                return {
+                    "id": payment_id,
+                    "booking_id": payment_data.booking_id,
+                    "amount": payment_data.amount,
+                    "status": PaymentStatus.PENDING,
+                    "payment_method": payment_data.payment_method,
+                    "upi_qr_code": qr_data['qr_code_base64'],
+                    "upi_payment_url": qr_data['upi_url'],
+                    "transaction_reference": transaction_ref,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "expires_at": qr_data['expires_at'].isoformat() if qr_data['expires_at'] else None
+                }
                 
     except HTTPException:
         raise
