@@ -4,9 +4,13 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { MapPin, Star, ArrowLeft, Filter, Search } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, Filter, Search, VrHeadset, Camera, Box, Sparkles } from 'lucide-react';
 import { destinations } from '../data/mock';
 import { useTranslation } from '../hooks/useTranslation';
+import VRTour from '../components/VRTour';
+import ARCamera from '../components/ARCamera';
+import Map3D from '../components/Map3D';
+import WebXRSupport from '../components/WebXRSupport';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default markers in React Leaflet
@@ -44,6 +48,13 @@ const MapPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDestination, setSelectedDestination] = useState(null);
+  
+  // AR/VR State
+  const [isVRTourOpen, setIsVRTourOpen] = useState(false);
+  const [isARCameraOpen, setIsARCameraOpen] = useState(false);
+  const [is3DMapOpen, setIs3DMapOpen] = useState(false);
+  const [isWebXROpen, setIsWebXROpen] = useState(false);
+  const [vrTourDestination, setVrTourDestination] = useState(null);
 
   // Jharkhand boundaries (approximate center coordinates)
   const jharkhandCenter = [23.6102, 85.2799];
@@ -94,6 +105,24 @@ const MapPage = () => {
 
   const categories = ['all', ...new Set(destinations.map(dest => dest.category))];
 
+  // AR/VR Functions
+  const openVRTour = (destination) => {
+    setVrTourDestination(destination);
+    setIsVRTourOpen(true);
+  };
+
+  const openARCamera = () => {
+    setIsARCameraOpen(true);
+  };
+
+  const open3DMap = () => {
+    setIs3DMapOpen(true);
+  };
+
+  const openWebXR = () => {
+    setIsWebXROpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -111,6 +140,42 @@ const MapPage = () => {
                 <h1 className="text-2xl font-bold text-gray-900">{t('jharkhandTourismMap')}</h1>
                 <p className="text-gray-600">{t('exploreTouristDestinations')}</p>
               </div>
+            </div>
+            
+            {/* AR/VR Controls */}
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={openWebXR}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                size="sm"
+              >
+                <VrHeadset className="h-4 w-4 mr-2" />
+                WebXR VR
+              </Button>
+              <Button
+                onClick={() => openVRTour(filteredDestinations[0])}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+                size="sm"
+              >
+                <VrHeadset className="h-4 w-4 mr-2" />
+                360° Tours
+              </Button>
+              <Button
+                onClick={openARCamera}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                AR Camera
+              </Button>
+              <Button
+                onClick={open3DMap}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                size="sm"
+              >
+                <Box className="h-4 w-4 mr-2" />
+                3D View
+              </Button>
             </div>
           </div>
         </div>
@@ -241,6 +306,14 @@ const MapPage = () => {
                         {t('viewDetails')}
                       </Button>
                     </Link>
+                    <Button 
+                      size="sm" 
+                      onClick={() => openVRTour(selectedDestination)}
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                    >
+                      <VrHeadset className="h-4 w-4 mr-2" />
+                      VR Tour
+                    </Button>
                     <Button size="sm" variant="outline" className="w-full">
                       {t('getDirections')}
                     </Button>
@@ -303,11 +376,21 @@ const MapPage = () => {
                             <p className="text-xs text-gray-600 mb-3 line-clamp-2">
                               {destination.description}
                             </p>
-                            <Link to={`/destination/${destination.id}`}>
-                              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
-                                {t('viewDetails')}
+                            <div className="space-y-1">
+                              <Link to={`/destination/${destination.id}`}>
+                                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
+                                  {t('viewDetails')}
+                                </Button>
+                              </Link>
+                              <Button 
+                                size="sm" 
+                                onClick={() => openVRTour(destination)}
+                                className="w-full bg-purple-600 hover:bg-purple-700"
+                              >
+                                <VrHeadset className="h-3 w-3 mr-1" />
+                                VR Tour
                               </Button>
-                            </Link>
+                            </div>
                           </div>
                         </Popup>
                       </Marker>
@@ -329,9 +412,70 @@ const MapPage = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* AR/VR Features Showcase */}
+            <Card className="mt-4 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2 mb-3">
+                  <Sparkles className="h-5 w-5 text-purple-600" />
+                  <h3 className="font-semibold text-gray-900">New AR/VR Features</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <VrHeadset className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-gray-900">360° VR Tours</p>
+                      <p className="text-gray-600">Immersive virtual tours of destinations</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <Camera className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-gray-900">AR Camera Guide</p>
+                      <p className="text-gray-600">Point camera to see location information</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <Box className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-gray-900">3D Map View</p>
+                      <p className="text-gray-600">Interactive 3D destination visualization</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
+
+      {/* AR/VR Components */}
+      <VRTour
+        destination={vrTourDestination}
+        isOpen={isVRTourOpen}
+        onClose={() => {
+          setIsVRTourOpen(false);
+          setVrTourDestination(null);
+        }}
+      />
+      
+      <ARCamera
+        destinations={destinations}
+        isOpen={isARCameraOpen}
+        onClose={() => setIsARCameraOpen(false)}
+      />
+      
+      <Map3D
+        destinations={filteredDestinations}
+        isOpen={is3DMapOpen}
+        onClose={() => setIs3DMapOpen(false)}
+      />
+      
+      <WebXRSupport
+        destinations={filteredDestinations}
+        isOpen={isWebXROpen}
+        onClose={() => setIsWebXROpen(false)}
+      />
     </div>
   );
 };

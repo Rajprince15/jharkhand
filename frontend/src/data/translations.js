@@ -206,6 +206,15 @@ export const translations = {
     zoomInOut: "• Zoom in/out using mouse wheel or map controls",
     clickViewDetails: "• Click \"View Details\" to see complete destination information",
     
+    // AR/VR Features
+    vrTours: "VR Tours",
+    arCamera: "AR Camera", 
+    threeDView: "3D View",
+    webxrVr: "WebXR VR",
+    vrTour360: "360° Tours",
+    immersiveExperience: "Immersive Experience",
+    augmentedReality: "Augmented Reality",
+    
     // Wishlist Page  
     backToDashboard: "Back to Dashboard",
     myWishlist: "My Wishlist",
