@@ -115,7 +115,7 @@ const ProviderBookingsPage = () => {
       setLoading(true);
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/provider/bookings/search?reference_number=${encodeURIComponent(searchTerm.trim())}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
         }
       });

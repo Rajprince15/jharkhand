@@ -187,12 +187,6 @@ const LoginPage = () => {
                     </div>
                   </div>
                   
-                  <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
-                    <strong>{t('demoCredentials')}</strong><br />
-                    {t('tourist')}: tourist@example.com / password123<br />
-                    {t('provider')}: provider@example.com / password123<br />
-                    {t('admin')}: admin@example.com / password123
-                  </div>
                   
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? t('signingIn') : t('signIn')}

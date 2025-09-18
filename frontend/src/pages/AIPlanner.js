@@ -423,7 +423,7 @@ const AIPlanner = () => {
                   
                 </div>
                 <p className="text-gray-600 mt-4">
-                  💡 Save your itinerary as PDF or book your perfect Jharkhand adventure now!
+                  💡 Save your itinerary as PDF!
                 </p>
               </div>
             </div>
