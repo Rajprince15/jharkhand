@@ -172,6 +172,16 @@ const BookingPage = () => {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: t('authenticationRequired'),
+        description: t('pleaseLoginToBook'),
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -198,15 +208,18 @@ const BookingPage = () => {
         check_in: formData.departureDate,
         check_out: checkOutDate.toISOString().split('T')[0],
         guests: parseInt(formData.travelers),
-        rooms: 1, // Default to 1 room
-        calculated_price: totalPrice,
+        rooms: Math.ceil(parseInt(formData.travelers) / 2), // Estimate rooms needed
+        calculated_price: null, // Let backend calculate from provider+destination prices
         special_requests: formData.requirements || '',
         city_origin: formData.cityOrigin || '',
         addons: JSON.stringify(formData.addons),
         booking_full_name: formData.fullName,
         booking_email: formData.email,
         booking_phone: formData.phone,
-        reference_number: ref
+        reference_number: ref,
+        // Add package info for compatibility
+        package_type: selectedProvider?.category?.toLowerCase() || 'service',
+        package_name: selectedProvider?.service_name || 'Custom Service'
       };
 
       console.log('Submitting booking data:', bookingData);
@@ -214,13 +227,25 @@ const BookingPage = () => {
       const response = await bookingsAPI.create(bookingData);
       console.log('Booking created successfully:', response);
 
-      setBookingRef(ref);
-      setShowSuccessModal(true);
+      // Navigate to payment page instead of showing success modal
+      navigate(`/payment/${response.id}`, {
+        state: {
+          bookingData: {
+            ...response,
+            ...bookingData,
+            id: response.id,
+            reference_number: ref,
+            package_name: selectedProvider?.service_name || 'Custom Service',
+            package_type: selectedProvider?.category?.toLowerCase() || 'service',
+            total_price: totalPrice, // Pass the frontend calculated total price
+            calculated_price: totalPrice // Also pass as calculated_price for compatibility
+          }
+        }
+      });
       
       toast({
-        title: 'Booking Confirmed!',
-        description: `Your booking has been confirmed with reference ${ref}`,
-        variant: 'default',
+        title: t('bookingSuccessful'),
+        description: `${t('bookingCreatedWithRef')} ${ref}. Redirecting to payment...`,
       });
 
     } catch (error) {
@@ -560,8 +585,12 @@ const BookingPage = () => {
                     disabled={isSubmitting || !selectedProvider}
                     className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                   >
-                    {isSubmitting ? 'Processing...' : t('confirmBooking')}
+                    {isSubmitting ? 'Processing...' : t('bookNow')}
                   </Button>
+
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    {t('securePaymentGuaranteed')}
+                  </p>
                 </CardContent>
               </Card>
             </div>
