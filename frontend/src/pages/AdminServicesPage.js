@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { ArrowLeft, Search, Filter, Users, MapPin, DollarSign, Star, Loader2, Phone, Eye, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Search, Filter, Users, MapPin, IndianRupee, Star, Loader2, Phone, Eye, AlertTriangle } from 'lucide-react';
 import { providersAPI, destinationsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 
@@ -289,7 +289,7 @@ const AdminServicesPage = () => {
                           {service.location || 'Location not set'}
                         </div>
                         <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-1" />
+                          <IndianRupee className="h-4 w-4 mr-1" />
                           ₹{service.price}
                         </div>
                         <div className="flex items-center">

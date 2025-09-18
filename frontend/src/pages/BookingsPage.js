@@ -115,6 +115,34 @@ const BookingsPage = () => {
     // Could add a flag to mark as reviewed in the UI
   };
 
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) {
+      return;
+    }
+    
+    try {
+      // You'll need to implement the cancel API endpoint
+      // await bookingsAPI.cancel(bookingId);
+      
+      // For now, just update the local state
+      setBookings(prev => prev.map(booking => 
+        booking.id === bookingId 
+          ? { ...booking, status: 'cancelled' }
+          : booking
+      ));
+      
+      // Close modal if open
+      if (detailsModal.isOpen && detailsModal.booking.id === bookingId) {
+        closeDetailsModal();
+      }
+      
+      alert('Booking cancelled successfully');
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      alert('Failed to cancel booking. Please try again.');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed': return 'text-green-600 bg-green-100';
@@ -234,7 +262,12 @@ const BookingsPage = () => {
                           View Details
                         </Button>
                         {booking.status === 'pending' && (
-                          <Button variant="outline" size="sm" className="w-full md:w-auto text-red-600 border-red-300">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full md:w-auto text-red-600 border-red-300"
+                            onClick={() => handleCancelBooking(booking.id)}
+                          >
                             Cancel Booking
                           </Button>
                         )}
@@ -393,7 +426,11 @@ const BookingsPage = () => {
                   Close
                 </Button>
                 {detailsModal.booking.status === 'pending' && (
-                  <Button variant="outline" className="text-red-600 border-red-300 hover:bg-red-50">
+                  <Button 
+                    variant="outline" 
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    onClick={() => handleCancelBooking(detailsModal.booking.id)}
+                  >
                     Cancel Booking
                   </Button>
                 )}

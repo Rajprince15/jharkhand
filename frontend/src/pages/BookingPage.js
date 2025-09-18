@@ -608,7 +608,7 @@ const BookingPage = () => {
                 <Button 
                   onClick={() => {
                     closeModal();
-                    navigate('/dashboard');
+                    navigate('/bookings');
                   }}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                 >

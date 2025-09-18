@@ -107,7 +107,7 @@ const RegionsSection = () => {
             className="bg-green-600 hover:bg-green-700"
             onClick={() => navigate('/destinations')}
           >
-            Explore All Regions
+            
           </Button>
         </div>
       </div>

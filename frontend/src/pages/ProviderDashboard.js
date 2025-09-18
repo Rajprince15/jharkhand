@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Users, DollarSign, Calendar, LogOut, Plus, Loader2, Activity } from 'lucide-react';
+import { Users, IndianRupee, Calendar, LogOut, Plus, Loader2, Activity } from 'lucide-react';
 import { bookingsAPI, providerManagementAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 
@@ -102,7 +102,7 @@ const ProviderDashboard = () => {
 
   const statsData = [
     { title: 'Total Bookings', value: stats.totalBookings, icon: Calendar, color: 'text-blue-600' },
-    { title: 'This Month Revenue', value: `₹${stats.monthlyRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-green-600' },
+    { title: 'This Month Revenue', value: `₹${stats.monthlyRevenue.toLocaleString()}`, icon: IndianRupee, color: 'text-green-600' },
     { title: 'Active Services', value: stats.activeServices, icon: Users, color: 'text-purple-600' },
     { title: 'Pending Bookings', value: stats.pendingBookings, icon: Activity, color: 'text-orange-600' }
   ];

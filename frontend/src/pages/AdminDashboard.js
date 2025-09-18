@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Users, MapPin, Star, TrendingUp, LogOut, Loader2, DollarSign } from 'lucide-react';
+import { Users, MapPin, Star, TrendingUp, LogOut, Loader2, IndianRupee } from 'lucide-react';
 import { adminAPI, destinationsAPI, providersAPI, reviewsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 
@@ -117,7 +117,7 @@ const AdminDashboard = () => {
     {
       title: 'Total Revenue',
       value: `₹${stats.totalRevenue.toLocaleString()}`,
-      icon: DollarSign,
+      icon: IndianRupee,
       color: 'text-green-600'
     },
     {
