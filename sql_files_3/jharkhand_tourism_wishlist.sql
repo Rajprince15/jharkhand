@@ -1,3 +1,5 @@
+CREATE DATABASE  IF NOT EXISTS `jharkhand_tourism` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+USE `jharkhand_tourism`;
 -- MySQL dump 10.13  Distrib 8.0.40, for Win64 (x86_64)
 --
 -- Host: localhost    Database: jharkhand_tourism
@@ -42,7 +44,7 @@ CREATE TABLE `wishlist` (
 
 LOCK TABLES `wishlist` WRITE;
 /*!40000 ALTER TABLE `wishlist` DISABLE KEYS */;
-INSERT INTO `wishlist` VALUES ('0d51a247-f93f-464e-bcb6-3d85b3adb030','3ca9ab82-db5c-459c-84bb-6d154b929cac','10','2025-09-13 18:53:18'),('211aa404-b8f3-4cc0-8f30-30c7dd3cdcd7','9ffdf221-c444-4eb2-b15b-8f9693adc0b0','2','2025-09-15 17:38:21'),('78745c2b-a80e-4a59-b72f-f227b9a796b3','9ffdf221-c444-4eb2-b15b-8f9693adc0b0','10','2025-09-15 17:37:35'),('78dd96bd-4010-4215-9f30-399f12aedd78','3ca9ab82-db5c-459c-84bb-6d154b929cac','1','2025-09-13 18:53:04'),('a318e753-d805-4cf3-8021-b75cf50812a7','9ffdf221-c444-4eb2-b15b-8f9693adc0b0','9','2025-09-15 18:55:19'),('cdad2744-e919-46f4-8fb3-f7f0fe22e827','7ed89032-84ce-444f-a543-4fea2427c74c','1','2025-09-16 00:03:37');
+INSERT INTO `wishlist` VALUES ('019778b8-4213-4d9a-b358-ea805db712a1','9ffdf221-c444-4eb2-b15b-8f9693adc0b0','11','2025-09-18 07:20:41');
 /*!40000 ALTER TABLE `wishlist` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -55,4 +57,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-09-18  0:06:24
+-- Dump completed on 2025-09-18 13:08:04
