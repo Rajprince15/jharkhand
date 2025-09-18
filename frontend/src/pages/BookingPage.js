@@ -42,7 +42,7 @@ const BookingPage = () => {
       id: 'heritage',
       name: t('heritageExplorer'),
       price: 15999,
-      duration: `5 ${t('days')} / 4 ${t('nights')}`,
+      
       provider_id: 'prov_ranchi_guide_1', // Corrected: Ranchi Heritage Tours
       destination_id: '1', // Ranchi
       features: [
@@ -58,7 +58,7 @@ const BookingPage = () => {
       id: 'adventure',
       name: t('adventureSeeker'),
       price: 22999,
-      duration: `7 ${t('days')} / 6 ${t('nights')}`,
+      
       provider_id: 'prov_netarhat_guide_1', // Corrected: Netarhat Hill Adventures
       destination_id: '2', // Netarhat
       features: [
@@ -74,7 +74,7 @@ const BookingPage = () => {
       id: 'spiritual',
       name: t('spiritualJourney'),
       price: 18999,
-      duration: `6 ${t('days')} / 5 ${t('nights')}`,
+     
       provider_id: 'prov_parasnath_guide_1', // Corrected: Parasnath Pilgrimage Services
       destination_id: '4', // Parasnath Hill
       features: [
@@ -90,7 +90,7 @@ const BookingPage = () => {
       id: 'premium',
       name: t('premiumExperience'),
       price: 35999,
-      duration: `10 ${t('days')} / 9 ${t('nights')}`,
+      
       provider_id: 'prov_betla_safari_1', // Corrected: Betla Wildlife Safaris
       destination_id: '3', // Betla National Park
       features: [

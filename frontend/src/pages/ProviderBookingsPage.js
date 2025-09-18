@@ -113,7 +113,7 @@ const ProviderBookingsPage = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/provider/bookings/search?reference_number=${encodeURIComponent(searchTerm.trim())}`, {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/provider/bookings/search?reference_number=${encodeURIComponent(searchTerm.trim())}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
           'Content-Type': 'application/json'
@@ -247,7 +247,7 @@ const ProviderBookingsPage = () => {
                 <div className="flex-1">
                   <input
                     type="text"
-                    placeholder="Search by reference number, customer name, or service..."
+                    placeholder="Search by reference number..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -570,14 +570,7 @@ const ProviderBookingsPage = () => {
 
               {/* Action Buttons */}
               <div className="mt-8 flex justify-between">
-                <div className="flex space-x-3">
-                  <Button variant="outline" onClick={closeDetailsModal}>
-                    Close
-                  </Button>
-                  <Button variant="outline" className="text-blue-600 border-blue-300 hover:bg-blue-50">
-                    Contact Customer
-                  </Button>
-                </div>
+                
                 
                 <div className="flex space-x-3">
                   {detailsModal.booking.status === 'pending' && (

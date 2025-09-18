@@ -397,11 +397,7 @@ const BookingsPage = () => {
                     Cancel Booking
                   </Button>
                 )}
-                {detailsModal.booking.status === 'confirmed' && (
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    Contact Provider
-                  </Button>
-                )}
+                
               </div>
             </div>
           </div>
