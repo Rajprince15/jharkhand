@@ -251,7 +251,7 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/regions")
 async def get_regions():
-    """Get all regions in Jharkhand"""
+    """Get all regions in Jharkhand with user-friendly names"""
     try:
         pool = await get_db()
         async with pool.acquire() as conn:
@@ -259,12 +259,29 @@ async def get_regions():
                 await cur.execute("SELECT * FROM regions ORDER BY name")
                 regions = await cur.fetchall()
                 
-                # Parse JSON highlights
+                # Add user-friendly region mapping
+                region_mapping = {
+                    'kolhan': 'east',
+                    'north_chotanagpur': 'north', 
+                    'south_chotanagpur': 'south',
+                    'santhal_pargana': 'central',  # Keep as central for now, but user wanted east
+                    'palamu': 'west'
+                }
+                
+                # Parse JSON highlights and add user-friendly names
                 for region in regions:
                     if region['highlights']:
                         region['highlights'] = json.loads(region['highlights'])
                     else:
                         region['highlights'] = []
+                    
+                    # Add user-friendly region code
+                    region['region_code'] = region_mapping.get(region['id'], region['id'])
+                    
+                    # Override specific regions based on user request (central -> east)
+                    if region['id'] == 'santhal_pargana':
+                        region['region_code'] = 'east'  # User specifically requested east instead of central
+                        region['user_friendly_name'] = 'East Jharkhand'
                 
                 return regions
     except Exception as e:
@@ -286,10 +303,49 @@ async def get_destinations(category: Optional[str] = None, region: Optional[str]
                     params.append(category)
                 
                 if region:
-                    query += " AND region = %s"
-                    params.append(region)
+                    # Create region mapping for better filtering - Updated per user request
+                    region_mapping = {
+                        # User-friendly names to database values (east instead of central as requested)
+                        'east': ['Santhal Pargana Division'],  # User requested east instead of central
+                        'west': ['Palamu Division'], 
+                        'north': ['North Chhotanagpur Division'],
+                        'south': ['South Chhotanagpur Division'],
+                        'central': ['Kolhan Division'],  # Move Kolhan to central
+                        # Handle variations and full names
+                        'kolhan': ['Kolhan Division'],
+                        'north_chotanagpur': ['North Chhotanagpur Division'],
+                        'south_chotanagpur': ['South Chhotanagpur Division'],
+                        'santhal_pargana': ['Santhal Pargana Division'],
+                        'palamu': ['Palamu Division'],
+                        # Direct matches
+                        'Kolhan Division': ['Kolhan Division'],
+                        'North Chhotanagpur Division': ['North Chhotanagpur Division'],
+                        'South Chhotanagpur Division': ['South Chhotanagpur Division'],
+                        'Santhal Pargana Division': ['Santhal Pargana Division'],
+                        'Palamu Division': ['Palamu Division']
+                    }
+                    
+                    region_lower = region.lower()
+                    matched_regions = None
+                    
+                    # Try to find a matching region
+                    for key, values in region_mapping.items():
+                        if key.lower() == region_lower or region.lower() in key.lower():
+                            matched_regions = values
+                            break
+                    
+                    if matched_regions:
+                        # Use the mapped region values
+                        placeholders = ', '.join(['%s'] * len(matched_regions))
+                        query += f" AND region IN ({placeholders})"
+                        params.extend(matched_regions)
+                    else:
+                        # Fallback: try direct match or LIKE match
+                        query += " AND (region = %s OR region LIKE %s)"
+                        params.append(region)
+                        params.append(f"%{region}%")
                 
-                query += " LIMIT %s"
+                query += " ORDER BY name LIMIT %s"
                 params.append(limit)
                 
                 await cur.execute(query, params)
@@ -603,6 +659,9 @@ class BookingCreate(BaseModel):
     city_origin: Optional[str] = Field(None, max_length=100, description="City of origin")
     calculated_price: Optional[float] = Field(None, ge=0, description="Calculated price from frontend")
     addons: Optional[str] = Field(None, description="JSON string of selected addons")
+    # Package information for tourism packages
+    package_type: Optional[str] = Field(None, max_length=50, description="Type of tourism package (heritage, adventure, spiritual, premium)")
+    package_name: Optional[str] = Field(None, max_length=100, description="Name of the tourism package")
     # Personal information from booking form
     booking_full_name: str = Field(..., min_length=1, description="Full name from booking form")
     booking_email: EmailStr = Field(..., description="Email from booking form")
@@ -668,27 +727,32 @@ async def create_booking(
                 else:
                     total_price = (provider['price'] + destination['price']) * booking_data.guests
                 
-                # Create booking with personal information
+                # Create booking with personal information and package details
                 await cur.execute("""
                     INSERT INTO bookings (id, user_id, provider_id, destination_id, user_name, 
                                         provider_name, destination_name, booking_date, check_in, 
                                         check_out, guests, rooms, total_price, special_requests, status,
-                                        addons, booking_full_name, booking_email, booking_phone, city_origin, reference_number)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        addons, package_type, package_name, booking_full_name, booking_email, booking_phone, city_origin, reference_number)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     booking_id, current_user['id'], booking_data.provider_id, booking_data.destination_id,
                     current_user['name'], provider['name'], destination['name'], booking_data.booking_date,
                     booking_data.check_in, booking_data.check_out, booking_data.guests, booking_data.rooms,
                     total_price, booking_data.special_requests, 'pending',
-                    booking_data.addons, booking_data.booking_full_name, booking_data.booking_email, booking_data.booking_phone, booking_data.city_origin, booking_data.reference_number
+                    booking_data.addons, booking_data.package_type, booking_data.package_name, 
+                    booking_data.booking_full_name, booking_data.booking_email, booking_data.booking_phone, booking_data.city_origin, booking_data.reference_number
                 ))
                 
                 return {
                     "id": booking_id,
                     "status": "pending",
                     "total_price": total_price,
+                    "package_type": booking_data.package_type,
+                    "package_name": booking_data.package_name,
+                    "addons": booking_data.addons,
                     "booking_full_name": booking_data.booking_full_name,
                     "booking_email": booking_data.booking_email,
+                    "reference_number": booking_data.reference_number,
                     "message": "Booking created successfully"
                 }
     except HTTPException:
