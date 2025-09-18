@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Pannellum } from 'pannellum-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { VrHeadset, X, RotateCcw, ZoomIn, ZoomOut, Info, Navigation } from 'lucide-react';
+import { Eye, X, RotateCcw, ZoomIn, ZoomOut, Info, Navigation } from 'lucide-react';
 
 const VRTour = ({ destination, isOpen, onClose }) => {
   const [isVRMode, setIsVRMode] = useState(false);
@@ -147,7 +147,7 @@ const VRTour = ({ destination, isOpen, onClose }) => {
           <Card className="bg-black bg-opacity-70 text-white border-gray-600">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
-                <VrHeadset className="h-6 w-6 text-green-400" />
+                <Eye className="h-6 w-6 text-green-400" />
                 <div>
                   <h2 className="text-lg font-bold">{currentSceneData.title}</h2>
                   <p className="text-sm text-gray-300">
@@ -240,7 +240,7 @@ const VRTour = ({ destination, isOpen, onClose }) => {
                     : "bg-transparent text-white border-gray-600 hover:bg-gray-800"
                   }
                 >
-                  <VrHeadset className="h-4 w-4 mr-2" />
+                  <Eye className="h-4 w-4 mr-2" />
                   {isVRMode ? 'Exit VR' : 'VR Mode'}
                 </Button>
 

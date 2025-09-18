@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { XR, Controllers, Hands } from '@react-three/xr';
+import { XR, DefaultXRController, DefaultXRHand } from '@react-three/xr';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { VrHeadset, X, Info, AlertCircle } from 'lucide-react';
+import { Eye, X, Info, AlertCircle } from 'lucide-react';
 
 const WebXRSupport = ({ destinations = [], isOpen, onClose }) => {
   const [isXRSupported, setIsXRSupported] = useState(false);
@@ -46,8 +46,8 @@ const WebXRSupport = ({ destinations = [], isOpen, onClose }) => {
             <pointLight position={[10, 10, 10]} />
             
             {/* VR Controllers */}
-            <Controllers />
-            <Hands />
+            <DefaultXRController />
+            <DefaultXRHand />
             
             {/* 3D Destinations in VR Space */}
             {destinations.map((destination, index) => {
@@ -95,7 +95,7 @@ const WebXRSupport = ({ destinations = [], isOpen, onClose }) => {
                 </>
               ) : isXRSupported ? (
                 <>
-                  <VrHeadset className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+                  <Eye className="h-12 w-12 text-purple-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">WebXR VR Ready</h3>
                   <p className="text-gray-300 mb-4">
                     Experience Jharkhand tourism in immersive virtual reality
@@ -109,13 +109,13 @@ const WebXRSupport = ({ destinations = [], isOpen, onClose }) => {
                     onClick={startVRSession}
                     className="bg-purple-600 hover:bg-purple-700 w-full mb-3"
                   >
-                    <VrHeadset className="h-4 w-4 mr-2" />
+                    <Eye className="h-4 w-4 mr-2" />
                     Enter VR Experience
                   </Button>
                 </>
               ) : (
                 <>
-                  <VrHeadset className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Checking VR Support</h3>
                   <p className="text-gray-300 mb-4">
                     Detecting VR capabilities...

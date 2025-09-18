@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { MapPin, Star, ArrowLeft, Filter, Search, VrHeadset, Camera, Box, Sparkles } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, Filter, Search, Eye, Camera, Box, Sparkles } from 'lucide-react';
 import { destinations } from '../data/mock';
 import { useTranslation } from '../hooks/useTranslation';
 import VRTour from '../components/VRTour';
@@ -149,7 +149,7 @@ const MapPage = () => {
                 className="bg-indigo-600 hover:bg-indigo-700 text-white"
                 size="sm"
               >
-                <VrHeadset className="h-4 w-4 mr-2" />
+                <Eye className="h-4 w-4 mr-2" />
                 WebXR VR
               </Button>
               <Button
@@ -157,7 +157,7 @@ const MapPage = () => {
                 className="bg-purple-600 hover:bg-purple-700 text-white"
                 size="sm"
               >
-                <VrHeadset className="h-4 w-4 mr-2" />
+                <Eye className="h-4 w-4 mr-2" />
                 360° Tours
               </Button>
               <Button
@@ -311,7 +311,7 @@ const MapPage = () => {
                       onClick={() => openVRTour(selectedDestination)}
                       className="w-full bg-purple-600 hover:bg-purple-700"
                     >
-                      <VrHeadset className="h-4 w-4 mr-2" />
+                      <Eye className="h-4 w-4 mr-2" />
                       VR Tour
                     </Button>
                     <Button size="sm" variant="outline" className="w-full">
@@ -387,7 +387,7 @@ const MapPage = () => {
                                 onClick={() => openVRTour(destination)}
                                 className="w-full bg-purple-600 hover:bg-purple-700"
                               >
-                                <VrHeadset className="h-3 w-3 mr-1" />
+                                <Eye className="h-3 w-3 mr-1" />
                                 VR Tour
                               </Button>
                             </div>
@@ -422,7 +422,7 @@ const MapPage = () => {
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start space-x-3">
-                    <VrHeadset className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <Eye className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
                       <p className="font-medium text-gray-900">360° VR Tours</p>
                       <p className="text-gray-600">Immersive virtual tours of destinations</p>
