@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { bookingsAPI } from '../services/api';
+import { bookingsAPI, providersAPI, destinationsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 import LanguageToggle from '../components/LanguageToggle';
 
@@ -24,6 +24,9 @@ const BookingPage = () => {
   const [bookingRef, setBookingRef] = useState('');
   const [totalPrice, setTotalPrice] = useState(15999);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [providers, setProviders] = useState([]);
+  const [destinations, setDestinations] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -36,15 +39,43 @@ const BookingPage = () => {
   });
   const [errors, setErrors] = useState({});
 
-  // FIXED: Updated with correct provider IDs from your database
-  const packages = [
+  // Fetch providers and destinations on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [providersData, destinationsData] = await Promise.all([
+          providersAPI.getAll(),
+          destinationsAPI.getAll()
+        ]);
+        
+        setProviders(providersData);
+        setDestinations(destinationsData);
+        console.log('Fetched providers:', providersData);
+        console.log('Fetched destinations:', destinationsData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load booking data',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast]);
+
+  // Create packages dynamically based on fetched providers
+  const packages = providers.length > 0 ? [
     {
       id: 'heritage',
       name: t('heritageExplorer'),
       price: 15999,
-      
-      provider_id: 'prov_ranchi_guide_1', // Corrected: Ranchi Heritage Tours
-      destination_id: '1', // Ranchi
+      provider_id: providers.find(p => p.category === 'Heritage' || p.category === 'heritage')?.id || providers[0]?.id,
+      destination_id: destinations.find(d => d.name?.toLowerCase().includes('ranchi'))?.id || destinations[0]?.id,
       features: [
         t('visitRanchiDeoghar'),
         t('baidyanathTemple'),
@@ -58,9 +89,8 @@ const BookingPage = () => {
       id: 'adventure',
       name: t('adventureSeeker'),
       price: 22999,
-      
-      provider_id: 'prov_netarhat_guide_1', // Corrected: Netarhat Hill Adventures
-      destination_id: '2', // Netarhat
+      provider_id: providers.find(p => p.category === 'Adventure' || p.category === 'adventure')?.id || providers[1]?.id,
+      destination_id: destinations.find(d => d.name?.toLowerCase().includes('netarhat'))?.id || destinations[1]?.id,
       features: [
         t('netarhatBetla'),
         t('wildlifeSafari'),
@@ -74,9 +104,8 @@ const BookingPage = () => {
       id: 'spiritual',
       name: t('spiritualJourney'),
       price: 18999,
-     
-      provider_id: 'prov_parasnath_guide_1', // Corrected: Parasnath Pilgrimage Services
-      destination_id: '4', // Parasnath Hill
+      provider_id: providers.find(p => p.category === 'Spiritual' || p.category === 'spiritual')?.id || providers[2]?.id,
+      destination_id: destinations.find(d => d.name?.toLowerCase().includes('deoghar') || d.name?.toLowerCase().includes('parasnath'))?.id || destinations[2]?.id,
       features: [
         t('baidyanathJyotirlinga'),
         t('parasnathTemple'),
@@ -90,9 +119,8 @@ const BookingPage = () => {
       id: 'premium',
       name: t('premiumExperience'),
       price: 35999,
-      
-      provider_id: 'prov_betla_safari_1', // Corrected: Betla Wildlife Safaris
-      destination_id: '3', // Betla National Park
+      provider_id: providers.find(p => p.category === 'Premium' || p.category === 'premium')?.id || providers[3]?.id,
+      destination_id: destinations.find(d => d.name?.toLowerCase().includes('betla') || d.name?.toLowerCase().includes('hazaribagh'))?.id || destinations[3]?.id,
       features: [
         t('completeJharkhandTour'),
         t('luxuryResortsHotels'),
@@ -102,7 +130,7 @@ const BookingPage = () => {
         t('personalConcierge')
       ]
     }
-  ];
+  ] : [];
 
   const addons = [
     { id: 'pickup', name: t('airportPickupDrop'), price: 2000 },
@@ -215,6 +243,9 @@ const BookingPage = () => {
       
       // Get selected package details
       const packageData = getPackageData(selectedPackage);
+      console.log('Selected package data:', packageData);
+      console.log('Available providers:', providers);
+      console.log('Available destinations:', destinations);
       
       // Prepare booking data for API (matching backend BookingCreate model)
       const departureDate = new Date(formData.departureDate);
@@ -278,6 +309,20 @@ const BookingPage = () => {
   };
 
   const getPackageData = (id) => packages.find(p => p.id === id);
+
+  // Show loading state while fetching data
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading booking options...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100">

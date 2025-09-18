@@ -290,6 +290,34 @@ agent_communication:
   - agent: "main"
     message: "✅ USER REQUESTED FIXES COMPLETED: 1) Currency symbols already using ₹ instead of $ in displays, updated all DollarSign icons to IndianRupee icons 2) Fixed View Bookings button navigation from '/dashboard' to '/bookings' after successful booking completion 3) Implemented cancel booking functionality with confirmation dialogs and proper onClick handlers 4) All changes implemented without backend testing as requested by user. Ready for frontend testing if needed."
 
+  - agent: "main"
+    message: "🚨 NEW CRITICAL ISSUES IDENTIFIED: 1) Booking system only showing 'Ranchi heritage tours' because frontend uses hardcoded provider IDs (prov_ranchi_guide_1) but database has different IDs (prov1, prov2, etc.) 2) Tourist and provider dashboards showing limited data due to incorrect provider mapping in bookings 3) Need to fix provider ID mapping in BookingPage.js to use real database provider IDs"
+
+backend:
+  - task: "Provider ID Mapping Issue Fix"
+    implemented: false
+    working: false
+    file: "frontend/src/pages/BookingPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "CRITICAL ISSUE IDENTIFIED: BookingPage.js uses hardcoded provider IDs (prov_ranchi_guide_1, prov_netarhat_guide_1, etc.) but actual database provider IDs are prov1, prov2, prov3, prov4, prov5. This causes all bookings to map to wrong providers, showing only 'Ranchi heritage tours' regardless of selected package."
+
+  - task: "Dynamic Provider-Package Mapping"
+    implemented: false
+    working: false
+    file: "frontend/src/pages/BookingPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "Need to replace hardcoded package configuration with dynamic fetching from providers and destinations APIs to ensure proper mapping between packages and real database providers."
+
 backend:
   - task: "MySQL Database Integration"
     implemented: true
