@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import Map, { Source, Layer } from 'react-map-gl';
+import Map, { Source, Layer } from 'react-map-gl/mapbox';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { X, Navigation, ZoomIn, ZoomOut, Layers, RotateCcw } from 'lucide-react';
