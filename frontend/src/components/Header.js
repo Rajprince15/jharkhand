@@ -69,12 +69,7 @@ const Header = () => {
           >
             {t('placesToGo')}
           </Link>
-          <Link
-            to="/providers"
-            className="text-foreground/80 hover:text-foreground transition-colors font-medium"
-          >
-            {t('thingsToDo')}
-          </Link>
+          
           
             
           
@@ -150,13 +145,7 @@ const Header = () => {
             >
               {t('placesToGo')}
             </Link>
-            <Link
-              to="/providers"
-              className="text-foreground/80 hover:text-foreground transition-colors font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              {t('thingsToDo')}
-            </Link>
+            
             <button
               onClick={() => {
                 navigate('/practical-tips');
