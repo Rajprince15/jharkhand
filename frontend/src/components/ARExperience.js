@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Text, OrbitControls, useGLTF, Html } from '@react-three/drei';
-import { XR, Controllers, Hands, VRButton, ARButton } from '@react-three/xr';
+import { XR, ARButton } from '@react-three/xr';
 import { Button } from './ui/button';
 import { Camera, MapPin, Eye, EyeOff } from 'lucide-react';
 
@@ -93,8 +93,6 @@ const ARScene = ({ destinations, selectedDestination }) => {
   return (
     <>
       <Lighting />
-      <Controllers />
-      <Hands />
       
       {/* Ground plane for AR */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]}>

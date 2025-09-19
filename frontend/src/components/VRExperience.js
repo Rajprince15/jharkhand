@@ -10,10 +10,10 @@ import {
   useTexture,
   Plane
 } from '@react-three/drei';
-import { XR, Controllers, Hands, VRButton } from '@react-three/xr';
+import { XR, VRButton } from '@react-three/xr';
 import { TextureLoader, DoubleSide } from 'three';
 import { Button } from './ui/button';
-import { VrHeadset, Eye, EyeOff, Home, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Headphones, Eye, EyeOff, Home, ArrowLeft, ArrowRight } from 'lucide-react';
 
 // 360° Panoramic Destination Scene
 const PanoramicScene = ({ destination }) => {
@@ -149,9 +149,6 @@ const VirtualTour = ({ destinations, currentDestinationIndex, onNavigate }) => {
 
   return (
     <>
-      <Controllers />
-      <Hands />
-      
       {/* Environment lighting */}
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 10, 5]} intensity={0.8} />
@@ -254,7 +251,7 @@ const VRExperience = ({
     return (
       <div className="flex items-center justify-center h-full bg-gray-100">
         <div className="text-center p-6">
-          <VrHeadset className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+          <Headphones className="h-12 w-12 mx-auto mb-4 text-gray-400" />
           <h3 className="text-lg font-semibold text-gray-700 mb-2">VR Not Available</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <p className="text-sm text-gray-500">
@@ -278,7 +275,7 @@ const VRExperience = ({
           } text-white`}
           size="sm"
         >
-          <VrHeadset className="h-4 w-4 mr-2" />
+          <Headphones className="h-4 w-4 mr-2" />
           {isVRActive ? 'Exit VR' : 'Enter VR'}
         </Button>
       </div>

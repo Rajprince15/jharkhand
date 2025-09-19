@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Viewer, Entity, BillboardGraphics, LabelGraphics, CameraFlyTo } from 'resium';
-import { Cartesian3, Color, HeightReference, HorizontalOrigin, VerticalOrigin, Ion } from 'cesium';
+import * as Cesium from 'cesium';
 import { Button } from './ui/button';
-import { Eye, Globe, VrHeadset } from 'lucide-react';
+import { Eye, Globe, Headphones } from 'lucide-react';
 
 const CesiumMap = ({ destinations, selectedDestination, onDestinationSelect, onEnterVR }) => {
   const [viewer, setViewer] = useState(null);
@@ -11,31 +11,31 @@ const CesiumMap = ({ destinations, selectedDestination, onDestinationSelect, onE
   // Set Cesium Ion access token
   useEffect(() => {
     if (process.env.REACT_APP_CESIUM_TOKEN) {
-      Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_TOKEN;
+      Cesium.Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_TOKEN;
     }
   }, []);
 
   // Jharkhand center coordinates
-  const jharkhandCenter = Cartesian3.fromDegrees(85.2799, 23.6102, 100000);
+  const jharkhandCenter = Cesium.Cartesian3.fromDegrees(85.2799, 23.6102, 100000);
 
   // Create 3D markers for destinations
   const renderDestinationMarkers = () => {
     return destinations.map((destination) => {
       const position = destination.coordinates 
-        ? Cartesian3.fromDegrees(
+        ? Cesium.Cartesian3.fromDegrees(
             destination.coordinates.lng || destination.coordinates[1], 
             destination.coordinates.lat || destination.coordinates[0], 
             1000
           )
-        : Cartesian3.fromDegrees(85.2799 + Math.random() * 2, 23.6102 + Math.random() * 2, 1000);
+        : Cesium.Cartesian3.fromDegrees(85.2799 + Math.random() * 2, 23.6102 + Math.random() * 2, 1000);
 
       const categoryColors = {
-        city: Color.BLUE,
-        nature: Color.GREEN,
-        wildlife: Color.ORANGE,
-        religious: Color.PURPLE,
-        adventure: Color.RED,
-        default: Color.GRAY
+        city: Cesium.Color.BLUE,
+        nature: Cesium.Color.GREEN,
+        wildlife: Cesium.Color.ORANGE,
+        religious: Cesium.Color.PURPLE,
+        adventure: Cesium.Color.RED,
+        default: Cesium.Color.GRAY
       };
 
       const color = categoryColors[destination.category?.toLowerCase()] || categoryColors.default;
@@ -50,21 +50,21 @@ const CesiumMap = ({ destinations, selectedDestination, onDestinationSelect, onE
             image="/api/placeholder/32/32" // Fallback marker
             width={32}
             height={32}
-            heightReference={HeightReference.CLAMP_TO_GROUND}
+            heightReference={Cesium.HeightReference.CLAMP_TO_GROUND}
             color={color}
             scale={selectedDestination?.id === destination.id ? 1.5 : 1.0}
           />
           <LabelGraphics
             text={destination.name}
             font="14pt sans-serif"
-            fillColor={Color.WHITE}
-            outlineColor={Color.BLACK}
+            fillColor={Cesium.Color.WHITE}
+            outlineColor={Cesium.Color.BLACK}
             outlineWidth={2}
             style="FILL_AND_OUTLINE"
-            pixelOffset={new Cartesian3(0, -50, 0)}
-            horizontalOrigin={HorizontalOrigin.CENTER}
-            verticalOrigin={VerticalOrigin.BOTTOM}
-            heightReference={HeightReference.CLAMP_TO_GROUND}
+            pixelOffset={new Cesium.Cartesian3(0, -50, 0)}
+            horizontalOrigin={Cesium.HorizontalOrigin.CENTER}
+            verticalOrigin={Cesium.VerticalOrigin.BOTTOM}
+            heightReference={Cesium.HeightReference.CLAMP_TO_GROUND}
           />
         </Entity>
       );
@@ -93,7 +93,7 @@ const CesiumMap = ({ destinations, selectedDestination, onDestinationSelect, onE
           className="bg-blue-600 hover:bg-blue-700 text-white"
           size="sm"
         >
-          <VrHeadset className="h-4 w-4 mr-2" />
+          <Headphones className="h-4 w-4 mr-2" />
           {isVRMode ? 'Exit VR' : 'Enter VR'}
         </Button>
       </div>
@@ -125,7 +125,7 @@ const CesiumMap = ({ destinations, selectedDestination, onDestinationSelect, onE
         {/* Focus on selected destination */}
         {selectedDestination && selectedDestination.coordinates && (
           <CameraFlyTo
-            destination={Cartesian3.fromDegrees(
+            destination={Cesium.Cartesian3.fromDegrees(
               selectedDestination.coordinates.lng || selectedDestination.coordinates[1],
               selectedDestination.coordinates.lat || selectedDestination.coordinates[0],
               5000
