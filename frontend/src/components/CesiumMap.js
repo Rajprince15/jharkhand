@@ -7,7 +7,7 @@ import {
   HeightReference,
   HorizontalOrigin,
   VerticalOrigin
-} from 'cesium';
+} from '@cesium/engine';
 import { Button } from './ui/button';
 import { Eye, Globe, Headphones } from 'lucide-react';
 
