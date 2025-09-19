@@ -3,8 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Users, MapPin, Star, TrendingUp, LogOut, Loader2, IndianRupee, Calendar, Clock, Eye, RefreshCw } from 'lucide-react';
-import { adminAPI } from '../services/api';
+import { Users, MapPin, Star, TrendingUp, LogOut, Loader2, IndianRupee, Calendar, Clock, Eye, RefreshCw, X, Ban, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { adminAPI, destinationsAPI, providersAPI, reviewsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSpring, animated } from 'react-spring';
@@ -31,6 +31,17 @@ const AdminDashboard = () => {
     bookingByStatus: {},
     revenueByDestination: []
   });
+
+  const [recentDestinations, setRecentDestinations] = useState([]);
+  const [recentProviders, setRecentProviders] = useState([]);
+  const [recentUsers, setRecentUsers] = useState([]);
+
+  // Modal states
+  const [showUsersModal, setShowUsersModal] = useState(false);
+  const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [allBookings, setAllBookings] = useState([]);
 
   // Color scheme: white, green, brown
   const colors = {
@@ -85,6 +96,78 @@ const AdminDashboard = () => {
     }
   }, [toast]);
 
+  // User Management Functions
+  const handleViewAllUsers = async () => {
+    try {
+      const users = await adminAPI.getAllUsers();
+      setAllUsers(users);
+      setShowUsersModal(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load users",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBanUser = async (userId) => {
+    try {
+      await adminAPI.banUser(userId);
+      toast({
+        title: "Success",
+        description: "User has been banned",
+      });
+      handleViewAllUsers(); // Refresh users list
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to ban user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      await adminAPI.deleteUser(userId);
+      toast({
+        title: "Success",
+        description: "User has been deleted",
+      });
+      handleViewAllUsers(); // Refresh users list
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Booking Management Functions
+  const handleViewBookingDetails = (booking) => {
+    setSelectedBooking(booking);
+    setShowBookingDetailsModal(true);
+  };
+
+  const handleCancelBooking = async (bookingId) => {
+    try {
+      await adminAPI.cancelBooking(bookingId);
+      toast({
+        title: "Success",
+        description: "Booking has been cancelled",
+      });
+      fetchDashboardData(); // Refresh dashboard data
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to cancel booking",
+        variant: "destructive",
+      });
+    }
+  };
+
   // 3D Animation components
   const AnimatedCard = ({ children, delay = 0, className = "" }) => {
     const cardSpring = useSpring({
@@ -126,54 +209,6 @@ const AdminDashboard = () => {
            status === 'pending' ? '#fbbf24' : 
            status === 'cancelled' ? '#ef4444' : colors.accent
   }));
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const [
-        adminStats,
-        destinations,
-        providers,
-        users,
-        reviews
-      ] = await Promise.all([
-        adminAPI.getStats(),
-        destinationsAPI.getAll(null, 10),
-        providersAPI.getAll(null, null, 10),
-        adminAPI.getAllUsers(),
-        reviewsAPI.getAll(null, null, 100)
-      ]);
-
-      // Calculate average rating from reviews
-      const averageRating = reviews.length > 0 
-        ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
-        : 0;
-
-      setStats({
-        totalUsers: users.length,
-        totalDestinations: destinations.length,
-        totalProviders: providers.length,
-        totalBookings: adminStats.total_bookings || 0,
-        totalRevenue: adminStats.total_revenue || 0,
-        averageRating: parseFloat(averageRating),
-        monthlyBookings: adminStats.monthly_bookings || 0
-      });
-
-      setRecentDestinations(destinations.slice(0, 5));
-      setRecentProviders(providers.slice(0, 5));
-      setRecentUsers(users.slice(0, 5));
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load dashboard data",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -490,6 +525,26 @@ const AdminDashboard = () => {
                             }`}>
                               {booking.status}
                             </span>
+                            <div className="flex space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleViewBookingDetails(booking)}
+                                className="p-2"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleCancelBooking(booking.id)}
+                                  className="p-2 text-red-600 hover:text-red-700"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </motion.div>
                       ))}
@@ -518,7 +573,10 @@ const AdminDashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <p className="text-green-700 mb-4">Manage registered users and their roles</p>
-                    <Button className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white">
+                    <Button 
+                      className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+                      onClick={handleViewAllUsers}
+                    >
                       View All Users
                     </Button>
                   </CardContent>
@@ -565,8 +623,142 @@ const AdminDashboard = () => {
                   </CardContent>
                 </Card>
               </AnimatedCard>
-            </div>
+            </motion.div>
           </AnimatePresence>
+        )}
+
+        {/* Users Management Modal */}
+        {showUsersModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-auto"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">All Users</h2>
+                <Button variant="outline" onClick={() => setShowUsersModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {allUsers.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-sm text-gray-600">{user.email}</p>
+                      <p className="text-xs text-gray-500">Role: {user.role} • Joined: {new Date(user.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleBanUser(user.id)}
+                        className="text-orange-600 hover:text-orange-700"
+                      >
+                        <Ban className="h-4 w-4 mr-1" />
+                        Ban
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Booking Details Modal */}
+        {showBookingDetailsModal && selectedBooking && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Booking Details</h2>
+                <Button variant="outline" onClick={() => setShowBookingDetailsModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-medium text-gray-700">Customer Name</label>
+                    <p className="text-gray-900">{selectedBooking.customer_name}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium text-gray-700">Email</label>
+                    <p className="text-gray-900">{selectedBooking.customer_email}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium text-gray-700">Destination</label>
+                    <p className="text-gray-900">{selectedBooking.destination_name}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium text-gray-700">Package Type</label>
+                    <p className="text-gray-900">{selectedBooking.package_type}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium text-gray-700">Guests</label>
+                    <p className="text-gray-900">{selectedBooking.guests}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium text-gray-700">Total Price</label>
+                    <p className="text-gray-900 font-bold">₹{selectedBooking.total_price.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <label className="font-medium text-gray-700">Status</label>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      selectedBooking.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      selectedBooking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      selectedBooking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {selectedBooking.status}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="font-medium text-gray-700">Booking Date</label>
+                    <p className="text-gray-900">{new Date(selectedBooking.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                
+                {selectedBooking.special_requests && (
+                  <div>
+                    <label className="font-medium text-gray-700">Special Requests</label>
+                    <p className="text-gray-900">{selectedBooking.special_requests}</p>
+                  </div>
+                )}
+                
+                <div className="flex justify-end space-x-2 pt-4">
+                  {selectedBooking.status !== 'cancelled' && selectedBooking.status !== 'completed' && (
+                    <Button
+                      onClick={() => {
+                        handleCancelBooking(selectedBooking.id);
+                        setShowBookingDetailsModal(false);
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel Booking
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </div>
     </div>

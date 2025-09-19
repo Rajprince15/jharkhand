@@ -110,6 +110,11 @@ export const providersAPI = {
     
     const response = await api.get(`/providers?${params.toString()}`);
     return response.data;
+  },
+
+  toggleStatus: async (providerId) => {
+    const response = await api.put(`/providers/${providerId}/toggle-status`);
+    return response.data;
   }
 };
 
@@ -218,6 +223,23 @@ export const adminAPI = {
 
   toggleProviderStatus: async (providerId) => {
     const response = await api.put(`/admin/providers/${providerId}/status`);
+    return response.data;
+  },
+
+  // User Management
+  banUser: async (userId) => {
+    const response = await api.put(`/admin/users/${userId}/ban`);
+    return response.data;
+  },
+
+  deleteUser: async (userId) => {
+    const response = await api.delete(`/admin/users/${userId}`);
+    return response.data;
+  },
+
+  // Booking Management
+  cancelBooking: async (bookingId) => {
+    const response = await api.put(`/admin/bookings/${bookingId}/cancel`);
     return response.data;
   }
 };
