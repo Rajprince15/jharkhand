@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { CheckCircle, XCircle, Clock, Eye, Filter, RefreshCw, Search } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye, Filter, RefreshCw, Search, ArrowLeft, Home } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { paymentsAPI } from '../services/payments';
 import { useToast } from '../hooks/use-toast';
+import { Link } from 'react-router-dom';
 
 const AdminPaymentsPage = () => {
   const { user } = useAuth();
@@ -145,14 +146,33 @@ const AdminPaymentsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment Management</h1>
-          <p className="text-gray-600">Review and approve customer payments</p>
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link to="/admin-dashboard">
+                <Button variant="outline" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </Link>
+              <Link to="/">
+                <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                  <Home className="h-4 w-4 mr-2" />
+                  Home
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
+                <p className="text-gray-600">Review and approve customer payments</p>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
+      <div className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">

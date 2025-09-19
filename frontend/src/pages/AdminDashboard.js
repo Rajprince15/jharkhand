@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Users, MapPin, Star, TrendingUp, LogOut, Loader2, IndianRupee, Calendar, Clock, Eye, RefreshCw, X, Ban, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Users, MapPin, Star, TrendingUp, LogOut, Loader2, IndianRupee, Calendar, Clock, Eye, RefreshCw, X, Ban, Trash2, ToggleLeft, ToggleRight, Home } from 'lucide-react';
 import { adminAPI, destinationsAPI, providersAPI, reviewsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +42,13 @@ const AdminDashboard = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [allBookings, setAllBookings] = useState([]);
+
+  // Provider management states
+  const [showProviderManageModal, setShowProviderManageModal] = useState(false);
+  const [allProviders, setAllProviders] = useState([]);
+  const [selectedProvider, setSelectedProvider] = useState(null);
+  const [providerAction, setProviderAction] = useState('');
+  const [confirmationLoading, setConfirmationLoading] = useState(false);
 
   // Color scheme: white, green, brown
   const colors = {
@@ -142,6 +149,65 @@ const AdminDashboard = () => {
         description: "Failed to delete user",
         variant: "destructive",
       });
+    }
+  };
+
+  // Provider Management Functions
+  const handleViewAllProviders = async () => {
+    try {
+      const providers = await providersAPI.getAll();
+      setAllProviders(providers);
+      setShowProviderManageModal(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load providers",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProviderAction = (provider, action) => {
+    setSelectedProvider(provider);
+    setProviderAction(action);
+  };
+
+  const confirmProviderAction = async () => {
+    if (!selectedProvider || !providerAction) return;
+
+    try {
+      setConfirmationLoading(true);
+      
+      if (providerAction === 'toggle') {
+        await providersAPI.update(selectedProvider.id, {
+          ...selectedProvider,
+          is_active: !selectedProvider.is_active
+        });
+        toast({
+          title: "Success",
+          description: `Provider ${selectedProvider.is_active ? 'deactivated' : 'activated'} successfully`,
+        });
+      } else if (providerAction === 'delete') {
+        await providersAPI.delete(selectedProvider.id);
+        toast({
+          title: "Success",
+          description: "Provider deleted successfully",
+        });
+      }
+
+      // Refresh providers list
+      await handleViewAllProviders();
+      setSelectedProvider(null);
+      setProviderAction('');
+      
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to ${providerAction} provider`,
+        variant: "destructive",
+      });
+    } finally {
+      setConfirmationLoading(false);
     }
   };
 
@@ -290,6 +356,12 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="flex items-center space-x-3">
+            <Link to="/">
+              <Button variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                <Home className="h-4 w-4 mr-2" />
+                Home
+              </Button>
+            </Link>
             <Button 
               onClick={fetchDashboardData} 
               variant="outline" 
@@ -564,7 +636,7 @@ const AdminDashboard = () => {
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 1.1 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
+              className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8"
             >
               <AnimatedCard delay={11}>
                 <Card className="bg-gradient-to-br from-green-100 to-green-200 border-0 shadow-xl">
@@ -584,6 +656,23 @@ const AdminDashboard = () => {
               </AnimatedCard>
 
               <AnimatedCard delay={12}>
+                <Card className="bg-gradient-to-br from-blue-100 to-blue-200 border-0 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-blue-900">Provider Management</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-blue-700 mb-4">Manage service providers and their status</p>
+                    <Button 
+                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                      onClick={handleViewAllProviders}
+                    >
+                      Manage Providers
+                    </Button>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
+
+              <AnimatedCard delay={13}>
                 <Card className="bg-gradient-to-br from-amber-100 to-amber-200 border-0 shadow-xl">
                   <CardHeader>
                     <CardTitle className="text-amber-900">Content Management</CardTitle>
@@ -606,7 +695,7 @@ const AdminDashboard = () => {
                 </Card>
               </AnimatedCard>
 
-              <AnimatedCard delay={13}>
+              <AnimatedCard delay={14}>
                 <Card className="bg-gradient-to-br from-green-100 to-amber-100 border-0 shadow-xl">
                   <CardHeader>
                     <CardTitle className="text-gray-800">System Analytics</CardTitle>
@@ -672,6 +761,130 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Provider Management Modal */}
+        {showProviderManageModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[80vh] overflow-auto"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Manage Providers</h2>
+                <Button variant="outline" onClick={() => setShowProviderManageModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {allProviders.map((provider) => (
+                  <div key={provider.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <div>
+                          <p className="font-medium">{provider.name}</p>
+                          <p className="text-sm text-gray-600">{provider.service_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {provider.category} • ₹{provider.price} • {provider.contact}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          provider.is_active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {provider.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleProviderAction(provider, 'toggle')}
+                        className={provider.is_active ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
+                      >
+                        {provider.is_active ? <ToggleRight className="h-4 w-4 mr-1" /> : <ToggleLeft className="h-4 w-4 mr-1" />}
+                        {provider.is_active ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleProviderAction(provider, 'delete')}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Provider Action Confirmation Modal */}
+        {selectedProvider && providerAction && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+            >
+              <div className="text-center">
+                <div className="mb-4">
+                  {providerAction === 'toggle' ? (
+                    selectedProvider.is_active ? (
+                      <ToggleRight className="h-16 w-16 text-red-500 mx-auto" />
+                    ) : (
+                      <ToggleLeft className="h-16 w-16 text-green-500 mx-auto" />
+                    )
+                  ) : (
+                    <Trash2 className="h-16 w-16 text-red-500 mx-auto" />
+                  )}
+                </div>
+                <h3 className="text-lg font-semibold mb-2">
+                  {providerAction === 'toggle' 
+                    ? `${selectedProvider.is_active ? 'Deactivate' : 'Activate'} Provider?`
+                    : 'Delete Provider?'
+                  }
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {providerAction === 'toggle' 
+                    ? `Are you sure you want to ${selectedProvider.is_active ? 'deactivate' : 'activate'} "${selectedProvider.name}"?`
+                    : `This will permanently delete "${selectedProvider.name}". This action cannot be undone.`
+                  }
+                </p>
+                <div className="flex justify-center space-x-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setSelectedProvider(null);
+                      setProviderAction('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={confirmProviderAction}
+                    disabled={confirmationLoading}
+                    className={providerAction === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}
+                  >
+                    {confirmationLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    {providerAction === 'toggle' 
+                      ? (selectedProvider.is_active ? 'Deactivate' : 'Activate')
+                      : 'Delete'
+                    }
+                  </Button>
+                </div>
               </div>
             </motion.div>
           </div>

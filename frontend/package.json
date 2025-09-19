@@ -104,6 +104,7 @@
     "@craco/craco": "^7.1.0",
     "@eslint/js": "9.23.0",
     "@open-wc/webpack-import-meta-loader": "^0.4.7",
+    "@types/stylis": "^4.2.7",
     "autoprefixer": "^10.4.20",
     "copy-webpack-plugin": "^13.0.1",
     "eslint": "9.23.0",

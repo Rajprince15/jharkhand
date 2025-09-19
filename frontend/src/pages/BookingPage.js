@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, Check, X, Eye, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { bookingsAPI, providersAPI, destinationsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 import LanguageToggle from '../components/LanguageToggle';
-import Destination3DPreview from '../components/Destination3DPreview';
 
 const BookingPage = () => {
   const navigate = useNavigate();
@@ -27,7 +26,6 @@ const BookingPage = () => {
   const [providers, setProviders] = useState([]);
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [show3DPreview, setShow3DPreview] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -328,118 +326,32 @@ const BookingPage = () => {
             
             
 
-            {/* Selected Service Display with 3D Preview */}
+            {/* Selected Service Display */}
             {selectedProvider && (
               <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 mb-8">
                 <CardContent className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Service Information */}
-                    <div className="flex flex-col justify-between">
-                      <div>
-                        <h3 className="text-2xl font-bold text-green-700 mb-2">
-                          {selectedProvider.service_name}
-                        </h3>
-                        <p className="text-lg text-blue-600 font-medium mb-2">
-                          {selectedProvider.name}
-                        </p>
-                        <p className="text-gray-600 mb-3">
-                          {selectedProvider.description} - {selectedProvider.location}
-                        </p>
-                        <div className="flex flex-wrap items-center text-sm text-gray-500 mb-4">
-                          <span className="mr-4 mb-1">🏞️ {selectedProvider.category}</span>
-                          <span className="mr-4 mb-1">⭐ {selectedProvider.rating}/5.0</span>
-                          <span className="mb-1">📞 {selectedProvider.contact}</span>
-                        </div>
-                      </div>
-                      <div className="text-left lg:text-right">
-                        <div className="text-3xl font-bold text-green-600 mb-2">
-                          ₹{selectedProvider.price.toLocaleString()}
-                        </div>
-                        <p className="text-sm text-gray-500">per person</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-bold text-green-700 mb-2">
+                        {selectedProvider.service_name}
+                      </h3>
+                      <p className="text-lg text-blue-600 font-medium mb-2">
+                        {selectedProvider.name}
+                      </p>
+                      <p className="text-gray-600 mb-3">
+                        {selectedProvider.description} - {selectedProvider.location}
+                      </p>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <span className="mr-4">🏞️ {selectedProvider.category}</span>
+                        <span className="mr-4">⭐ {selectedProvider.rating}/5.0</span>
+                        <span>📞 {selectedProvider.contact}</span>
                       </div>
                     </div>
-
-                    {/* 3D Destination Preview */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-semibold text-green-700">Destination Preview</h4>
-                        <div className="flex space-x-2">
-                          <Button
-                            onClick={() => {
-                              // Find matching destination
-                              const matchingDestination = destinations.find(d => 
-                                d.name?.toLowerCase().includes(selectedProvider?.location?.toLowerCase()?.split(',')[0] || '') ||
-                                d.location?.toLowerCase().includes(selectedProvider?.location?.toLowerCase()?.split(',')[0] || '')
-                              ) || destinations[0];
-                              
-                              if (matchingDestination) {
-                                navigate('/map', { 
-                                  state: { 
-                                    selectedDestination: matchingDestination,
-                                    mapMode: 'vr'
-                                  }
-                                });
-                              }
-                            }}
-                            size="sm"
-                            variant="outline"
-                            className="bg-blue-50 hover:bg-blue-100 text-blue-700"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            VR Tour
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              const matchingDestination = destinations.find(d => 
-                                d.name?.toLowerCase().includes(selectedProvider?.location?.toLowerCase()?.split(',')[0] || '') ||
-                                d.location?.toLowerCase().includes(selectedProvider?.location?.toLowerCase()?.split(',')[0] || '')
-                              ) || destinations[0];
-                              
-                              if (matchingDestination) {
-                                navigate('/map', { 
-                                  state: { 
-                                    selectedDestination: matchingDestination,
-                                    mapMode: '3d'
-                                  }
-                                });
-                              }
-                            }}
-                            size="sm"
-                            variant="outline"
-                            className="bg-green-50 hover:bg-green-100 text-green-700"
-                          >
-                            <Maximize2 className="h-4 w-4 mr-1" />
-                            3D View
-                          </Button>
-                        </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-green-600 mb-2">
+                        ₹{selectedProvider.price.toLocaleString()}
                       </div>
-                      
-                      {/* 3D Preview Component */}
-                      <Destination3DPreview
-                        destination={{
-                          id: selectedProvider.id,
-                          name: selectedProvider.service_name,
-                          location: selectedProvider.location,
-                          category: selectedProvider.category,
-                          rating: selectedProvider.rating,
-                          description: selectedProvider.description,
-                          image_url: selectedProvider.image_url || '/api/placeholder/400/300'
-                        }}
-                        className="w-full h-48"
-                        showControls={true}
-                        onExpand={(dest) => {
-                          navigate('/map', { 
-                            state: { 
-                              selectedDestination: dest,
-                              mapMode: 'vr'
-                            }
-                          });
-                        }}
-                      />
-                      
-                      <p className="text-xs text-gray-500 text-center">
-                        Click the preview to explore in 3D • Use VR/3D buttons for immersive experience
-                      </p>
+                      <p className="text-sm text-gray-500">per person</p>
                     </div>
                   </div>
                 </CardContent>
