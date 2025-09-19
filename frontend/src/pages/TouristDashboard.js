@@ -4,14 +4,14 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { MapPin, Heart, Calendar, LogOut, Star, Loader2, TrendingUp, Eye, RefreshCw, Clock, IndianRupee, CheckCircle, XCircle, AlertCircle, X, Compass, Briefcase } from 'lucide-react';
+import { MapPin, Heart, Calendar, LogOut, Star, Loader2, RefreshCw, Clock, IndianRupee, CheckCircle, XCircle, AlertCircle, X, Compass, Briefcase } from 'lucide-react';
 import { destinationsAPI, bookingsAPI, wishlistAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 import LanguageToggle from '../components/LanguageToggle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSpring, animated } from 'react-spring';
 import CountUp from 'react-countup';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
 
 const TouristDashboard = () => {
   const { user, logout } = useAuth();
@@ -32,9 +32,6 @@ const TouristDashboard = () => {
     activeTrips: 0,
     completedTrips: 0,
     averageRating: 0,
-    monthlySpending: [],
-    bookingTrends: [],
-    categoryPreferences: {},
     recentActivity: []
   });
 
@@ -79,21 +76,6 @@ const TouristDashboard = () => {
       const activeTrips = bookingsData.filter(booking => ['pending', 'confirmed'].includes(booking.status)).length;
       const completedTrips = bookingsData.filter(booking => booking.status === 'completed').length;
       
-      // Calculate category preferences
-      const categoryCount = bookingsData.reduce((acc, booking) => {
-        const category = booking.category || 'Other';
-        acc[category] = (acc[category] || 0) + 1;
-        return acc;
-      }, {});
-
-      // Generate mock spending trends (in real app, this would come from backend)
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      const monthlySpending = Array.from({ length: 6 }, (_, i) => ({
-        month: new Date(currentYear, currentMonth - 5 + i, 1).toLocaleDateString('en-US', { month: 'short' }),
-        spending: Math.floor(Math.random() * 30000) + 5000,
-        bookings: Math.floor(Math.random() * 8) + 1
-      }));
       
       setStats({
         totalBookings: bookingsData.length,
@@ -102,9 +84,6 @@ const TouristDashboard = () => {
         activeTrips: activeTrips,
         completedTrips: completedTrips,
         averageRating: 4.6, // This would come from reviews API
-        monthlySpending: monthlySpending,
-        bookingTrends: monthlySpending,
-        categoryPreferences: categoryCount,
         recentActivity: bookingsData.slice(0, 5)
       });
       
@@ -157,15 +136,7 @@ const TouristDashboard = () => {
     setShowBookingDetailsModal(true);
   };
 
-  // Chart data processing
-  const pieChartData = Object.entries(stats.categoryPreferences).map(([category, count]) => ({
-    name: category,
-    value: count,
-    color: category === 'Nature' ? colors.primary : 
-           category === 'Adventure' ? '#f59e0b' : 
-           category === 'Culture' ? '#8b5cf6' : 
-           category === 'Spiritual' ? '#ef4444' : colors.accent
-  }));
+
 
   if (!user || user.role !== 'tourist') {
     navigate('/login');
@@ -319,109 +290,9 @@ const TouristDashboard = () => {
               ))}
             </motion.div>
 
-            {/* Analytics Charts */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
-              <AnimatedCard delay={6}>
-                <Card className="bg-white shadow-xl border-green-100">
-                  <CardHeader className="bg-gradient-to-r from-green-50 to-green-100">
-                    <CardTitle className="text-green-900 flex items-center">
-                      <TrendingUp className="h-5 w-5 mr-2" />
-                      Monthly Spending Trends
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={stats.monthlySpending}>
-                        <defs>
-                          <linearGradient id="spendingGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={colors.primary} stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor={colors.primary} stopOpacity={0.1}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis dataKey="month" stroke="#6b7280" />
-                        <YAxis stroke="#6b7280" tickFormatter={(value) => `₹${value.toLocaleString()}`} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                          formatter={(value) => [`₹${value.toLocaleString()}`, 'Spending']}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="spending" 
-                          stroke={colors.primary} 
-                          fillOpacity={1} 
-                          fill="url(#spendingGradient)" 
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
 
-              <AnimatedCard delay={7}>
-                <Card className="bg-white shadow-xl border-amber-100">
-                  <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-100">
-                    <CardTitle className="text-amber-900 flex items-center">
-                      <Calendar className="h-5 w-5 mr-2" />
-                      Booking Trends Over Time
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={stats.bookingTrends}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis dataKey="month" stroke="#6b7280" />
-                        <YAxis stroke="#6b7280" />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="bookings" 
-                          stroke={colors.accent} 
-                          strokeWidth={3}
-                          dot={{ fill: colors.accent, strokeWidth: 2, r: 6 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
-            </div>
 
-            {/* Category Preferences Chart */}
-            {pieChartData.length > 0 && (
-              <AnimatedCard delay={8}>
-                <Card className="bg-white shadow-xl mb-8">
-                  <CardHeader>
-                    <CardTitle className="text-gray-800 flex items-center">
-                      <Eye className="h-5 w-5 mr-2 text-green-600" />
-                      Travel Preferences
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={pieChartData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {pieChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
-            )}
+
 
             {/* Quick Actions */}
             <motion.div 

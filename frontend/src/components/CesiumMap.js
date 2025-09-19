@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Viewer, Entity, BillboardGraphics, LabelGraphics, CameraFlyTo } from 'resium';
-import { Cartesian3, Color, HeightReference, HorizontalOrigin, VerticalOrigin } from 'cesium';
+import { Cartesian3, Color, HeightReference, HorizontalOrigin, VerticalOrigin, Ion } from 'cesium';
 import { Button } from './ui/button';
 import { Eye, Globe, VrHeadset } from 'lucide-react';
 
 const CesiumMap = ({ destinations, selectedDestination, onDestinationSelect, onEnterVR }) => {
   const [viewer, setViewer] = useState(null);
   const [isVRMode, setIsVRMode] = useState(false);
+
+  // Set Cesium Ion access token
+  useEffect(() => {
+    if (process.env.REACT_APP_CESIUM_TOKEN) {
+      Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_TOKEN;
+    }
+  }, []);
 
   // Jharkhand center coordinates
   const jharkhandCenter = Cartesian3.fromDegrees(85.2799, 23.6102, 100000);
