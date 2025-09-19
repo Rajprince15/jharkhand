@@ -118,21 +118,7 @@ const ARVRMapLauncher = ({
           )}
         </Button>
 
-        {/* 3D Map Button */}
-        <Button
-          onClick={() => handleModeSelect('3d')}
-          variant={getButtonVariant('3d')}
-          size={size}
-          className={`${
-            activeMode === '3d' 
-              ? 'bg-purple-600 hover:bg-purple-700' 
-              : 'border-purple-600 text-purple-600 hover:bg-purple-50'
-          }`}
-          disabled={!capabilities.webgl}
-        >
-          <Globe className="h-4 w-4 mr-2" />
-          3D Map
-        </Button>
+       
 
         {/* Quick Actions */}
         {layout === 'grid' && (
@@ -185,14 +171,7 @@ const ARVRMapLauncher = ({
         onDestinationSelect={onDestinationSelect}
       />
 
-      {/* 3D Map Modal */}
-      <Interactive3DMap
-        destinations={destinations}
-        selectedDestination={selectedDestination}
-        isOpen={activeMode === '3d'}
-        onClose={handleClose}
-        onDestinationSelect={onDestinationSelect}
-      />
+     
 
       {/* Device Info Panel */}
       {!capabilities.webgl && (

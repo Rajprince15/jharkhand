@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { MapPin, Star, ArrowLeft, Filter, Search, Map } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, Filter, Search, Map, Globe } from 'lucide-react';
 import { destinations } from '../data/mock';
 import { useTranslation } from '../hooks/useTranslation';
 import AlternativeMapView from '../components/AlternativeMapView';
 import ARVRMapLauncher from '../components/ARVRMapLauncher';
+import CesiumMap from '../components/CesiumMap';
 import { destinationsAPI } from '../services/api';
+import 'leaflet/dist/leaflet.css';
 
 // Fix for default markers in React Leaflet - removed as we're not using raw Leaflet anymore
 
@@ -133,6 +135,16 @@ const MapPage = () => {
               >
                 <Map className="h-4 w-4 mr-2" />
                 2D Map
+              </Button>
+              
+              <Button
+                onClick={() => setMapMode('3D')}
+                variant={mapMode === '3D' ? 'default' : 'outline'}
+                size="sm"
+                className={mapMode === '3D' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+              >
+                <Globe className="h-4 w-4 mr-2" />
+                3D Globe
               </Button>
               
               {/* AR/VR Launcher */}
@@ -305,6 +317,16 @@ const MapPage = () => {
                       center={jharkhandCenter}
                       zoom={8}
                       bounds={mapBounds}
+                    />
+                  )}
+
+                  {/* 3D Cesium Globe */}
+                  {mapMode === '3D' && (
+                    <CesiumMap
+                      destinations={filteredDestinations}
+                      selectedDestination={selectedDestination}
+                      onDestinationSelect={setSelectedDestination}
+                      onEnterVR={() => setMapMode('VR')}
                     />
                   )}
                 </div>
