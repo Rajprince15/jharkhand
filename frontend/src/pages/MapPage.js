@@ -1,46 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { MapPin, Star, ArrowLeft, Filter, Search, Map, Globe, Headphones, Camera } from 'lucide-react';
+import { MapPin, Star, ArrowLeft, Filter, Search, Map } from 'lucide-react';
 import { destinations } from '../data/mock';
 import { useTranslation } from '../hooks/useTranslation';
-import CesiumMap from '../components/CesiumMap';
-import ARExperience from '../components/ARExperience';
-import VRExperience from '../components/VRExperience';
+import AlternativeMapView from '../components/AlternativeMapView';
+import ARVRMapLauncher from '../components/ARVRMapLauncher';
 import { destinationsAPI } from '../services/api';
-import 'leaflet/dist/leaflet.css';
 
-// Fix for default markers in React Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-// Custom icon for tourist places
-const createCustomIcon = (category) => {
-  const colors = {
-    'city': '#3B82F6',
-    'nature': '#10B981',
-    'wildlife': '#F59E0B',
-    'religious': '#8B5CF6',
-    'adventure': '#EF4444',
-    'default': '#6B7280'
-  };
-  
-  const color = colors[category] || colors.default;
-  
-  return L.divIcon({
-    html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-    className: 'custom-marker',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
-};
+// Fix for default markers in React Leaflet - removed as we're not using raw Leaflet anymore
 
 const MapPage = () => {
   const { t } = useTranslation();
@@ -165,33 +134,15 @@ const MapPage = () => {
                 <Map className="h-4 w-4 mr-2" />
                 2D Map
               </Button>
-              <Button
-                onClick={() => setMapMode('3D')}
-                variant={mapMode === '3D' ? 'default' : 'outline'}
+              
+              {/* AR/VR Launcher */}
+              <ARVRMapLauncher
+                destinations={filteredDestinations}
+                selectedDestination={selectedDestination}
+                onDestinationSelect={setSelectedDestination}
+                layout="horizontal"
                 size="sm"
-                className={mapMode === '3D' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-              >
-                <Globe className="h-4 w-4 mr-2" />
-                3D Globe
-              </Button>
-              <Button
-                onClick={() => setMapMode('VR')}
-                variant={mapMode === 'VR' ? 'default' : 'outline'}
-                size="sm"
-                className={mapMode === 'VR' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-              >
-                <Headphones className="h-4 w-4 mr-2" />
-                VR Tour
-              </Button>
-              <Button
-                onClick={() => setMapMode('AR')}
-                variant={mapMode === 'AR' ? 'default' : 'outline'}
-                size="sm"
-                className={mapMode === 'AR' ? 'bg-orange-600 hover:bg-orange-700' : ''}
-              >
-                <Camera className="h-4 w-4 mr-2" />
-                AR View
-              </Button>
+              />
             </div>
           </div>
         </div>
@@ -347,93 +298,13 @@ const MapPage = () => {
 
                   {/* Render different map types based on mode */}
                   {mapMode === '2D' && (
-                    <MapContainer
-                      center={jharkhandCenter}
-                      zoom={8}
-                      style={{ height: '100%', width: '100%' }}
-                      bounds={mapBounds}
-                    >
-                      <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution="Jharkhand Tourism Map"
-                      />
-                      
-                      {filteredDestinations.map((destination) => (
-                        <Marker
-                          key={destination.id}
-                          position={destination.coordinates}
-                          icon={createCustomIcon(destination.category)}
-                          eventHandlers={{
-                            click: () => setSelectedDestination(destination),
-                          }}
-                        >
-                          <Popup>
-                            <div className="max-w-xs">
-                              <img
-                                src={destination.image_url}
-                                alt={destination.name}
-                                className="w-full h-20 object-cover rounded mb-2"
-                              />
-                              <h3 className="font-semibold text-gray-900 mb-1">
-                                {destination.name}
-                              </h3>
-                              <div className="flex items-center text-gray-600 mb-2">
-                                <MapPin className="h-3 w-3 mr-1" />
-                                <span className="text-xs">{destination.location}</span>
-                              </div>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center">
-                                  <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
-                                  <span className="text-xs">{destination.rating}</span>
-                                </div>
-                                {destination.price && (
-                                  <span className="text-xs font-semibold text-green-600">
-                                    ₹{destination.price}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-600 mb-3 line-clamp-2">
-                                {destination.description}
-                              </p>
-                              <Link to={`/destination/${destination.id}`}>
-                                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
-                                  {t('viewDetails')}
-                                </Button>
-                              </Link>
-                            </div>
-                          </Popup>
-                        </Marker>
-                      ))}
-                    </MapContainer>
-                  )}
-
-                  {/* 3D Cesium Map */}
-                  {mapMode === '3D' && (
-                    <CesiumMap
+                    <AlternativeMapView
                       destinations={filteredDestinations}
                       selectedDestination={selectedDestination}
                       onDestinationSelect={setSelectedDestination}
-                      onEnterVR={() => setMapMode('VR')}
-                    />
-                  )}
-
-                  {/* VR Experience */}
-                  {mapMode === 'VR' && (
-                    <VRExperience
-                      destinations={filteredDestinations}
-                      selectedDestination={selectedDestination}
-                      isVRActive={mapMode === 'VR'}
-                      onVRToggle={(active) => setMapMode(active ? 'VR' : '2D')}
-                    />
-                  )}
-
-                  {/* AR Experience */}
-                  {mapMode === 'AR' && (
-                    <ARExperience
-                      destinations={filteredDestinations}
-                      selectedDestination={selectedDestination}
-                      isARActive={mapMode === 'AR'}
-                      onARToggle={() => setMapMode(mapMode === 'AR' ? '2D' : 'AR')}
+                      center={jharkhandCenter}
+                      zoom={8}
+                      bounds={mapBounds}
                     />
                   )}
                 </div>
@@ -444,53 +315,60 @@ const MapPage = () => {
             <Card className="mt-4">
               <CardContent className="p-4">
                 <h3 className="font-semibold text-gray-900 mb-2">
-                  {mapMode === '2D' ? t('howToUseMap') : `How to use ${mapMode} Mode`}
+                  {t('howToUseMap')} - Advanced AR/VR Features
                 </h3>
-                <div className="text-sm text-gray-600 space-y-1">
-                  {mapMode === '2D' && (
-                    <>
-                      <p>{t('clickMarker')}</p>
-                      <p>{t('useFilters')}</p>
-                      <p>{t('zoomInOut')}</p>
-                      <p>{t('clickViewDetails')}</p>
-                    </>
-                  )}
-                  {mapMode === '3D' && (
-                    <>
-                      <p>• Rotate the globe by clicking and dragging</p>
-                      <p>• Zoom in/out using mouse wheel or touch gestures</p>
-                      <p>• Click on destination markers to view details</p>
-                      <p>• Use terrain visualization for immersive experience</p>
-                    </>
-                  )}
-                  {mapMode === 'VR' && (
-                    <>
-                      <p>• Put on VR headset for immersive experience</p>
-                      <p>• Use controllers to interact with destinations</p>
-                      <p>• Navigate between destinations using control spheres</p>
-                      <p>• Look around to explore 360° environments</p>
-                    </>
-                  )}
-                  {mapMode === 'AR' && (
-                    <>
-                      <p>• Point camera at flat surface to place AR content</p>
-                      <p>• Move device to explore 3D destination models</p>
-                      <p>• Tap on models to view destination information</p>
-                      <p>• Works best in well-lit environments</p>
-                    </>
-                  )}
+                <div className="text-sm text-gray-600 space-y-2">
+                  <div className="border-l-4 border-green-500 pl-3">
+                    <h4 className="font-semibold text-green-700 mb-1">📱 Augmented Reality (AR)</h4>
+                    <ul className="text-xs space-y-1">
+                      <li>• Point camera at surroundings to see destination markers</li>
+                      <li>• Tap green markers to explore attractions</li>
+                      <li>• Works best on mobile devices with camera</li>
+                      <li>• Distance indicators help with navigation</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="border-l-4 border-blue-500 pl-3">
+                    <h4 className="font-semibold text-blue-700 mb-1">🥽 Virtual Reality (VR)</h4>
+                    <ul className="text-xs space-y-1">
+                      <li>• 360° immersive destination experiences</li>
+                      <li>• Navigate between attractions using hotspots</li>
+                      <li>• Interactive 3D map for destination selection</li>
+                      <li>• VR headset compatible for full immersion</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="border-l-4 border-purple-500 pl-3">
+                    <h4 className="font-semibold text-purple-700 mb-1">🌍 3D Interactive Map</h4>
+                    <ul className="text-xs space-y-1">
+                      <li>• Terrain view with elevation data</li>
+                      <li>• Click and drag to rotate the map</li>
+                      <li>• Hover over markers for instant info</li>
+                      <li>• Multiple viewing modes (terrain, wireframe)</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="border-l-4 border-orange-500 pl-3">
+                    <h4 className="font-semibold text-orange-700 mb-1">🗺️ Enhanced 2D Map</h4>
+                    <ul className="text-xs space-y-1">
+                      <li>• Multiple tile layers (Street, Satellite, Terrain)</li>
+                      <li>• Integrated AR/VR launch buttons</li>
+                      <li>• Click markers to view details</li>
+                      <li>• Search and filter functionality</li>
+                    </ul>
+                  </div>
                 </div>
                 
-                {/* Current Mode Indicator */}
+                {/* Current Features Status */}
                 <div className="mt-4 pt-4 border-t">
-                  <div className="flex items-center justify-center">
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      mapMode === '2D' ? 'bg-green-100 text-green-700' :
-                      mapMode === '3D' ? 'bg-blue-100 text-blue-700' :
-                      mapMode === 'VR' ? 'bg-purple-100 text-purple-700' :
-                      'bg-orange-100 text-orange-700'
-                    }`}>
-                      Current Mode: {mapMode}
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">{filteredDestinations.length}</div>
+                      <div className="text-gray-600">AR/VR Ready Destinations</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600">3</div>
+                      <div className="text-gray-600">Immersive Experience Modes</div>
                     </div>
                   </div>
                 </div>
