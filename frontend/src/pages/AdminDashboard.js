@@ -1,35 +1,131 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Users, MapPin, Star, TrendingUp, LogOut, Loader2, IndianRupee } from 'lucide-react';
-import { adminAPI, destinationsAPI, providersAPI, reviewsAPI } from '../services/api';
+import { Users, MapPin, Star, TrendingUp, LogOut, Loader2, IndianRupee, Calendar, Clock, Eye, RefreshCw } from 'lucide-react';
+import { adminAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSpring, animated } from 'react-spring';
+import CountUp from 'react-countup';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalDestinations: 0,
     totalProviders: 0,
     totalBookings: 0,
     totalRevenue: 0,
-    averageRating: 0,
-    monthlyBookings: 0
+    avgBookingValue: 0,
+    monthlyRevenue: [],
+    userGrowth: [],
+    bookingGrowth: [],
+    recentBookings: [],
+    bookingByStatus: {},
+    revenueByDestination: []
   });
-  const [recentDestinations, setRecentDestinations] = useState([]);
-  const [recentProviders, setRecentProviders] = useState([]);
-  const [recentUsers, setRecentUsers] = useState([]);
+
+  // Color scheme: white, green, brown
+  const colors = {
+    primary: '#22c55e', // green-500
+    secondary: '#a3a3a3', // neutral-400
+    accent: '#92400e', // amber-800 (brown)
+    background: '#ffffff', // white
+    surface: '#f8fafc', // slate-50
+    text: '#1f2937' // gray-800
+  };
 
   useEffect(() => {
     if (user?.role === 'admin') {
       fetchDashboardData();
+      
+      // Auto-refresh every 1 minute
+      const interval = setInterval(fetchDashboardData, 60000);
+      return () => clearInterval(interval);
     }
   }, [user]);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await adminAPI.getStats();
+      
+      setStats({
+        totalUsers: data.total_users || 0,
+        totalDestinations: data.total_destinations || 0,
+        totalProviders: data.total_providers || 0,
+        totalBookings: data.total_bookings || 0,
+        totalRevenue: data.total_revenue || 0,
+        avgBookingValue: data.avg_booking_value || 0,
+        monthlyRevenue: data.monthly_revenue || [],
+        userGrowth: data.user_growth || [],
+        bookingGrowth: data.booking_growth || [],
+        recentBookings: data.recent_bookings || [],
+        bookingByStatus: data.booking_by_status || {},
+        revenueByDestination: data.revenue_by_destination || []
+      });
+      
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  // 3D Animation components
+  const AnimatedCard = ({ children, delay = 0, className = "" }) => {
+    const cardSpring = useSpring({
+      from: { transform: 'perspective(1000px) rotateX(30deg) translateY(50px)', opacity: 0 },
+      to: { transform: 'perspective(1000px) rotateX(0deg) translateY(0px)', opacity: 1 },
+      delay: delay * 100,
+      config: { tension: 280, friction: 60 }
+    });
+
+    return (
+      <animated.div 
+        style={cardSpring}
+        className={`transform-gpu hover:scale-105 transition-all duration-300 ${className}`}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'perspective(1000px) rotateY(5deg) scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'perspective(1000px) rotateY(0deg) scale(1)';
+        }}
+      >
+        {children}
+      </animated.div>
+    );
+  };
+
+  // Chart data processing
+  const processChartData = (data, key) => {
+    return data.map(item => ({
+      month: new Date(`${item.month}-01`).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      value: item[key] || 0,
+      [key]: item[key] || 0
+    }));
+  };
+
+  const pieChartData = Object.entries(stats.bookingByStatus).map(([status, count]) => ({
+    name: status.charAt(0).toUpperCase() + status.slice(1),
+    value: count,
+    color: status === 'completed' ? colors.primary : 
+           status === 'pending' ? '#fbbf24' : 
+           status === 'cancelled' ? '#ef4444' : colors.accent
+  }));
 
   const fetchDashboardData = async () => {
     try {
@@ -94,286 +190,383 @@ const AdminDashboard = () => {
       title: 'Total Users',
       value: stats.totalUsers,
       icon: Users,
-      color: 'text-blue-600'
+      gradient: 'from-green-400 to-green-600',
+      textColor: 'text-white'
     },
     {
       title: 'Total Destinations',
       value: stats.totalDestinations,
       icon: MapPin,
-      color: 'text-green-600'
+      gradient: 'from-amber-700 to-amber-900',
+      textColor: 'text-white'
     },
     {
       title: 'Service Providers',
       value: stats.totalProviders,
       icon: Users,
-      color: 'text-purple-600'
+      gradient: 'from-green-500 to-green-700',
+      textColor: 'text-white'
     },
     {
       title: 'Total Bookings',
       value: stats.totalBookings,
       icon: TrendingUp,
-      color: 'text-orange-600'
+      gradient: 'from-amber-600 to-amber-800',
+      textColor: 'text-white'
     },
     {
       title: 'Total Revenue',
-      value: `₹${stats.totalRevenue.toLocaleString()}`,
+      value: stats.totalRevenue,
       icon: IndianRupee,
-      color: 'text-green-600'
+      gradient: 'from-green-600 to-green-800',
+      textColor: 'text-white',
+      isRevenue: true
     },
     {
-      title: 'Average Rating',
-      value: stats.averageRating || '0.0',
+      title: 'Avg Booking Value',
+      value: stats.avgBookingValue,
       icon: Star,
-      color: 'text-yellow-600'
+      gradient: 'from-amber-500 to-amber-700',
+      textColor: 'text-white',
+      isRevenue: true
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-amber-50">
       {/* Header */}
-      <div className="bg-white shadow-lg border-b border-gray-200">
+      <motion.div 
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="bg-white shadow-lg border-b border-gray-200 backdrop-blur-sm"
+      >
         <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-amber-600 bg-clip-text text-transparent">
+              Admin Dashboard
+            </h1>
             <p className="text-gray-600 mt-1">Welcome back, {user.name}</p>
+            <div className="flex items-center space-x-2 mt-2">
+              <Clock className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-500">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            </div>
           </div>
-          <Button onClick={handleLogout} variant="outline" className="hover:bg-gray-50">
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center space-x-3">
+            <Button 
+              onClick={fetchDashboardData} 
+              variant="outline" 
+              className="border-green-300 text-green-700 hover:bg-green-50"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button onClick={handleLogout} variant="outline" className="hover:bg-gray-50">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading dashboard data...</p>
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <Loader2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
+              </motion.div>
+              <p className="text-gray-600">Loading dashboard data...</p>
             </div>
           </div>
         ) : (
-          <>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <AnimatePresence>
+            {/* 3D Animated Stats Grid */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+            >
               {statsData.map((stat, index) => (
-                <Card key={index} className={`hover:shadow-lg transition-shadow duration-300 ${
-                  index === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' :
-                  index === 1 ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' :
-                  index === 2 ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white' :
-                  index === 3 ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white' :
-                  index === 4 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white' :
-                  'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white'
-                }`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className={`text-sm font-medium ${
-                          index === 0 ? 'text-blue-100' :
-                          index === 1 ? 'text-green-100' :
-                          index === 2 ? 'text-purple-100' :
-                          index === 3 ? 'text-orange-100' :
-                          index === 4 ? 'text-emerald-100' :
-                          'text-yellow-100'
-                        }`}>{stat.title}</p>
-                        <p className="text-3xl font-bold">{stat.value}</p>
+                <AnimatedCard key={index} delay={index}>
+                  <Card className={`bg-gradient-to-br ${stat.gradient} ${stat.textColor} shadow-xl border-0 overflow-hidden relative`}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                    <CardContent className="p-6 relative z-10">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium opacity-90">{stat.title}</p>
+                          <div className="text-3xl font-bold">
+                            {stat.isRevenue ? (
+                              <span>₹<CountUp end={stat.value} duration={2} separator="," /></span>
+                            ) : (
+                              <CountUp end={stat.value} duration={2} />
+                            )}
+                          </div>
+                        </div>
+                        <motion.div
+                          animate={{ rotate: [0, 5, -5, 0] }}
+                          transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                        >
+                          <stat.icon className="h-8 w-8 opacity-80" />
+                        </motion.div>
                       </div>
-                      <stat.icon className={`h-8 w-8 ${
-                        index === 0 ? 'text-blue-200' :
-                        index === 1 ? 'text-green-200' :
-                        index === 2 ? 'text-purple-200' :
-                        index === 3 ? 'text-orange-200' :
-                        index === 4 ? 'text-emerald-200' :
-                        'text-yellow-200'
-                      }`} />
+                    </CardContent>
+                  </Card>
+                </AnimatedCard>
+              ))}
+            </motion.div>
+
+            {/* Growth Charts */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+              <AnimatedCard delay={6}>
+                <Card className="bg-white shadow-xl border-green-100">
+                  <CardHeader className="bg-gradient-to-r from-green-50 to-green-100">
+                    <CardTitle className="text-green-900 flex items-center">
+                      <TrendingUp className="h-5 w-5 mr-2" />
+                      User Growth Over Time
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart data={processChartData(stats.userGrowth, 'new_users')}>
+                        <defs>
+                          <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={colors.primary} stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor={colors.primary} stopOpacity={0.1}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="month" stroke="#6b7280" />
+                        <YAxis stroke="#6b7280" />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="new_users" 
+                          stroke={colors.primary} 
+                          fillOpacity={1} 
+                          fill="url(#userGradient)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
+
+              <AnimatedCard delay={7}>
+                <Card className="bg-white shadow-xl border-amber-100">
+                  <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-100">
+                    <CardTitle className="text-amber-900 flex items-center">
+                      <IndianRupee className="h-5 w-5 mr-2" />
+                      Revenue Growth Over Time
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={processChartData(stats.monthlyRevenue, 'revenue')}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="month" stroke="#6b7280" />
+                        <YAxis stroke="#6b7280" tickFormatter={(value) => `₹${value.toLocaleString()}`} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                          formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="revenue" 
+                          stroke={colors.accent} 
+                          strokeWidth={3}
+                          dot={{ fill: colors.accent, strokeWidth: 2, r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
+            </div>
+
+            {/* Analytics Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <AnimatedCard delay={8}>
+                <Card className="bg-white shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-gray-800 flex items-center">
+                      <Eye className="h-5 w-5 mr-2 text-green-600" />
+                      Booking Status Distribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
+
+              <AnimatedCard delay={9}>
+                <Card className="bg-white shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-gray-800 flex items-center">
+                      <MapPin className="h-5 w-5 mr-2 text-amber-600" />
+                      Revenue by Destination
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={stats.revenueByDestination} layout="horizontal">
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis type="number" tickFormatter={(value) => `₹${value.toLocaleString()}`} />
+                        <YAxis dataKey="destination_name" type="category" width={100} />
+                        <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']} />
+                        <Bar dataKey="revenue" fill={colors.primary} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
+            </div>
+
+            {/* Recent Bookings */}
+            <AnimatedCard delay={10}>
+              <Card className="bg-white shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-green-50 to-amber-50">
+                  <CardTitle className="text-gray-800 flex items-center">
+                    <Calendar className="h-5 w-5 mr-2 text-green-600" />
+                    Recent Bookings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {stats.recentBookings.length > 0 ? (
+                    <div className="space-y-4">
+                      {stats.recentBookings.map((booking, index) => (
+                        <motion.div
+                          key={booking.id}
+                          initial={{ x: -20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <div>
+                                <p className="font-medium">{booking.customer_name}</p>
+                                <p className="text-sm text-gray-600">{booking.destination_name}</p>
+                                <p className="text-xs text-gray-500">{booking.package_type} • {booking.guests} guests</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-green-600">₹{booking.total_price.toLocaleString()}</p>
+                              <p className="text-sm text-gray-500">{new Date(booking.created_at).toLocaleDateString()}</p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              booking.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {booking.status}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">No recent bookings found</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </AnimatedCard>
+
+            {/* Management Actions */}
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 1.1 }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
+            >
+              <AnimatedCard delay={11}>
+                <Card className="bg-gradient-to-br from-green-100 to-green-200 border-0 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-green-900">User Management</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-green-700 mb-4">Manage registered users and their roles</p>
+                    <Button className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white">
+                      View All Users
+                    </Button>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
+
+              <AnimatedCard delay={12}>
+                <Card className="bg-gradient-to-br from-amber-100 to-amber-200 border-0 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-amber-900">Content Management</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-amber-700 mb-4">Manage destinations and provider listings</p>
+                    <div className="space-y-2">
+                      <Link to="/admin/destinations">
+                        <Button className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white">
+                          Manage Destinations
+                        </Button>
+                      </Link>
+                      <Link to="/admin/services">
+                        <Button variant="outline" className="w-full border-amber-300 text-amber-700 hover:bg-amber-50">
+                          Manage Services
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              </AnimatedCard>
+
+              <AnimatedCard delay={13}>
+                <Card className="bg-gradient-to-br from-green-100 to-amber-100 border-0 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-gray-800">System Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-700 mb-4">View detailed analytics and reports</p>
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-green-300 text-green-700 hover:bg-green-50" 
+                      onClick={fetchDashboardData}
+                    >
+                      Advanced Analytics
+                    </Button>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
             </div>
-
-            {/* Management Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <Card className="hover:shadow-lg transition-shadow duration-300">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
-                  <CardTitle className="text-blue-900">User Management</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">Manage registered users and their roles</p>
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" onClick={() => window.location.reload()}>
-                    View All Users
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow duration-300">
-                <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
-                  <CardTitle className="text-green-900">Content Management</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">Manage destinations and provider listings</p>
-                  <div className="space-y-2">
-                    <Link to="/admin/destinations">
-                      <Button className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700">
-                        Manage Destinations
-                      </Button>
-                    </Link>
-                    <Link to="/admin/services">
-                      <Button variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-50">
-                        Manage Services
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow duration-300">
-                <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50">
-                  <CardTitle className="text-orange-900">System Analytics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">View detailed analytics and reports</p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-orange-300 text-orange-700 hover:bg-orange-50" 
-                    onClick={fetchDashboardData}
-                  >
-                    Refresh Data
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Destinations</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {recentDestinations.length > 0 ? (
-                    <div className="space-y-4">
-                      {recentDestinations.map((destination) => (
-                        <div key={destination.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={destination.image_url}
-                              alt={destination.name}
-                              className="w-12 h-12 rounded-lg object-cover"
-                            />
-                            <div>
-                              <p className="font-medium">{destination.name}</p>
-                              <p className="text-sm text-gray-600">{destination.category}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                            <span className="text-sm">{destination.rating}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">No destinations found</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Service Providers</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {recentProviders.length > 0 ? (
-                    <div className="space-y-4">
-                      {recentProviders.map((provider) => (
-                        <div key={provider.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={provider.image_url || '/placeholder-image.jpg'}
-                              alt={provider.name}
-                              className="w-12 h-12 rounded-lg object-cover"
-                            />
-                            <div>
-                              <p className="font-medium">{provider.name}</p>
-                              <p className="text-sm text-gray-600 capitalize">{provider.category}</p>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                provider.is_active 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {provider.is_active ? 'Active' : 'Inactive'}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                            <span className="text-sm">{provider.rating || 'N/A'}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">No providers found</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Users */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Users</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {recentUsers.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-2">Name</th>
-                          <th className="text-left py-2">Email</th>
-                          <th className="text-left py-2">Role</th>
-                          <th className="text-left py-2">Joined</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentUsers.map((user) => (
-                          <tr key={user.id} className="border-b">
-                            <td className="py-2 font-medium">{user.name}</td>
-                            <td className="py-2 text-gray-600">{user.email}</td>
-                            <td className="py-2">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                user.role === 'admin' ? 'bg-red-100 text-red-800' :
-                                user.role === 'provider' ? 'bg-blue-100 text-blue-800' :
-                                'bg-green-100 text-green-800'
-                              }`}>
-                                {user.role}
-                              </span>
-                            </td>
-                            <td className="py-2 text-gray-600">
-                              {new Date(user.created_at).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No users found</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
+          </AnimatePresence>
         )}
       </div>
     </div>

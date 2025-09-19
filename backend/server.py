@@ -1348,7 +1348,7 @@ async def create_review(
 # Admin API
 @api_router.get("/admin/stats")
 async def get_admin_stats(current_user: dict = Depends(get_current_user)):
-    """Get admin dashboard statistics"""
+    """Get comprehensive admin dashboard statistics with time-series data"""
     try:
         if current_user['role'] != 'admin':
             raise HTTPException(status_code=403, detail="Admin access required")
@@ -1356,7 +1356,7 @@ async def get_admin_stats(current_user: dict = Depends(get_current_user)):
         pool = await get_db()
         async with pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cur:
-                # Get various statistics
+                # Basic statistics
                 stats = {}
                 
                 await cur.execute("SELECT COUNT(*) as total FROM users")
@@ -1371,15 +1371,106 @@ async def get_admin_stats(current_user: dict = Depends(get_current_user)):
                 await cur.execute("SELECT COUNT(*) as total FROM bookings")
                 stats['total_bookings'] = (await cur.fetchone())['total']
                 
-                await cur.execute("SELECT SUM(total_price) as revenue FROM bookings WHERE status = 'completed'")
+                await cur.execute("SELECT SUM(total_price) as revenue FROM bookings WHERE status IN ('completed', 'paid')")
                 revenue_result = await cur.fetchone()
                 stats['total_revenue'] = float(revenue_result['revenue']) if revenue_result['revenue'] else 0
                 
+                # Monthly revenue for the last 6 months
+                await cur.execute("""
+                    SELECT 
+                        DATE_FORMAT(created_at, '%Y-%m') as month,
+                        SUM(total_price) as revenue,
+                        COUNT(*) as bookings
+                    FROM bookings 
+                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+                        AND status IN ('completed', 'paid')
+                    GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+                    ORDER BY month ASC
+                """)
+                monthly_revenue = await cur.fetchall()
+                stats['monthly_revenue'] = monthly_revenue
+                
+                # User growth - last 6 months
+                await cur.execute("""
+                    SELECT 
+                        DATE_FORMAT(created_at, '%Y-%m') as month,
+                        COUNT(*) as new_users
+                    FROM users 
+                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+                    GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+                    ORDER BY month ASC
+                """)
+                user_growth = await cur.fetchall()
+                stats['user_growth'] = user_growth
+                
+                # Booking growth - last 6 months
+                await cur.execute("""
+                    SELECT 
+                        DATE_FORMAT(created_at, '%Y-%m') as month,
+                        COUNT(*) as bookings
+                    FROM bookings 
+                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+                    GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+                    ORDER BY month ASC
+                """)
+                booking_growth = await cur.fetchall()
+                stats['booking_growth'] = booking_growth
+                
+                # Recent bookings with details
+                await cur.execute("""
+                    SELECT 
+                        b.id,
+                        b.booking_date,
+                        b.total_price,
+                        b.status,
+                        b.package_type,
+                        b.guests,
+                        u.name as customer_name,
+                        u.email as customer_email,
+                        d.name as destination_name,
+                        p.name as provider_name,
+                        b.created_at
+                    FROM bookings b
+                    JOIN users u ON b.user_id = u.id
+                    LEFT JOIN destinations d ON b.destination_id = d.id
+                    LEFT JOIN providers p ON b.provider_id = p.id
+                    ORDER BY b.created_at DESC
+                    LIMIT 10
+                """)
+                recent_bookings = await cur.fetchall()
+                stats['recent_bookings'] = recent_bookings
+                
+                # Booking status distribution
                 await cur.execute("""
                     SELECT status, COUNT(*) as count FROM bookings GROUP BY status
                 """)
                 booking_stats = await cur.fetchall()
                 stats['booking_by_status'] = {stat['status']: stat['count'] for stat in booking_stats}
+                
+                # Revenue by destination
+                await cur.execute("""
+                    SELECT 
+                        d.name as destination_name,
+                        SUM(b.total_price) as revenue,
+                        COUNT(b.id) as bookings
+                    FROM bookings b
+                    JOIN destinations d ON b.destination_id = d.id
+                    WHERE b.status IN ('completed', 'paid')
+                    GROUP BY d.id, d.name
+                    ORDER BY revenue DESC
+                    LIMIT 5
+                """)
+                revenue_by_destination = await cur.fetchall()
+                stats['revenue_by_destination'] = revenue_by_destination
+                
+                # Average booking value
+                await cur.execute("""
+                    SELECT AVG(total_price) as avg_booking_value 
+                    FROM bookings 
+                    WHERE status IN ('completed', 'paid')
+                """)
+                avg_result = await cur.fetchone()
+                stats['avg_booking_value'] = float(avg_result['avg_booking_value']) if avg_result['avg_booking_value'] else 0
                 
                 return stats
     except HTTPException:
