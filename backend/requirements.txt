@@ -23,3 +23,7 @@ fastuuid
 multidict>=6.0.4
 attrs
 qrcode[pil]
+yarl>=1.20.1
+propcache>=0.3.2 
+web3==6.11.0
+eth-account==0.9.0
