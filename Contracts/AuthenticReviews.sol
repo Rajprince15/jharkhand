@@ -2,8 +2,8 @@
 pragma solidity ^0.8.19;
 
 /**
- * @title Authentic Reviews System
- * @dev Smart contract for verified tourism reviews linked to completed bookings
+ * @title Authentic Reviews System (Simplified)
+ * @dev Smart contract for verified tourism reviews (standalone version)
  * @author Jharkhand Tourism Blockchain System
  */
 
@@ -35,30 +35,6 @@ contract AuthenticReviews {
         uint256 oneStar;
     }
     
-    // Verification status enum (must match BookingVerification contract)
-    enum VerificationStatus {
-        Pending,
-        Verified,
-        Completed,
-        Cancelled,
-        Disputed
-    }
-
-    // Interface for BookingVerification contract
-    interface IBookingVerification {
-        function isBookingValid(bytes32 _bookingHash) external view returns (bool);
-        function getBookingDetails(bytes32 _bookingHash) external view returns (
-            address tourist,
-            address provider,
-            string memory destination,
-            uint256 amount,
-            uint256 bookingDate,
-            uint256 verificationDate,
-            VerificationStatus status,
-            string memory ipfsHash
-        );
-    }
-    
     // State variables
     mapping(uint256 => Review) public reviews;
     mapping(string => uint256[]) public destinationReviews;
@@ -71,7 +47,6 @@ contract AuthenticReviews {
     
     uint256 private nextReviewId = 1;
     address public owner;
-    address public bookingVerificationContract;
     
     // Events
     event ReviewSubmitted(uint256 indexed reviewId, address indexed reviewer, string destination);
@@ -107,15 +82,14 @@ contract AuthenticReviews {
         _;
     }
     
-    constructor(address _bookingVerificationContract) {
+    constructor() {
         owner = msg.sender;
-        bookingVerificationContract = _bookingVerificationContract;
         authorizedModerators[msg.sender] = true;
     }
     
     /**
-     * @dev Submit a verified review for a completed booking
-     * @param _bookingHash Hash of the completed booking
+     * @dev Submit a review (simplified version without booking verification)
+     * @param _bookingHash Hash of the booking (for reference)
      * @param _destination Name of the destination
      * @param _provider Name of the service provider
      * @param _rating Rating from 1-5 stars
@@ -135,14 +109,6 @@ contract AuthenticReviews {
         require(bytes(_reviewText).length >= 10, "Review text too short (minimum 10 characters)");
         require(bookingToReview[_bookingHash] == 0, "Review already exists for this booking");
         
-        // Verify booking exists and is completed
-        IBookingVerification bookingContract = IBookingVerification(bookingVerificationContract);
-        require(bookingContract.isBookingValid(_bookingHash), "Invalid or unverified booking");
-        
-        // Get booking details to verify reviewer is the tourist
-        (address tourist, , , , , , , ) = bookingContract.getBookingDetails(_bookingHash);
-        require(msg.sender == tourist, "Only the tourist can review this booking");
-        
         uint256 reviewId = nextReviewId;
         nextReviewId++;
         
@@ -157,7 +123,7 @@ contract AuthenticReviews {
             reviewText: _reviewText,
             images: _images,
             timestamp: block.timestamp,
-            isVerified: true, // Auto-verified since linked to booking
+            isVerified: true, // Auto-verified for simplicity
             likes: 0,
             reports: 0
         });
@@ -172,23 +138,6 @@ contract AuthenticReviews {
         
         emit ReviewSubmitted(reviewId, msg.sender, _destination);
         return reviewId;
-    }
-    
-    /**
-     * @dev Check if a reviewer has completed a verified tour to the destination
-     * @param _reviewer Address of the reviewer
-     * @param _destination Name of the destination
-     */
-    function isReviewerVerified(address _reviewer, string memory _destination) public view returns (bool) {
-        uint256[] memory userReviewIds = userReviews[_reviewer];
-        
-        for (uint256 i = 0; i < userReviewIds.length; i++) {
-            Review memory review = reviews[userReviewIds[i]];
-            if (keccak256(bytes(review.destination)) == keccak256(bytes(_destination)) && review.isVerified) {
-                return true;
-            }
-        }
-        return false;
     }
     
     /**
@@ -335,7 +284,7 @@ contract AuthenticReviews {
         uint256 returnSize = allReviews.length < _limit ? allReviews.length : _limit;
         uint256[] memory topReviews = new uint256[](returnSize);
         
-        // Simple selection based on rating and likes (could be improved with sorting)
+        // Simple selection based on rating and likes
         uint256 added = 0;
         for (uint256 i = 0; i < allReviews.length && added < returnSize; i++) {
             if (reviews[allReviews[i]].isVerified && reviews[allReviews[i]].rating >= 4) {
@@ -371,14 +320,6 @@ contract AuthenticReviews {
     function revokeModerator(address _moderator) public onlyOwner validAddress(_moderator) {
         authorizedModerators[_moderator] = false;
         emit ModeratorRevoked(_moderator);
-    }
-    
-    /**
-     * @dev Update booking verification contract address
-     * @param _newContract New contract address
-     */
-    function updateBookingContract(address _newContract) public onlyOwner validAddress(_newContract) {
-        bookingVerificationContract = _newContract;
     }
     
     /**
