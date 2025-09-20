@@ -12,6 +12,7 @@ import json
 import uuid
 from pathlib import Path
 from services.gemini_service import GeminiService
+from services.blockchain_service import blockchain_service
 import aiomysql
 
 ROOT_DIR = Path(__file__).parent
@@ -2180,6 +2181,435 @@ async def get_pending_payments(current_user: dict = Depends(get_current_user)):
                 pending_payments = await cur.fetchall()
                 return pending_payments
                 
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ===========================================
+# BLOCKCHAIN API ENDPOINTS
+# ===========================================
+
+# Import blockchain models
+from models import (
+    WalletConnect, WalletResponse, CertificateCreate, Certificate, 
+    LoyaltyPointsBalance, LoyaltyTransaction, BlockchainBooking, 
+    BlockchainReview, BlockchainStatus, GasCostEstimate
+)
+
+@api_router.get("/blockchain/status", response_model=BlockchainStatus)
+async def get_blockchain_status():
+    """Get blockchain network status and configuration"""
+    try:
+        network_info = blockchain_service.get_network_info()
+        return BlockchainStatus(**network_info)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/blockchain/wallet/connect", response_model=WalletResponse)
+async def connect_wallet(wallet_data: WalletConnect, current_user: dict = Depends(get_current_user)):
+    """Connect user's Web3 wallet"""
+    try:
+        async with get_db() as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    # Check if wallet is already connected to another user
+                    await cur.execute(
+                        "SELECT user_id FROM user_wallets WHERE wallet_address = %s",
+                        (wallet_data.wallet_address,)
+                    )
+                    existing_wallet = await cur.fetchone()
+                    
+                    if existing_wallet and existing_wallet['user_id'] != current_user['id']:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail="This wallet is already connected to another account"
+                        )
+                    
+                    # Update or insert wallet connection
+                    wallet_id = str(uuid.uuid4())
+                    await cur.execute("""
+                        INSERT INTO user_wallets (id, user_id, wallet_address, is_verified, created_at)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE 
+                            wallet_address = VALUES(wallet_address),
+                            is_verified = VALUES(is_verified),
+                            updated_at = CURRENT_TIMESTAMP
+                    """, (wallet_id, current_user['id'], wallet_data.wallet_address, True, datetime.now()))
+                    
+                    # Update user's wallet_address and wallet_connected status
+                    await cur.execute("""
+                        UPDATE users 
+                        SET wallet_address = %s, wallet_connected = %s 
+                        WHERE id = %s
+                    """, (wallet_data.wallet_address, True, current_user['id']))
+                    
+                    return WalletResponse(
+                        user_id=current_user['id'],
+                        wallet_address=wallet_data.wallet_address,
+                        is_verified=True,
+                        connected=True
+                    )
+                    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/blockchain/wallet/status", response_model=WalletResponse)
+async def get_wallet_status(current_user: dict = Depends(get_current_user)):
+    """Get user's wallet connection status"""
+    try:
+        async with get_db() as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    await cur.execute(
+                        "SELECT wallet_address, wallet_connected FROM users WHERE id = %s",
+                        (current_user['id'],)
+                    )
+                    user_data = await cur.fetchone()
+                    
+                    if not user_data or not user_data['wallet_address']:
+                        return WalletResponse(
+                            user_id=current_user['id'],
+                            wallet_address="",
+                            is_verified=False,
+                            connected=False
+                        )
+                    
+                    return WalletResponse(
+                        user_id=current_user['id'],
+                        wallet_address=user_data['wallet_address'],
+                        is_verified=user_data['wallet_connected'],
+                        connected=user_data['wallet_connected']
+                    )
+                    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/blockchain/certificates/mint")
+async def mint_certificate(cert_data: CertificateCreate, current_user: dict = Depends(get_current_user)):
+    """Mint a certificate NFT for completed tour"""
+    try:
+        # Get user's wallet address
+        async with get_db() as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    await cur.execute(
+                        "SELECT wallet_address FROM users WHERE id = %s",
+                        (current_user['id'],)
+                    )
+                    user_data = await cur.fetchone()
+                    
+                    if not user_data or not user_data['wallet_address']:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Please connect your wallet first"
+                        )
+                    
+                    # Check if booking exists and is completed
+                    await cur.execute(
+                        "SELECT * FROM bookings WHERE id = %s AND user_id = %s AND status = 'completed'",
+                        (cert_data.booking_id, current_user['id'])
+                    )
+                    booking = await cur.fetchone()
+                    
+                    if not booking:
+                        raise HTTPException(
+                            status_code=404,
+                            detail="Completed booking not found"
+                        )
+                    
+                    # Check if certificate already exists
+                    await cur.execute(
+                        "SELECT id FROM certificates WHERE booking_id = %s",
+                        (cert_data.booking_id,)
+                    )
+                    existing_cert = await cur.fetchone()
+                    
+                    if existing_cert:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Certificate already exists for this booking"
+                        )
+                    
+                    # Mint certificate on blockchain
+                    mint_result = await blockchain_service.mint_certificate(
+                        user_wallet=user_data['wallet_address'],
+                        booking_id=cert_data.booking_id,
+                        destination_name=cert_data.destination_name,
+                        certificate_type=cert_data.certificate_type
+                    )
+                    
+                    if not mint_result['success']:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to mint certificate: {mint_result['error']}"
+                        )
+                    
+                    # Save certificate to database
+                    cert_id = str(uuid.uuid4())
+                    await cur.execute("""
+                        INSERT INTO certificates (
+                            id, user_id, booking_id, certificate_type, nft_token_id,
+                            contract_address, transaction_hash, blockchain_network,
+                            metadata_url, certificate_title, certificate_description,
+                            destination_name, completion_date, is_minted
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        cert_id, current_user['id'], cert_data.booking_id, cert_data.certificate_type,
+                        mint_result['token_id'], blockchain_service.contracts['certificates'],
+                        mint_result['transaction_hash'], blockchain_service.network,
+                        mint_result['metadata_url'], f"Tourism Certificate - {cert_data.destination_name}",
+                        f"Certificate of {cert_data.certificate_type} for visiting {cert_data.destination_name}",
+                        cert_data.destination_name, datetime.now().date(), True
+                    ))
+                    
+                    # Update booking certificate status
+                    await cur.execute(
+                        "UPDATE bookings SET certificate_issued = %s WHERE id = %s",
+                        (True, cert_data.booking_id)
+                    )
+                    
+                    return {
+                        "success": True,
+                        "certificate_id": cert_id,
+                        "transaction_hash": mint_result['transaction_hash'],
+                        "token_id": mint_result['token_id']
+                    }
+                    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/blockchain/certificates/my", response_model=List[Certificate])
+async def get_my_certificates(current_user: dict = Depends(get_current_user)):
+    """Get user's certificates"""
+    try:
+        async with get_db() as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    await cur.execute(
+                        "SELECT * FROM certificates WHERE user_id = %s ORDER BY issued_at DESC",
+                        (current_user['id'],)
+                    )
+                    certificates = await cur.fetchall()
+                    return certificates
+                    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/blockchain/loyalty/balance", response_model=LoyaltyPointsBalance)
+async def get_loyalty_balance(current_user: dict = Depends(get_current_user)):
+    """Get user's loyalty points balance"""
+    try:
+        async with get_db() as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    await cur.execute(
+                        "SELECT * FROM loyalty_points WHERE user_id = %s",
+                        (current_user['id'],)
+                    )
+                    loyalty_data = await cur.fetchone()
+                    
+                    if not loyalty_data:
+                        # Create initial loyalty record
+                        loyalty_id = str(uuid.uuid4())
+                        user_wallet = ""
+                        
+                        # Get user wallet address
+                        await cur.execute(
+                            "SELECT wallet_address FROM users WHERE id = %s",
+                            (current_user['id'],)
+                        )
+                        user_data = await cur.fetchone()
+                        if user_data and user_data['wallet_address']:
+                            user_wallet = user_data['wallet_address']
+                        
+                        await cur.execute("""
+                            INSERT INTO loyalty_points (
+                                id, user_id, wallet_address, points_balance, 
+                                total_earned, total_redeemed, contract_address
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            loyalty_id, current_user['id'], user_wallet, 0.0, 0.0, 0.0,
+                            blockchain_service.contracts['loyalty']
+                        ))
+                        
+                        return LoyaltyPointsBalance(
+                            user_id=current_user['id'],
+                            wallet_address=user_wallet,
+                            points_balance=0.0,
+                            total_earned=0.0,
+                            total_redeemed=0.0
+                        )
+                    
+                    return LoyaltyPointsBalance(**loyalty_data)
+                    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/blockchain/loyalty/award")
+async def award_loyalty_points(
+    booking_id: str, 
+    points: int, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Award loyalty points for a booking (internal use)"""
+    try:
+        # This endpoint would typically be called internally after booking completion
+        async with get_db() as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    # Get user wallet
+                    await cur.execute(
+                        "SELECT wallet_address FROM users WHERE id = %s",
+                        (current_user['id'],)
+                    )
+                    user_data = await cur.fetchone()
+                    
+                    if not user_data or not user_data['wallet_address']:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Please connect your wallet first"
+                        )
+                    
+                    # Award points on blockchain
+                    award_result = await blockchain_service.award_loyalty_points(
+                        user_wallet=user_data['wallet_address'],
+                        points=points,
+                        booking_id=booking_id
+                    )
+                    
+                    if not award_result['success']:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to award points: {award_result['error']}"
+                        )
+                    
+                    # Update database
+                    await cur.execute("""
+                        UPDATE loyalty_points 
+                        SET points_balance = points_balance + %s, 
+                            total_earned = total_earned + %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE user_id = %s
+                    """, (points, points, current_user['id']))
+                    
+                    # Log transaction
+                    tx_id = str(uuid.uuid4())
+                    await cur.execute("""
+                        INSERT INTO loyalty_transactions (
+                            id, user_id, transaction_type, points_amount, 
+                            booking_id, transaction_hash, description
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        tx_id, current_user['id'], 'earned', points,
+                        booking_id, award_result['transaction_hash'],
+                        f"Points awarded for booking {booking_id}"
+                    ))
+                    
+                    return {
+                        "success": True,
+                        "points_awarded": points,
+                        "transaction_hash": award_result['transaction_hash']
+                    }
+                    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/blockchain/bookings/verify/{booking_id}")
+async def verify_booking_blockchain(booking_id: str, current_user: dict = Depends(get_current_user)):
+    """Verify booking on blockchain"""
+    try:
+        async with get_db() as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    # Get booking details
+                    await cur.execute(
+                        "SELECT * FROM bookings WHERE id = %s AND user_id = %s",
+                        (booking_id, current_user['id'])
+                    )
+                    booking = await cur.fetchone()
+                    
+                    if not booking:
+                        raise HTTPException(status_code=404, detail="Booking not found")
+                    
+                    # Get user wallet
+                    await cur.execute(
+                        "SELECT wallet_address FROM users WHERE id = %s",
+                        (current_user['id'],)
+                    )
+                    user_data = await cur.fetchone()
+                    
+                    if not user_data or not user_data['wallet_address']:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Please connect your wallet first"
+                        )
+                    
+                    # Verify booking on blockchain
+                    verify_result = await blockchain_service.verify_booking_on_blockchain(
+                        booking_id=booking_id,
+                        booking_data=booking,
+                        user_wallet=user_data['wallet_address']
+                    )
+                    
+                    if not verify_result['success']:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to verify booking: {verify_result['error']}"
+                        )
+                    
+                    # Save blockchain booking record
+                    blockchain_booking_id = str(uuid.uuid4())
+                    await cur.execute("""
+                        INSERT INTO blockchain_bookings (
+                            id, booking_id, user_wallet, booking_hash,
+                            contract_address, transaction_hash, verification_status,
+                            blockchain_network
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        blockchain_booking_id, booking_id, user_data['wallet_address'],
+                        verify_result['booking_hash'], blockchain_service.contracts['booking'],
+                        verify_result['transaction_hash'], 'verified', blockchain_service.network
+                    ))
+                    
+                    # Update booking blockchain status
+                    await cur.execute("""
+                        UPDATE bookings 
+                        SET blockchain_verified = %s, blockchain_hash = %s, 
+                            smart_contract_address = %s, certificate_eligible = %s
+                        WHERE id = %s
+                    """, (
+                        True, verify_result['booking_hash'], 
+                        blockchain_service.contracts['booking'], True, booking_id
+                    ))
+                    
+                    return {
+                        "success": True,
+                        "booking_hash": verify_result['booking_hash'],
+                        "transaction_hash": verify_result['transaction_hash']
+                    }
+                    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/blockchain/gas/estimate/{operation}")
+async def estimate_gas_cost(operation: str):
+    """Estimate gas cost for blockchain operations"""
+    try:
+        if operation not in ['mint_certificate', 'award_points', 'redeem_points', 'verify_booking', 'verify_review']:
+            raise HTTPException(status_code=400, detail="Invalid operation")
+        
+        estimate = blockchain_service.estimate_gas_cost(operation)
+        return estimate
+        
     except HTTPException:
         raise
     except Exception as e:
