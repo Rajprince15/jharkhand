@@ -24,7 +24,7 @@ def apply_blockchain_schema():
         cursor = connection.cursor()
         
         # Read blockchain schema
-        with open('/app/backend/database/blockchain_schema.sql', 'r') as file:
+        with open('/jharkhand/backend/database/blockchain_schema.sql', 'r') as file:
             schema_sql = file.read()
         
         # Split by statements and execute

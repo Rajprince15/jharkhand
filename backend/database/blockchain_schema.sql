@@ -3,6 +3,10 @@
 
 USE jharkhand_tourism;
 
+-- ==========================================
+-- 1. Create new blockchain-related tables
+-- ==========================================
+
 -- Table for storing user wallet information
 CREATE TABLE IF NOT EXISTS user_wallets (
     id VARCHAR(255) PRIMARY KEY,
@@ -118,33 +122,43 @@ CREATE TABLE IF NOT EXISTS blockchain_reviews (
     INDEX idx_booking_reviews (booking_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Add blockchain-related columns to existing bookings table
+-- ==========================================
+-- 2. Add new columns to existing tables
+-- ==========================================
+
+-- Bookings table
 ALTER TABLE bookings 
-ADD COLUMN IF NOT EXISTS blockchain_verified BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS blockchain_hash VARCHAR(66),
-ADD COLUMN IF NOT EXISTS smart_contract_address VARCHAR(42),
-ADD COLUMN IF NOT EXISTS certificate_eligible BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS certificate_issued BOOLEAN DEFAULT FALSE;
+ADD COLUMN blockchain_verified BOOLEAN DEFAULT FALSE,
+ADD COLUMN blockchain_hash VARCHAR(66),
+ADD COLUMN smart_contract_address VARCHAR(42),
+ADD COLUMN certificate_eligible BOOLEAN DEFAULT FALSE,
+ADD COLUMN certificate_issued BOOLEAN DEFAULT FALSE;
 
--- Add blockchain columns to users table
+-- Users table
 ALTER TABLE users 
-ADD COLUMN IF NOT EXISTS wallet_address VARCHAR(42) UNIQUE,
-ADD COLUMN IF NOT EXISTS wallet_connected BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS loyalty_points_balance DECIMAL(10,2) DEFAULT 0.00;
+ADD COLUMN wallet_address VARCHAR(42) UNIQUE,
+ADD COLUMN wallet_connected BOOLEAN DEFAULT FALSE,
+ADD COLUMN loyalty_points_balance DECIMAL(10,2) DEFAULT 0.00;
 
--- Add blockchain verification to reviews table
+-- Reviews table
 ALTER TABLE reviews 
-ADD COLUMN IF NOT EXISTS blockchain_verified BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS blockchain_hash VARCHAR(66),
-ADD COLUMN IF NOT EXISTS is_verified_tourist BOOLEAN DEFAULT FALSE;
+ADD COLUMN blockchain_verified BOOLEAN DEFAULT FALSE,
+ADD COLUMN blockchain_hash VARCHAR(66),
+ADD COLUMN is_verified_tourist BOOLEAN DEFAULT FALSE;
 
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_bookings_blockchain ON bookings(blockchain_verified);
-CREATE INDEX IF NOT EXISTS idx_bookings_certificate ON bookings(certificate_eligible, certificate_issued);
-CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address);
-CREATE INDEX IF NOT EXISTS idx_reviews_blockchain ON reviews(blockchain_verified);
+-- ==========================================
+-- 3. Create indexes AFTER columns exist
+-- ==========================================
 
--- Insert initial data for smart contract addresses (using your provided addresses)
+CREATE INDEX idx_bookings_blockchain ON bookings(blockchain_verified);
+CREATE INDEX idx_bookings_certificate ON bookings(certificate_eligible, certificate_issued);
+CREATE INDEX idx_users_wallet ON users(wallet_address);
+CREATE INDEX idx_reviews_blockchain ON reviews(blockchain_verified);
+
+-- ==========================================
+-- 4. Insert initial loyalty points data
+-- ==========================================
+
 INSERT IGNORE INTO loyalty_points (id, user_id, wallet_address, contract_address) 
 SELECT 
     CONCAT('loyalty_', users.id), 
