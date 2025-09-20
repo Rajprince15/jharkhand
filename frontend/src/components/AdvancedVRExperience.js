@@ -13,7 +13,7 @@ import {
 } from '@react-three/drei';
 import { TextureLoader } from 'three';
 import { Button } from './ui/button';
-import { Headphones, X, ArrowLeft, ArrowRight, Home, Eye, Map } from 'lucide-react';
+import { Headphones, X, ArrowLeft, ArrowRight, Home, Eye, Map, Navigation } from 'lucide-react';
 import * as THREE from 'three';
 
 // 360° VR Destination Environment
@@ -268,7 +268,7 @@ const VR3DMap = ({ destinations, currentIndex, onDestinationSelect }) => {
 };
 
 // Main VR Scene
-const VRScene = ({ destinations, currentIndex, onNavigate, onDestinationSelect }) => {
+const VRScene = ({ destinations, currentIndex, onNavigate, onDestinationSelect, onDirections, onBookTour, on360View }) => {
   const currentDestination = destinations[currentIndex] || {
     name: 'Jharkhand Tourism',
     location: 'Beautiful State of India',
@@ -331,7 +331,7 @@ const VRScene = ({ destinations, currentIndex, onNavigate, onDestinationSelect }
         label="360° View"
         color="#3b82f6"
         icon="🔄"
-        onClick={() => {}}
+        onClick={() => on360View && on360View()}
       />
       
       <VRHotspot 
@@ -339,7 +339,16 @@ const VRScene = ({ destinations, currentIndex, onNavigate, onDestinationSelect }
         label="Book Tour"
         color="#f59e0b"
         icon="🎫"
-        onClick={() => {}}
+        onClick={() => onBookTour && onBookTour(currentDestination)}
+      />
+
+      {/* Directions Hotspot */}
+      <VRHotspot 
+        position={[0, 3, -10]} 
+        label="Get Directions"
+        color="#10b981"
+        icon="🧭"
+        onClick={() => onDirections && onDirections(currentDestination)}
       />
 
       {/* Counter Display */}
@@ -417,6 +426,30 @@ const AdvancedVRExperience = ({
     }
   };
 
+  const handleDirections = (destination) => {
+    if (destination && destination.coordinates) {
+      const lat = destination.coordinates.lat || destination.coordinates[0];
+      const lng = destination.coordinates.lng || destination.coordinates[1];
+      // Open Google Maps directions
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      window.open(url, '_blank');
+    } else {
+      alert('Location coordinates not available for directions');
+    }
+  };
+
+  const handleBookTour = (destination) => {
+    // Navigate to booking page for this destination
+    if (destination) {
+      const bookingUrl = `/booking?destination=${encodeURIComponent(destination.name)}`;
+      window.open(bookingUrl, '_blank');
+    }
+  };
+
+  const handle360View = () => {
+    alert('360° View activated - Look around to explore the full environment!');
+  };
+
   if (!isOpen) return null;
 
   const currentDestination = destinations[currentDestinationIndex] || {
@@ -456,6 +489,14 @@ const AdvancedVRExperience = ({
           </span>
           <Button onClick={() => handleNavigate('next')} size="sm" variant="outline">
             <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button 
+            onClick={() => handleDirections(currentDestination)} 
+            size="sm" 
+            className="bg-blue-600 hover:bg-blue-700"
+            title="Get directions to this destination"
+          >
+            <Navigation className="h-4 w-4" />
           </Button>
           <Button onClick={onClose} size="sm" className="bg-green-600 hover:bg-green-700">
             <Home className="h-4 w-4" />
@@ -513,6 +554,9 @@ const AdvancedVRExperience = ({
             currentIndex={currentDestinationIndex}
             onNavigate={handleNavigate}
             onDestinationSelect={handleDestinationSelect}
+            onDirections={handleDirections}
+            onBookTour={handleBookTour}
+            on360View={handle360View}
           />
           <OrbitControls 
             enablePan={false} 

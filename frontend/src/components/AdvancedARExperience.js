@@ -248,6 +248,23 @@ const AdvancedARExperience = ({ destinations = [], isOpen, onClose, onDestinatio
     onDestinationSelect && onDestinationSelect(destination);
   };
 
+  const handleDirections = (destination) => {
+    if (destination && destination.coordinates) {
+      const lat = destination.coordinates.lat || destination.coordinates[0];
+      const lng = destination.coordinates.lng || destination.coordinates[1];
+      // Open Google Maps directions
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      window.open(url, '_blank');
+    } else {
+      alert('Location coordinates not available for directions');
+    }
+  };
+
+  const handleRecenter = () => {
+    // Recenter the AR view (simulate compass reset)
+    alert('AR View Recentered - Point camera around to see updated markers');
+  };
+
   const requestCameraPermission = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -322,11 +339,21 @@ const AdvancedARExperience = ({ destinations = [], isOpen, onClose, onDestinatio
       {/* AR Controls */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
         <div className="flex items-center space-x-4 bg-black bg-opacity-70 p-3 rounded-lg">
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            size="sm" 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => handleDirections(destinations[0])}
+            title="Get directions to nearest destination"
+          >
             <Navigation className="h-4 w-4 mr-2" />
             Directions
           </Button>
-          <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+          <Button 
+            size="sm" 
+            className="bg-purple-600 hover:bg-purple-700"
+            onClick={handleRecenter}
+            title="Recenter AR view"
+          >
             <Compass className="h-4 w-4 mr-2" />
             Recenter
           </Button>

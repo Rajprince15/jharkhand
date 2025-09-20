@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Headphones, Camera } from 'lucide-react';
-import SimpleVRTour from './SimpleVRTour';
-import SimpleARTour from './SimpleARTour';
+import AdvancedARExperience from './AdvancedARExperience';
+import AdvancedVRExperience from './AdvancedVRExperience';
 
 const WebXRLauncher = ({ 
   destinations = [], 
   selectedDestination,
+  onDestinationSelect,
   className = "",
   size = "sm",
   variant = "default" 
@@ -38,17 +39,19 @@ const WebXRLauncher = ({
         </Button>
       </div>
 
-      <SimpleVRTour
+      <AdvancedVRExperience
         destinations={destinations}
         selectedDestination={selectedDestination}
         isOpen={showVRTour}
         onClose={() => setShowVRTour(false)}
+        onDestinationSelect={onDestinationSelect}
       />
       
-      <SimpleARTour
+      <AdvancedARExperience
         destinations={destinations}
         isOpen={showARTour}
         onClose={() => setShowARTour(false)}
+        onDestinationSelect={onDestinationSelect}
       />
     </>
   );
