@@ -90,7 +90,7 @@ const AddServicePage = () => {
         service_name: formData.service_name,
         description: formData.description,
         price: parseFloat(formData.price),
-        destination_id: parseInt(formData.destination_id),  // Convert to integer
+        destination_id: formData.destination_id,  // Convert to integer
         contact: formData.contact,
         image_url: formData.image_url || 'https://images.pexels.com/photos/3184405/pexels-photo-3184405.jpeg?auto=compress&cs=tinysrgb&w=400'
       };
