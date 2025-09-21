@@ -4,20 +4,23 @@ import { useAuth } from '../contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Star, MapPin, IndianRupee, Calendar, Users, X, Heart } from 'lucide-react';
+import { Star, MapPin, IndianRupee, Calendar, Users, X, Heart, Shield, CheckCircle } from 'lucide-react';
 import { wishlistAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 import ProviderSelectionModal from './ProviderSelectionModal';
+import VerifiedReviewForm from './VerifiedReviewForm';
 
 
 
-const DestinationModal = ({ destination, isOpen, onClose }) => {
+const DestinationModal = ({ destination, isOpen, onClose, walletConnected = false }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [showProviderModal, setShowProviderModal] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
   
   if (!destination) return null;
 
@@ -245,6 +248,119 @@ const DestinationModal = ({ destination, isOpen, onClose }) => {
                   <span className="text-muted-foreground">Languages:</span>
                   <span className="font-medium">Hindi, English, Local</span>
                 </div>
+              </div>
+
+              {/* Verified Reviews Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Reviews</h3>
+                  {walletConnected && (
+                    <div className="flex items-center text-sm text-green-600">
+                      <Shield className="h-4 w-4 mr-1" />
+                      Verified Reviews
+                    </div>
+                  )}
+                </div>
+
+                {/* Review Stats */}
+                <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Star className="h-5 w-5 text-yellow-400 fill-current mr-2" />
+                      <span className="text-lg font-semibold">{destination.rating}</span>
+                      <span className="text-muted-foreground ml-2">({reviews.length} reviews)</span>
+                    </div>
+                    {walletConnected && (
+                      <div className="flex items-center text-sm text-blue-600">
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        {reviews.filter(r => r.blockchain_verified).length} blockchain verified
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sample Reviews with Blockchain Verification */}
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {[
+                    {
+                      id: 1,
+                      user: "Rahul Sharma",
+                      rating: 5,
+                      comment: "Absolutely stunning destination! The waterfall views were breathtaking.",
+                      date: "2025-01-15",
+                      blockchain_verified: walletConnected ? true : false
+                    },
+                    {
+                      id: 2,
+                      user: "Priya Singh",
+                      rating: 4,
+                      comment: "Great experience with excellent local guides. Highly recommended!",
+                      date: "2025-01-12",
+                      blockchain_verified: walletConnected ? true : false
+                    },
+                    {
+                      id: 3,
+                      user: "Tourist",
+                      rating: 5,
+                      comment: "Perfect place for nature lovers. Clean facilities and friendly staff.",
+                      date: "2025-01-10",
+                      blockchain_verified: false
+                    }
+                  ].map((review) => (
+                    <div key={review.id} className="border-l-4 border-green-200 pl-4 py-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <span className="font-medium text-sm">{review.user}</span>
+                          {review.blockchain_verified && walletConnected && (
+                            <div className="flex items-center ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                              <Shield className="h-3 w-3 mr-1" />
+                              Verified
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center">
+                          {Array.from({ length: review.rating }, (_, i) => (
+                            <Star key={i} className="h-4 w-4 text-yellow-400 fill-current" />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">{review.comment}</p>
+                      <p className="text-xs text-muted-foreground">{review.date}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add Review Button */}
+                {user && user.role === 'tourist' && (
+                  <div className="mt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowReviewForm(!showReviewForm)}
+                      className="w-full"
+                    >
+                      {showReviewForm ? 'Cancel Review' : 'Write a Review'}
+                    </Button>
+                    
+                    {showReviewForm && (
+                      <div className="mt-4">
+                        <VerifiedReviewForm 
+                          destinationId={destination.id}
+                          isBlockchainVerified={walletConnected}
+                          onReviewSubmitted={() => {
+                            setShowReviewForm(false);
+                            toast({
+                              title: "Review Submitted",
+                              description: walletConnected ? 
+                                "Your review has been submitted and will be verified on blockchain." :
+                                "Your review has been submitted successfully.",
+                            });
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

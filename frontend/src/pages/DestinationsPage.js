@@ -12,6 +12,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../hooks/use-toast';
 import WalletConnector from '../components/WalletConnector';
 import BlockchainStatus from '../components/BlockchainStatus';
+import VerifiedReviewForm from '../components/VerifiedReviewForm';
 
 const DestinationsPage = () => {
   const { t } = useTranslation();
@@ -242,10 +243,16 @@ const DestinationsPage = () => {
                     alt={destination.name}
                     className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute top-4 right-4">
+                  <div className="absolute top-4 right-4 flex flex-col gap-2">
                     <Badge className="bg-green-600 text-white">
                       {destination.category}
                     </Badge>
+                    {walletConnected && (
+                      <Badge className="bg-blue-600 text-white flex items-center">
+                        <Shield className="h-3 w-3 mr-1" />
+                        Verified Reviews
+                      </Badge>
+                    )}
                   </div>
                   <div className="absolute top-4 left-4 flex items-center space-x-1 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1">
                     <Star className="h-4 w-4 text-yellow-400 fill-current" />
@@ -300,6 +307,7 @@ const DestinationsPage = () => {
         destination={selectedDestination}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+        walletConnected={walletConnected}
       />
 
       <Footer />
