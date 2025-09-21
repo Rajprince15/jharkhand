@@ -46,11 +46,9 @@ async def blockchain_status():
     return BlockchainStatus(
         network=info.get("network", "unknown"),
         connected=info.get("connected", False),
-        chain_id=info.get("chain_id"),
-        latest_block=info.get("latest_block"),
-        gas_price_gwei=info.get("gas_price_gwei"),
-        wallet_address=info.get("wallet_address"),
-        contracts=contracts_dict
+        block_number=info.get("latest_block"),
+        gas_price=str(info.get("gas_price_gwei")) if info.get("gas_price_gwei") is not None else None,
+        contract_addresses=contracts_dict
     )
 
 # Create a router with the /api prefix
@@ -2221,7 +2219,16 @@ async def get_blockchain_status():
     """Get blockchain network status and configuration"""
     try:
         network_info = blockchain_service.get_network_info()
-        return BlockchainStatus(**network_info)
+        # Map the fields correctly to match BlockchainStatus model
+        contracts_dict = network_info.get("contracts") or {}
+        
+        return BlockchainStatus(
+            network=network_info.get("network", "unknown"),
+            connected=network_info.get("connected", False),
+            block_number=network_info.get("latest_block"),
+            gas_price=str(network_info.get("gas_price_gwei")) if network_info.get("gas_price_gwei") is not None else None,
+            contract_addresses=contracts_dict
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2229,8 +2236,8 @@ async def get_blockchain_status():
 async def connect_wallet(wallet_data: WalletConnect, current_user: dict = Depends(get_current_user)):
     """Connect user's Web3 wallet"""
     try:
-        async with get_db() as pool:
-            async with pool.acquire() as conn:
+        pool = await get_db()
+        async with pool.acquire() as conn:
                 async with conn.cursor(aiomysql.DictCursor) as cur:
                     # Check if wallet is already connected to another user
                     await cur.execute(
@@ -2279,8 +2286,8 @@ async def connect_wallet(wallet_data: WalletConnect, current_user: dict = Depend
 async def get_wallet_status(current_user: dict = Depends(get_current_user)):
     """Get user's wallet connection status"""
     try:
-        async with get_db() as pool:
-            async with pool.acquire() as conn:
+        pool = await get_db()
+        async with pool.acquire() as conn:
                 async with conn.cursor(aiomysql.DictCursor) as cur:
                     await cur.execute(
                         "SELECT wallet_address, wallet_connected FROM users WHERE id = %s",
@@ -2311,8 +2318,8 @@ async def mint_certificate(cert_data: CertificateCreate, current_user: dict = De
     """Mint a certificate NFT for completed tour"""
     try:
         # Get user's wallet address
-        async with get_db() as pool:
-            async with pool.acquire() as conn:
+        pool = await get_db()
+        async with pool.acquire() as conn:
                 async with conn.cursor(aiomysql.DictCursor) as cur:
                     await cur.execute(
                         "SELECT wallet_address FROM users WHERE id = %s",

@@ -339,7 +339,7 @@ class BlockchainService:
             
             # Sign and send transaction
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
             
             # Wait for receipt
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -409,7 +409,7 @@ class BlockchainService:
             })
             
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
             
             return {
@@ -444,7 +444,7 @@ class BlockchainService:
             })
             
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
             
             return {
@@ -504,7 +504,7 @@ class BlockchainService:
             })
             
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
             
             return {
@@ -564,7 +564,7 @@ class BlockchainService:
             })
             
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
             
             return {

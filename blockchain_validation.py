@@ -239,7 +239,7 @@ def test_backend_apis():
             return False
 
         # Test other blockchain endpoints (basic connectivity)
-        blockchain_endpoints = ['/blockchain/gas/estimate/mint']
+        blockchain_endpoints = ['/blockchain/gas/estimate/mint_certificate']
         for endpoint in blockchain_endpoints:
             try:
                 response = requests.get(f'http://localhost:8000/api{endpoint}', timeout=5)
