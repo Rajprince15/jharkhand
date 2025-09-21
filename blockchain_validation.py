@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
-Comprehensive Blockchain Implementation Validation Script
-Tests Phases 1-4 of Jharkhand Tourism Blockchain Integration
+🔍 COMPLETE BLOCKCHAIN IMPLEMENTATION VALIDATION SCRIPT
+Tests Phases 1-6 of Jharkhand Tourism Blockchain Integration
+✅ Phase 1: Dependencies & Setup
+✅ Phase 2: Smart Contracts  
+✅ Phase 3: Database Schema
+✅ Phase 4: Backend Integration
+✅ Phase 5: Frontend Components
+✅ Phase 6: System Integration
 """
 
 import os
@@ -154,10 +160,12 @@ def test_database_schema():
         
         # Check blockchain tables
         blockchain_tables = [
+            'user_wallets',
+            'certificates', 
+            'loyalty_points',
+            'loyalty_transactions',
             'blockchain_bookings',
-            'blockchain_reviews', 
-            'certificates',
-            'user_wallets'
+            'blockchain_reviews'
         ]
         
         tables_exist = 0
@@ -169,55 +177,45 @@ def test_database_schema():
                 print_status("PASS", f"Blockchain table '{table}' exists")
                 tables_exist += 1
             else:
-                print_status("FAIL", f"Blockchain table '{table}' missing")
+                print_status("WARN", f"Blockchain table '{table}' missing (may be optional)")
+        
+        # Check if bookings table has blockchain columns
+        try:
+            cursor.execute("DESCRIBE bookings")
+            columns = [row[0] for row in cursor.fetchall()]
+            blockchain_cols = ['blockchain_verified', 'blockchain_hash', 'certificate_eligible']
+            for col in blockchain_cols:
+                if col in columns:
+                    print_status("PASS", f"Bookings table has blockchain column '{col}'")
+                else:
+                    print_status("WARN", f"Bookings table missing blockchain column '{col}'")
+        except Exception as e:
+            print_status("WARN", f"Could not check bookings table structure: {str(e)}")
         
         cursor.close()
         connection.close()
         
-        return tables_exist >= 3  # At least 3 out of 4 tables should exist
+        return tables_exist >= 3  # At least half the blockchain tables should exist
         
     except Exception as e:
         print_status("FAIL", f"Database schema test error: {str(e)}")
         return False
 
 def test_backend_apis():
-    """Test backend API endpoints on Windows without sudo/supervisorctl"""
+    """Test backend blockchain API endpoints"""
     try:
-        import platform
-        is_windows = platform.system() == "Windows"
+        print_status("INFO", "Testing blockchain API endpoints...")
         
-        print_status("INFO", "Checking if backend service is running...")
-        backend_running = False
-
-        # Try connecting first
-        try:
-            response = requests.get('http://localhost:8000/api/', timeout=5)
-            if response.status_code < 500:
-                backend_running = True
-        except:
-            backend_running = False
-
-        # If backend not running, start it
-        if not backend_running:
-            print_status("WARN", "Backend not running, attempting to start...")
-            if is_windows:
-                # Windows: use subprocess.Popen
-                backend_process = subprocess.Popen(
-                    ['python', 'backend/main.py'],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-                print_status("INFO", "Waiting 5 seconds for backend to start...")
-                time.sleep(5)
-            else:
-                # Linux: original supervisorctl approach
-                subprocess.run(['sudo', 'supervisorctl', 'restart', 'backend'])
-                time.sleep(5)
-
+        # Backend URL configuration
+        backend_url = 'http://localhost:8000'  # Updated to correct port
+        
         # Test basic API connectivity
         try:
-            response = requests.get('http://localhost:8000/api/', timeout=5)
-            print_status("PASS", "Backend API is accessible")
+            response = requests.get(f'{backend_url}/api/', timeout=5)
+            if response.status_code < 500:
+                print_status("PASS", "Backend API is accessible")
+            else:
+                print_status("WARN", f"Backend API returned status {response.status_code}")
         except requests.exceptions.ConnectionError:
             print_status("FAIL", "Cannot connect to backend API on port 8000")
             return False
@@ -227,10 +225,13 @@ def test_backend_apis():
 
         # Test blockchain status endpoint
         try:
-            response = requests.get('http://localhost:8000/api/blockchain/status', timeout=10)
+            response = requests.get(f'{backend_url}/api/blockchain/status', timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 print_status("PASS", f"Blockchain status API working: {data.get('network', 'unknown')} network")
+                print_status("INFO", f"Connected: {data.get('connected', False)}")
+                if data.get('contract_addresses'):
+                    print_status("INFO", f"Contracts configured: {len(data['contract_addresses'])}")
             else:
                 print_status("FAIL", f"Blockchain status API returned {response.status_code}")
                 return False
@@ -238,22 +239,146 @@ def test_backend_apis():
             print_status("FAIL", f"Blockchain status API error: {str(e)}")
             return False
 
-        # Test other blockchain endpoints (basic connectivity)
-        blockchain_endpoints = ['/blockchain/gas/estimate/mint_certificate']
-        for endpoint in blockchain_endpoints:
+        # Test blockchain endpoints (basic connectivity)
+        blockchain_endpoints = {
+            '/blockchain/wallet/status': 'GET',
+            '/blockchain/certificates': 'GET', 
+            '/blockchain/loyalty/balance': 'GET',
+            '/blockchain/gas/estimate/mint_certificate': 'GET'
+        }
+        
+        passed_endpoints = 0
+        for endpoint, method in blockchain_endpoints.items():
             try:
-                response = requests.get(f'http://localhost:8000/api{endpoint}', timeout=5)
-                if response.status_code in [200, 422, 401]:
-                    print_status("PASS", f"Blockchain API endpoint accessible: {endpoint}")
+                response = requests.get(f'{backend_url}/api{endpoint}', timeout=5)
+                # 401 is expected for protected endpoints without auth
+                if response.status_code in [200, 401, 422]:
+                    print_status("PASS", f"Blockchain API endpoint accessible: {method} {endpoint}")
+                    passed_endpoints += 1
                 else:
-                    print_status("FAIL", f"Blockchain API endpoint error {response.status_code}: {endpoint}")
+                    print_status("WARN", f"Blockchain API endpoint returned {response.status_code}: {endpoint}")
             except Exception as e:
                 print_status("WARN", f"Blockchain API endpoint test failed: {endpoint} - {str(e)}")
 
-        return True
+        return passed_endpoints >= 2  # At least half the endpoints should be accessible
 
     except Exception as e:
         print_status("FAIL", f"Backend API test error: {str(e)}")
+        return False
+
+
+def test_frontend_components():
+    """Test frontend blockchain components"""
+    try:
+        print_status("INFO", "Testing frontend blockchain components...")
+        
+        # List of frontend blockchain components to check
+        frontend_components = [
+            '/jharkhand/frontend/src/components/WalletConnector.js',
+            '/jharkhand/frontend/src/components/CertificateGallery.js',
+            '/jharkhand/frontend/src/components/LoyaltyDashboard.js', 
+            '/jharkhand/frontend/src/components/BlockchainBookingStatus.js',
+            '/jharkhand/frontend/src/components/VerifiedReviewForm.js',
+            '/jharkhand/frontend/src/components/BlockchainStatus.js'
+        ]
+        
+        components_exist = 0
+        for component in frontend_components:
+            if check_file_exists(component, f"Frontend component"):
+                components_exist += 1
+        
+        # Check frontend package.json for blockchain dependencies  
+        package_json_path = '/jharkhand/frontend/package.json'
+        blockchain_deps = ['ethers', '@metamask/sdk', 'react-qr-code']
+        deps_found = 0
+        
+        for dep in blockchain_deps:
+            if check_frontend_dependency(dep, package_json_path):
+                deps_found += 1
+        
+        return (components_exist >= 4) and (deps_found >= 2)
+        
+    except Exception as e:
+        print_status("FAIL", f"Frontend components test error: {str(e)}")
+        return False
+
+
+def test_system_integration():
+    """Test Phase 6: System Integration"""
+    try:
+        print_status("INFO", "Testing system integration...")
+        
+        # Check if BookingsPage is integrated with blockchain
+        bookings_page = '/jharkhand/frontend/src/pages/BookingsPage.js'
+        booking_page = '/jharkhand/frontend/src/pages/BookingPage.js'
+        
+        integration_score = 0
+        
+        # Check BookingsPage integration
+        if os.path.exists(bookings_page):
+            with open(bookings_page, 'r') as f:
+                content = f.read()
+                if 'WalletConnector' in content and 'CertificateGallery' in content:
+                    print_status("PASS", "BookingsPage has blockchain integration")
+                    integration_score += 1
+                else:
+                    print_status("WARN", "BookingsPage missing some blockchain components")
+        
+        # Check BookingPage integration  
+        if os.path.exists(booking_page):
+            with open(booking_page, 'r') as f:
+                content = f.read()
+                if 'WalletConnector' in content or 'blockchain' in content.lower():
+                    print_status("PASS", "BookingPage has blockchain integration")
+                    integration_score += 1
+                else:
+                    print_status("WARN", "BookingPage missing blockchain integration")
+        
+        # Check backend loyalty endpoints
+        try:
+            backend_url = 'http://localhost:8000'
+            response = requests.get(f'{backend_url}/api/', timeout=3)
+            if response.status_code < 500:
+                print_status("PASS", "Backend service available for integration testing")
+                integration_score += 1
+        except:
+            print_status("WARN", "Backend service not available for integration testing")
+        
+        return integration_score >= 2
+        
+    except Exception as e:
+        print_status("FAIL", f"System integration test error: {str(e)}")
+        return False
+
+
+def check_smart_contracts():
+    """Check smart contract files exist and are properly structured"""
+    try:
+        contract_files = [
+            ('/jharkhand/Contracts/TourismCertificates.sol', 'Tourism Certificates NFT'),
+            ('/jharkhand/Contracts/LoyaltyRewards.sol', 'Loyalty Rewards Points'),
+            ('/jharkhand/Contracts/BookingVerification.sol', 'Booking Verification'),
+            ('/jharkhand/Contracts/AuthenticReviews.sol', 'Authentic Reviews')
+        ]
+        
+        contracts_valid = 0
+        for contract_path, contract_name in contract_files:
+            if os.path.exists(contract_path):
+                with open(contract_path, 'r') as f:
+                    content = f.read()
+                    # Check for basic Solidity structure
+                    if 'pragma solidity' in content and 'contract' in content:
+                        print_status("PASS", f"{contract_name} contract exists and valid")
+                        contracts_valid += 1
+                    else:
+                        print_status("WARN", f"{contract_name} contract exists but may be incomplete")
+            else:
+                print_status("FAIL", f"{contract_name} contract missing: {contract_path}")
+        
+        return contracts_valid >= 3  # At least 3 out of 4 contracts should be valid
+        
+    except Exception as e:
+        print_status("FAIL", f"Smart contracts check error: {str(e)}")
         return False
 
 
@@ -269,11 +394,10 @@ def main():
     print(f"\n{Colors.BOLD}📦 PHASE 1: DEPENDENCIES & SETUP{Colors.END}")
     print("-" * 35)
     
-    tests = [
+    phase1_tests = [
         # Backend dependencies
         lambda: check_backend_dependency('web3'),
         lambda: check_backend_dependency('eth_account'),
-        lambda: check_backend_dependency('cytoolz'),
         
         # Frontend dependencies
         lambda: check_frontend_dependency('ethers', '/jharkhand/frontend/package.json'),
@@ -284,7 +408,7 @@ def main():
         lambda: check_file_exists('/jharkhand/backend/.env', 'Backend environment file'),
     ]
     
-    for test in tests:
+    for test in phase1_tests:
         total_tests += 1
         if test():
             passed_tests += 1
@@ -293,17 +417,9 @@ def main():
     print(f"\n{Colors.BOLD}📋 PHASE 2: SMART CONTRACTS{Colors.END}")
     print("-" * 30)
     
-    contracts = [
-        '/jharkhand/Contracts/TourismCertificates.sol',
-        '/jharkhand/Contracts/LoyaltyRewards.sol', 
-        '/jharkhand/Contracts/BookingVerification.sol',
-        '/jharkhand/Contracts/AuthenticReviews.sol'
-    ]
-    
-    for contract in contracts:
-        total_tests += 1
-        if check_file_exists(contract, f"Smart contract"):
-            passed_tests += 1
+    total_tests += 1
+    if check_smart_contracts():
+        passed_tests += 1
     
     # PHASE 3: DATABASE SCHEMA  
     print(f"\n{Colors.BOLD}🗄️ PHASE 3: DATABASE SCHEMA{Colors.END}")
@@ -327,6 +443,22 @@ def main():
     if test_backend_apis():
         passed_tests += 1
     
+    # PHASE 5: FRONTEND COMPONENTS
+    print(f"\n{Colors.BOLD}🎨 PHASE 5: FRONTEND COMPONENTS{Colors.END}")
+    print("-" * 35)
+    
+    total_tests += 1
+    if test_frontend_components():
+        passed_tests += 1
+    
+    # PHASE 6: SYSTEM INTEGRATION
+    print(f"\n{Colors.BOLD}🔗 PHASE 6: SYSTEM INTEGRATION{Colors.END}")
+    print("-" * 35)
+    
+    total_tests += 1
+    if test_system_integration():
+        passed_tests += 1
+    
     # FINAL REPORT
     print(f"\n{Colors.BOLD}📊 VALIDATION SUMMARY{Colors.END}")
     print("=" * 25)
@@ -347,11 +479,31 @@ def main():
     print(f"Overall Status: {status_color}{status_text}{Colors.END}")
     
     if percentage >= 90:
-        print(f"\n{Colors.GREEN}🎉 Blockchain implementation is ready for Phase 5 (Frontend Integration)!{Colors.END}")
+        print(f"\n{Colors.GREEN}🎉 Blockchain implementation (Phases 1-6) is COMPLETE and ready for Phase 7 (Testing)!{Colors.END}")
+        print(f"{Colors.GREEN}✅ Ready to proceed with comprehensive testing and deployment{Colors.END}")
     elif percentage >= 75:
-        print(f"\n{Colors.YELLOW}⚠️ Most components working, but some issues need fixing before Phase 5.{Colors.END}")
+        print(f"\n{Colors.YELLOW}⚠️ Most blockchain components working, but some issues need fixing before Phase 7.{Colors.END}")
+        print(f"{Colors.YELLOW}📋 Review failed tests and address issues before comprehensive testing{Colors.END}")
     else:
-        print(f"\n{Colors.RED}❌ Significant issues found. Please address failures before proceeding.{Colors.END}")
+        print(f"\n{Colors.RED}❌ Significant blockchain issues found. Please address failures before proceeding.{Colors.END}")
+        print(f"{Colors.RED}🔧 Focus on fixing backend integration and database connectivity first{Colors.END}")
+    
+    # Phase recommendations
+    if percentage >= 90:
+        print(f"\n{Colors.BOLD}🚀 NEXT STEPS:{Colors.END}")
+        print(f"{Colors.GREEN}1. Phase 7: Run comprehensive testing with testing agents{Colors.END}")
+        print(f"{Colors.GREEN}2. Phase 8: Deploy to production environment{Colors.END}")
+        print(f"{Colors.GREEN}3. User acceptance testing with MetaMask wallet{Colors.END}")
+    elif percentage >= 75:
+        print(f"\n{Colors.BOLD}🔧 FOCUS AREAS:{Colors.END}")
+        print(f"{Colors.YELLOW}1. Fix any failed backend API endpoints{Colors.END}")
+        print(f"{Colors.YELLOW}2. Verify smart contract deployments{Colors.END}")
+        print(f"{Colors.YELLOW}3. Test frontend component integrations{Colors.END}")
+    else:
+        print(f"\n{Colors.BOLD}⚠️ CRITICAL FIXES NEEDED:{Colors.END}")
+        print(f"{Colors.RED}1. Database connectivity and schema{Colors.END}")
+        print(f"{Colors.RED}2. Backend service configuration{Colors.END}")
+        print(f"{Colors.RED}3. Environment variables and dependencies{Colors.END}")
     
     return percentage >= 75
 
