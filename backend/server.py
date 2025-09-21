@@ -686,6 +686,8 @@ class BookingCreate(BaseModel):
     booking_phone: str = Field(..., min_length=10, description="Phone number from booking form")
     # Reference number for customer/provider communication
     reference_number: Optional[str] = Field(None, max_length=20, description="Frontend generated reference number (e.g., JH123456)")
+    # 🔗 PHASE 6.1: Blockchain Integration
+    blockchain_verification: Optional[bool] = Field(False, description="Whether user requested blockchain verification")
     
     @field_validator('booking_date', 'check_in', 'check_out')
     @classmethod
@@ -721,7 +723,7 @@ async def create_booking(
     booking_data: BookingCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new booking"""
+    """Create a new booking with blockchain integration"""
     try:
         pool = await get_db()
         booking_id = str(uuid.uuid4())
@@ -745,23 +747,67 @@ async def create_booking(
                 else:
                     total_price = (provider['price'] + destination['price']) * booking_data.guests
                 
+                # 🔗 PHASE 6.1: Blockchain Integration - Check if user wants blockchain verification
+                blockchain_verified = False
+                blockchain_hash = None
+                certificate_eligible = False
+                
+                # Check if blockchain verification was requested (from frontend)
+                blockchain_verification_requested = getattr(booking_data, 'blockchain_verification', False)
+                
                 # Create booking with personal information and package details
                 await cur.execute("""
                     INSERT INTO bookings (id, user_id, provider_id, destination_id, user_name, 
                                         provider_name, destination_name, booking_date, check_in, 
                                         check_out, guests, rooms, total_price, special_requests, status,
-                                        addons, package_type, package_name, booking_full_name, booking_email, booking_phone, city_origin, reference_number)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        addons, package_type, package_name, booking_full_name, booking_email, 
+                                        booking_phone, city_origin, reference_number, blockchain_verified, 
+                                        blockchain_hash, certificate_eligible)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     booking_id, current_user['id'], booking_data.provider_id, booking_data.destination_id,
                     current_user['name'], provider['name'], destination['name'], booking_data.booking_date,
                     booking_data.check_in, booking_data.check_out, booking_data.guests, booking_data.rooms,
                     total_price, booking_data.special_requests, 'pending',
                     booking_data.addons, booking_data.package_type, booking_data.package_name, 
-                    booking_data.booking_full_name, booking_data.booking_email, booking_data.booking_phone, booking_data.city_origin, booking_data.reference_number
+                    booking_data.booking_full_name, booking_data.booking_email, booking_data.booking_phone, 
+                    booking_data.city_origin, booking_data.reference_number, blockchain_verified, 
+                    blockchain_hash, certificate_eligible
                 ))
                 
-                return {
+                # 🔗 PHASE 6.1: Auto-Award Initial Loyalty Points for Booking
+                loyalty_points_awarded = 0
+                if blockchain_verification_requested:
+                    try:
+                        # Award base loyalty points for booking (10% of price in points)
+                        loyalty_points_awarded = int(total_price * 0.1)
+                        
+                        # Award points in database first
+                        await cur.execute("""
+                            INSERT INTO loyalty_points (id, user_id, points_balance, total_earned, total_redeemed)
+                            VALUES (UUID(), %s, %s, %s, 0)
+                            ON DUPLICATE KEY UPDATE 
+                            points_balance = points_balance + VALUES(points_balance),
+                            total_earned = total_earned + VALUES(total_earned)
+                        """, (current_user['id'], loyalty_points_awarded, loyalty_points_awarded))
+                        
+                        # Log loyalty transaction
+                        await cur.execute("""
+                            INSERT INTO loyalty_transactions (id, user_id, transaction_type, points_amount, 
+                                                           description, booking_id, status)
+                            VALUES (UUID(), %s, 'earned', %s, %s, %s, 'completed')
+                        """, (current_user['id'], loyalty_points_awarded, 
+                             f"Booking reward for {destination['name']}", booking_id))
+                        
+                        # Mark booking as certificate eligible for completed tours
+                        await cur.execute("""
+                            UPDATE bookings SET certificate_eligible = TRUE WHERE id = %s
+                        """, (booking_id,))
+                        
+                    except Exception as loyalty_error:
+                        print(f"Failed to award loyalty points: {loyalty_error}")
+                
+                response = {
                     "id": booking_id,
                     "status": "pending",
                     "total_price": total_price,
@@ -771,8 +817,17 @@ async def create_booking(
                     "booking_full_name": booking_data.booking_full_name,
                     "booking_email": booking_data.booking_email,
                     "reference_number": booking_data.reference_number,
+                    "blockchain_verified": blockchain_verified,
+                    "certificate_eligible": certificate_eligible,
+                    "loyalty_points_awarded": loyalty_points_awarded,
                     "message": "Booking created successfully"
                 }
+                
+                if blockchain_verification_requested:
+                    response["blockchain_message"] = f"Blockchain features enabled! Earned {loyalty_points_awarded} loyalty points."
+                
+                return response
+                
     except HTTPException:
         raise
     except Exception as e:
@@ -879,7 +934,7 @@ async def update_booking_status(
     status_data: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update booking status"""
+    """Update booking status with blockchain integration"""
     try:
         new_status = status_data.get('status')
         if new_status not in ['confirmed', 'cancelled', 'completed']:
@@ -887,25 +942,96 @@ async def update_booking_status(
         
         pool = await get_db()
         async with pool.acquire() as conn:
-            async with conn.cursor() as cur:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
                 # Check if user has permission to update this booking
                 if current_user['role'] == 'provider':
                     await cur.execute("""
-                        SELECT b.id FROM bookings b 
+                        SELECT b.*, d.name as destination_name FROM bookings b 
                         JOIN providers p ON b.provider_id = p.id 
+                        JOIN destinations d ON b.destination_id = d.id
                         WHERE b.id = %s AND p.user_id = %s
                     """, (booking_id, current_user['id']))
                 elif current_user['role'] == 'admin':
-                    await cur.execute("SELECT id FROM bookings WHERE id = %s", (booking_id,))
+                    await cur.execute("""
+                        SELECT b.*, d.name as destination_name FROM bookings b
+                        JOIN destinations d ON b.destination_id = d.id
+                        WHERE b.id = %s
+                    """, (booking_id,))
                 else:
-                    await cur.execute("SELECT id FROM bookings WHERE id = %s AND user_id = %s", 
-                                    (booking_id, current_user['id']))
+                    await cur.execute("""
+                        SELECT b.*, d.name as destination_name FROM bookings b
+                        JOIN destinations d ON b.destination_id = d.id
+                        WHERE b.id = %s AND b.user_id = %s
+                    """, (booking_id, current_user['id']))
                 
-                if not await cur.fetchone():
+                booking = await cur.fetchone()
+                if not booking:
                     raise HTTPException(status_code=404, detail="Booking not found or access denied")
                 
+                # Update booking status
                 await cur.execute("UPDATE bookings SET status = %s WHERE id = %s", (new_status, booking_id))
-                return {"message": "Booking status updated successfully"}
+                
+                response = {"message": "Booking status updated successfully"}
+                
+                # 🔗 PHASE 6.1: Auto-issue certificate when tour is completed
+                if new_status == 'completed' and booking.get('certificate_eligible', False):
+                    try:
+                        # Check if certificate already issued
+                        await cur.execute("SELECT id FROM certificates WHERE booking_id = %s", (booking_id,))
+                        existing_cert = await cur.fetchone()
+                        
+                        if not existing_cert:
+                            # Create certificate record
+                            cert_id = str(uuid.uuid4())
+                            await cur.execute("""
+                                INSERT INTO certificates (
+                                    id, user_id, booking_id, certificate_type, contract_address,
+                                    certificate_title, certificate_description, destination_name,
+                                    completion_date, is_minted
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            """, (
+                                cert_id, booking['user_id'], booking_id, 'tour_completion',
+                                os.getenv('CONTRACT_ADDRESS_CERTIFICATES', 'pending'),
+                                f"Tourism Certificate - {booking['destination_name']}",
+                                f"Successfully completed tour package: {booking.get('package_name', 'Tourism Experience')}",
+                                booking['destination_name'],
+                                datetime.now().date(),
+                                False  # Will be minted when user requests it
+                            ))
+                            
+                            # Mark booking as certificate issued
+                            await cur.execute("UPDATE bookings SET certificate_issued = TRUE WHERE id = %s", (booking_id,))
+                            
+                            # 🔗 PHASE 6.1: Award bonus loyalty points for completion
+                            completion_bonus = 50  # Fixed bonus points for completing a tour
+                            
+                            await cur.execute("""
+                                INSERT INTO loyalty_points (id, user_id, points_balance, total_earned, total_redeemed)
+                                VALUES (UUID(), %s, %s, %s, 0)
+                                ON DUPLICATE KEY UPDATE 
+                                points_balance = points_balance + VALUES(points_balance),
+                                total_earned = total_earned + VALUES(total_earned)
+                            """, (booking['user_id'], completion_bonus, completion_bonus))
+                            
+                            # Log completion bonus transaction
+                            await cur.execute("""
+                                INSERT INTO loyalty_transactions (id, user_id, transaction_type, points_amount, 
+                                                               description, booking_id, status)
+                                VALUES (UUID(), %s, 'earned', %s, %s, %s, 'completed')
+                            """, (booking['user_id'], completion_bonus, 
+                                 f"Tour completion bonus - {booking['destination_name']}", booking_id))
+                            
+                            response["certificate_issued"] = True
+                            response["certificate_id"] = cert_id
+                            response["bonus_points_awarded"] = completion_bonus
+                            response["blockchain_message"] = f"Certificate ready for minting! Earned {completion_bonus} bonus points."
+                    
+                    except Exception as cert_error:
+                        print(f"Failed to issue certificate: {cert_error}")
+                        response["certificate_error"] = "Failed to issue certificate automatically"
+                
+                return response
+                
     except HTTPException:
         raise
     except Exception as e:
@@ -1310,15 +1436,17 @@ async def update_provider(
 class ReviewCreate(BaseModel):
     destination_id: Optional[str] = None
     provider_id: Optional[str] = None
+    booking_id: Optional[str] = None  # 🔗 PHASE 6.2: Link review to verified booking
     rating: int
     comment: str
+    blockchain_verification: Optional[bool] = Field(False, description="Request blockchain verification for authentic review")
 
 @api_router.post("/reviews")
 async def create_review(
     review_data: ReviewCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new review"""
+    """Create a new review with optional blockchain verification"""
     try:
         if not review_data.destination_id and not review_data.provider_id:
             raise HTTPException(status_code=400, detail="Either destination_id or provider_id is required")
@@ -1329,6 +1457,26 @@ async def create_review(
         pool = await get_db()
         review_id = str(uuid.uuid4())
         
+        # 🔗 PHASE 6.2: Verify user eligibility for blockchain-verified reviews
+        verified_booking = None
+        if review_data.blockchain_verification and review_data.booking_id:
+            async with pool.acquire() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cur:
+                    # Check if user has a completed booking for this destination/provider
+                    await cur.execute("""
+                        SELECT * FROM bookings 
+                        WHERE id = %s AND user_id = %s AND status = 'completed'
+                        AND (destination_id = %s OR provider_id = %s)
+                    """, (review_data.booking_id, current_user['id'], 
+                         review_data.destination_id, review_data.provider_id))
+                    verified_booking = await cur.fetchone()
+                    
+                    if not verified_booking:
+                        raise HTTPException(
+                            status_code=403, 
+                            detail="Blockchain-verified reviews require a completed booking for this destination/provider"
+                        )
+        
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
@@ -1338,6 +1486,53 @@ async def create_review(
                     review_id, current_user['id'], review_data.destination_id,
                     review_data.provider_id, review_data.rating, review_data.comment
                 ))
+                
+                # 🔗 PHASE 6.2: Create blockchain review record if requested
+                blockchain_created = False
+                loyalty_bonus_awarded = 0
+                
+                if review_data.blockchain_verification and verified_booking:
+                    try:
+                        # Create blockchain review record
+                        blockchain_review_id = str(uuid.uuid4())
+                        await cur.execute("""
+                            INSERT INTO blockchain_reviews (
+                                id, review_id, user_id, booking_id, destination_id,
+                                review_hash, contract_address, verification_status, is_authentic
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            blockchain_review_id, review_id, current_user['id'], 
+                            review_data.booking_id, review_data.destination_id or verified_booking['destination_id'],
+                            f"review_hash_{review_id}", 
+                            os.getenv('CONTRACT_ADDRESS_REVIEWS', 'pending'),
+                            'pending', True
+                        ))
+                        
+                        # 🔗 PHASE 6.2: Award bonus loyalty points for verified reviews
+                        review_bonus = 25  # Bonus points for verified review
+                        loyalty_bonus_awarded = review_bonus
+                        
+                        await cur.execute("""
+                            INSERT INTO loyalty_points (id, user_id, points_balance, total_earned, total_redeemed)
+                            VALUES (UUID(), %s, %s, %s, 0)
+                            ON DUPLICATE KEY UPDATE 
+                            points_balance = points_balance + VALUES(points_balance),
+                            total_earned = total_earned + VALUES(total_earned)
+                        """, (current_user['id'], review_bonus, review_bonus))
+                        
+                        # Log verified review bonus transaction
+                        await cur.execute("""
+                            INSERT INTO loyalty_transactions (id, user_id, transaction_type, points_amount, 
+                                                           description, review_id, status)
+                            VALUES (UUID(), %s, 'earned', %s, %s, %s, 'completed')
+                        """, (current_user['id'], review_bonus, 
+                             f"Verified review bonus - {verified_booking.get('destination_name', 'Unknown')}", 
+                             review_id))
+                        
+                        blockchain_created = True
+                        
+                    except Exception as blockchain_error:
+                        print(f"Failed to create blockchain review: {blockchain_error}")
                 
                 # Update average rating
                 if review_data.destination_id:
@@ -1354,10 +1549,18 @@ async def create_review(
                         ) WHERE id = %s
                     """, (review_data.provider_id, review_data.provider_id))
                 
-                return {
+                response = {
                     "id": review_id,
-                    "message": "Review created successfully"
+                    "message": "Review created successfully",
+                    "blockchain_verified": blockchain_created,
+                    "loyalty_bonus_awarded": loyalty_bonus_awarded
                 }
+                
+                if blockchain_created:
+                    response["blockchain_message"] = f"Review verified on blockchain! Earned {loyalty_bonus_awarded} bonus points."
+                
+                return response
+                
     except HTTPException:
         raise
     except Exception as e:
@@ -2544,6 +2747,130 @@ async def award_loyalty_points(
                     
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 🔗 PHASE 6.3: Loyalty Points Redemption System
+@api_router.post("/loyalty/redeem")
+async def redeem_loyalty_points(
+    redeem_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Redeem loyalty points for booking discount"""
+    try:
+        points_to_redeem = redeem_data.get('points', 0)
+        booking_id = redeem_data.get('booking_id')
+        
+        if not points_to_redeem or points_to_redeem <= 0:
+            raise HTTPException(status_code=400, detail="Invalid points amount")
+        
+        if not booking_id:
+            raise HTTPException(status_code=400, detail="Booking ID is required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Get user's loyalty points balance
+                await cur.execute(
+                    "SELECT * FROM loyalty_points WHERE user_id = %s",
+                    (current_user['id'],)
+                )
+                loyalty_data = await cur.fetchone()
+                
+                if not loyalty_data:
+                    raise HTTPException(status_code=404, detail="No loyalty points found")
+                
+                if loyalty_data['points_balance'] < points_to_redeem:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Insufficient points. Available: {loyalty_data['points_balance']}, Requested: {points_to_redeem}"
+                    )
+                
+                # Calculate discount (100 points = ₹10)
+                discount_amount = points_to_redeem / 100 * 10
+                
+                # Get booking details
+                await cur.execute(
+                    "SELECT * FROM bookings WHERE id = %s AND user_id = %s AND status = 'pending'",
+                    (booking_id, current_user['id'])
+                )
+                booking = await cur.fetchone()
+                
+                if not booking:
+                    raise HTTPException(status_code=404, detail="Pending booking not found")
+                
+                # Check if discount would exceed total price
+                max_discount = booking['total_price'] * 0.5  # Max 50% discount
+                final_discount = min(discount_amount, max_discount)
+                final_points_used = int(final_discount * 100 / 10)  # Recalculate points needed for final discount
+                
+                # Update loyalty points balance
+                await cur.execute("""
+                    UPDATE loyalty_points 
+                    SET points_balance = points_balance - %s, 
+                        total_redeemed = total_redeemed + %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                """, (final_points_used, final_points_used, current_user['id']))
+                
+                # Update booking price
+                new_total_price = booking['total_price'] - final_discount
+                await cur.execute("""
+                    UPDATE bookings 
+                    SET total_price = %s
+                    WHERE id = %s
+                """, (new_total_price, booking_id))
+                
+                # Log redemption transaction
+                tx_id = str(uuid.uuid4())
+                await cur.execute("""
+                    INSERT INTO loyalty_transactions (
+                        id, user_id, transaction_type, points_amount, 
+                        booking_id, description, status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    tx_id, current_user['id'], 'redeemed', final_points_used,
+                    booking_id, f"Points redeemed for booking discount - ₹{final_discount:.2f}", 'completed'
+                ))
+                
+                # Get updated balance
+                await cur.execute(
+                    "SELECT points_balance FROM loyalty_points WHERE user_id = %s",
+                    (current_user['id'],)
+                )
+                updated_balance = await cur.fetchone()
+                
+                return {
+                    "success": True,
+                    "points_redeemed": final_points_used,
+                    "discount_applied": final_discount,
+                    "new_total_price": new_total_price,
+                    "remaining_points": updated_balance['points_balance'] if updated_balance else 0,
+                    "message": f"Successfully redeemed {final_points_used} points for ₹{final_discount:.2f} discount"
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/loyalty/transactions")
+async def get_loyalty_transactions(current_user: dict = Depends(get_current_user)):
+    """Get user's loyalty transaction history"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    SELECT * FROM loyalty_transactions 
+                    WHERE user_id = %s 
+                    ORDER BY created_at DESC 
+                    LIMIT 50
+                """, (current_user['id'],))
+                transactions = await cur.fetchall()
+                
+                return {"transactions": transactions}
+                
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

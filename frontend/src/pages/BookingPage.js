@@ -225,7 +225,9 @@ const BookingPage = () => {
         reference_number: ref,
         // Add package info for compatibility
         package_type: selectedProvider?.category?.toLowerCase() || 'service',
-        package_name: selectedProvider?.service_name || 'Custom Service'
+        package_name: selectedProvider?.service_name || 'Custom Service',
+        // 🔗 PHASE 6.1: Include blockchain verification request
+        blockchain_verification: walletConnected && enableBlockchainVerification
       };
 
       console.log('Submitting booking data:', bookingData);
