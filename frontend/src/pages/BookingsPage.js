@@ -3,15 +3,22 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Calendar, MapPin, User, Clock, ArrowLeft, Star } from 'lucide-react';
+import { Calendar, MapPin, User, Clock, ArrowLeft, Star, Wallet, Award, Coins, Shield } from 'lucide-react';
 import { bookingsAPI } from '../services/api';
 import ReviewModal from '../components/ReviewModal';
+import WalletConnector from '../components/WalletConnector';
+import CertificateGallery from '../components/CertificateGallery';
+import LoyaltyDashboard from '../components/LoyaltyDashboard';
+import BlockchainBookingStatus from '../components/BlockchainBookingStatus';
 
 const BookingsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('bookings');
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
   const [reviewModal, setReviewModal] = useState({
     isOpen: false,
     booking: null,
@@ -143,6 +150,15 @@ const BookingsPage = () => {
     }
   };
 
+  const handleWalletConnectionChange = (connected, address) => {
+    setWalletConnected(connected);
+    setWalletAddress(address);
+  };
+
+  const handleVerificationComplete = (verificationData) => {
+    console.log('Blockchain verification completed:', verificationData);
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed': return 'text-green-600 bg-green-100';
@@ -179,7 +195,7 @@ const BookingsPage = () => {
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
-                <p className="text-gray-600">Manage your travel bookings</p>
+                <p className="text-gray-600">Manage your travel bookings and blockchain features</p>
               </div>
             </div>
             <Link to="/">
@@ -190,119 +206,203 @@ const BookingsPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {bookings.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Bookings Yet</h3>
-              <p className="text-gray-600 mb-6">You haven't made any bookings yet. Start planning your trip!</p>
-              <Link to="/destinations">
-                <Button className="bg-green-600 hover:bg-green-700">
-                  Explore Destinations
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {bookings.map((booking) => (
-              <Card key={booking.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-col md:flex-row md:items-center md:space-x-6">
-                      <img
-                        src={booking.image}
-                        alt={booking.destination}
-                        className="w-full md:w-32 h-32 object-cover rounded-lg mb-4 md:mb-0"
-                      />
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                          {booking.packageName || booking.destination}
-                        </h3>
-                        <div className="space-y-2">
-                          <div className="flex items-center text-gray-600">
-                            <User className="h-4 w-4 mr-2" />
-                            <span className="text-sm">{booking.provider}</span>
-                          </div>
-                          <div className="flex items-center text-gray-600">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            <span className="text-sm">{new Date(booking.date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="flex items-center text-gray-600">
-                            <Clock className="h-4 w-4 mr-2" />
-                            <span className={`text-sm px-2 py-1 rounded-full font-medium ${getStatusColor(booking.status)}`}>
-                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                            </span>
-                          </div>
-                          {booking.packageType && (
-                            <div className="flex items-center text-gray-600">
-                              <MapPin className="h-4 w-4 mr-2" />
-                              <span className="text-sm capitalize">{booking.packageType} Package</span>
-                            </div>
-                          )}
-                          {booking.guests && (
-                            <div className="text-sm text-gray-600">
-                              Travelers: {booking.guests} 
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 md:mt-0 md:text-right">
-                      <p className="text-2xl font-bold text-green-600 mb-4">
-                        ₹{booking.price.toLocaleString()}
-                      </p>
-                      <div className="space-y-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full md:w-auto"
-                          onClick={() => openDetailsModal(booking)}
-                        >
-                          View Details
-                        </Button>
-                        {booking.status === 'pending' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full md:w-auto text-red-600 border-red-300"
-                            onClick={() => handleCancelBooking(booking.id)}
-                          >
-                            Cancel Booking
-                          </Button>
-                        )}
-                        {booking.status === 'completed' && !booking.hasReviewed && (
-                          <div className="flex flex-col space-y-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="w-full md:w-auto text-green-600 border-green-300 hover:bg-green-50"
-                              onClick={() => openReviewModal(booking, 'provider')}
-                            >
-                              <Star className="h-4 w-4 mr-1" />
-                              Review Service
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="w-full md:w-auto text-blue-600 border-blue-300 hover:bg-blue-50"
-                              onClick={() => openReviewModal(booking, 'destination')}
-                            >
-                              <Star className="h-4 w-4 mr-1" />
-                              Review Destination
-                            </Button>
-                          </div>
-                        )}
-                        {booking.status === 'completed' && booking.hasReviewed && (
-                          <p className="text-sm text-gray-500 italic">Review submitted</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+        {/* Wallet Connection Section */}
+        <div className="mb-8">
+          <WalletConnector onConnectionChange={handleWalletConnectionChange} />
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <nav className="flex space-x-8 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('bookings')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'bookings'
+                  ? 'border-green-500 text-green-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                My Bookings
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('certificates')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'certificates'
+                  ? 'border-yellow-500 text-yellow-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center">
+                <Award className="h-4 w-4 mr-2" />
+                Certificates
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('loyalty')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'loyalty'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center">
+                <Coins className="h-4 w-4 mr-2" />
+                Loyalty Points
+              </div>
+            </button>
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'bookings' && (
+          <>
+            {loading ? (
+              <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Loading your bookings...</p>
+                </div>
+              </div>
+            ) : bookings.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Bookings Yet</h3>
+                  <p className="text-gray-600 mb-6">You haven't made any bookings yet. Start planning your trip!</p>
+                  <Link to="/destinations">
+                    <Button className="bg-green-600 hover:bg-green-700">
+                      Explore Destinations
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+            ) : (
+              <div className="space-y-6">
+                {bookings.map((booking) => (
+                  <Card key={booking.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-col md:flex-row md:items-center md:space-x-6">
+                          <img
+                            src={booking.image}
+                            alt={booking.destination}
+                            className="w-full md:w-32 h-32 object-cover rounded-lg mb-4 md:mb-0"
+                          />
+                          <div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                              {booking.packageName || booking.destination}
+                            </h3>
+                            <div className="space-y-2">
+                              <div className="flex items-center text-gray-600">
+                                <User className="h-4 w-4 mr-2" />
+                                <span className="text-sm">{booking.provider}</span>
+                              </div>
+                              <div className="flex items-center text-gray-600">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                <span className="text-sm">{new Date(booking.date).toLocaleDateString()}</span>
+                              </div>
+                              <div className="flex items-center text-gray-600">
+                                <Clock className="h-4 w-4 mr-2" />
+                                <span className={`text-sm px-2 py-1 rounded-full font-medium ${getStatusColor(booking.status)}`}>
+                                  {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                </span>
+                              </div>
+                              {booking.packageType && (
+                                <div className="flex items-center text-gray-600">
+                                  <MapPin className="h-4 w-4 mr-2" />
+                                  <span className="text-sm capitalize">{booking.packageType} Package</span>
+                                </div>
+                              )}
+                              {booking.guests && (
+                                <div className="text-sm text-gray-600">
+                                  Travelers: {booking.guests} 
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 md:mt-0 md:text-right">
+                          <p className="text-2xl font-bold text-green-600 mb-4">
+                            ₹{booking.price.toLocaleString()}
+                          </p>
+                          <div className="space-y-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full md:w-auto"
+                              onClick={() => openDetailsModal(booking)}
+                            >
+                              View Details
+                            </Button>
+                            {booking.status === 'pending' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full md:w-auto text-red-600 border-red-300"
+                                onClick={() => handleCancelBooking(booking.id)}
+                              >
+                                Cancel Booking
+                              </Button>
+                            )}
+                            {booking.status === 'completed' && !booking.hasReviewed && (
+                              <div className="flex flex-col space-y-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="w-full md:w-auto text-green-600 border-green-300 hover:bg-green-50"
+                                  onClick={() => openReviewModal(booking, 'provider')}
+                                >
+                                  <Star className="h-4 w-4 mr-1" />
+                                  Review Service
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="w-full md:w-auto text-blue-600 border-blue-300 hover:bg-blue-50"
+                                  onClick={() => openReviewModal(booking, 'destination')}
+                                >
+                                  <Star className="h-4 w-4 mr-1" />
+                                  Review Destination
+                                </Button>
+                              </div>
+                            )}
+                            {booking.status === 'completed' && booking.hasReviewed && (
+                              <p className="text-sm text-gray-500 italic">Review submitted</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Blockchain Status for individual bookings */}
+                      {walletConnected && (
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                          <div className="flex items-center mb-4">
+                            <Shield className="h-4 w-4 text-blue-500 mr-2" />
+                            <span className="text-sm font-medium text-gray-900">Blockchain Verification</span>
+                          </div>
+                          <BlockchainBookingStatus 
+                            bookingId={booking.id} 
+                            onVerificationComplete={handleVerificationComplete}
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'certificates' && (
+          <CertificateGallery walletConnected={walletConnected} />
+        )}
+
+        {activeTab === 'loyalty' && (
+          <LoyaltyDashboard walletConnected={walletConnected} />
         )}
       </div>
       

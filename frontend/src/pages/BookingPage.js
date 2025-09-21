@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, Check, X } from 'lucide-react';
+import { ArrowLeft, Check, X, Shield, Wallet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { bookingsAPI, providersAPI, destinationsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 import LanguageToggle from '../components/LanguageToggle';
+import WalletConnector from '../components/WalletConnector';
+import BlockchainBookingStatus from '../components/BlockchainBookingStatus';
 
 const BookingPage = () => {
   const navigate = useNavigate();
@@ -26,6 +28,10 @@ const BookingPage = () => {
   const [providers, setProviders] = useState([]);
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
+  const [enableBlockchainVerification, setEnableBlockchainVerification] = useState(false);
+  const [createdBookingId, setCreatedBookingId] = useState(null);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -227,7 +233,18 @@ const BookingPage = () => {
       const response = await bookingsAPI.create(bookingData);
       console.log('Booking created successfully:', response);
 
-      // Navigate to payment page instead of showing success modal
+      // Store the created booking ID for blockchain verification
+      setCreatedBookingId(response.id);
+
+      // If blockchain verification is enabled, proceed with verification
+      if (walletConnected && enableBlockchainVerification) {
+        toast({
+          title: t('bookingSuccessful'),
+          description: `${t('bookingCreatedWithRef')} ${ref}. Blockchain verification will begin automatically.`,
+        });
+      }
+
+      // Navigate to payment page
       navigate(`/payment/${response.id}`, {
         state: {
           bookingData: {
@@ -238,7 +255,8 @@ const BookingPage = () => {
             package_name: selectedProvider?.service_name || 'Custom Service',
             package_type: selectedProvider?.category?.toLowerCase() || 'service',
             total_price: totalPrice, // Pass the frontend calculated total price
-            calculated_price: totalPrice // Also pass as calculated_price for compatibility
+            calculated_price: totalPrice, // Also pass as calculated_price for compatibility
+            blockchain_verification_enabled: walletConnected && enableBlockchainVerification
           }
         }
       });
@@ -262,6 +280,15 @@ const BookingPage = () => {
 
   const closeModal = () => {
     setShowSuccessModal(false);
+  };
+
+  const handleWalletConnectionChange = (connected, address) => {
+    setWalletConnected(connected);
+    setWalletAddress(address);
+  };
+
+  const handleVerificationComplete = (verificationData) => {
+    console.log('Blockchain verification completed:', verificationData);
   };
 
   // Show loading state while fetching data
@@ -317,6 +344,75 @@ const BookingPage = () => {
         </div>
 
         <div className="max-w-6xl mx-auto">
+          {/* Wallet Connection Section */}
+          <div className="mb-8">
+            <WalletConnector onConnectionChange={handleWalletConnectionChange} />
+          </div>
+
+          {/* Blockchain Features Card */}
+          {walletConnected && (
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 mb-8">
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <Shield className="h-6 w-6 text-blue-600 mr-3" />
+                  <h3 className="text-lg font-semibold text-blue-900">
+                    Blockchain Verification Available
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="flex items-start">
+                      <input
+                        id="blockchain-verification"
+                        type="checkbox"
+                        checked={enableBlockchainVerification}
+                        onChange={(e) => setEnableBlockchainVerification(e.target.checked)}
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <div className="ml-3">
+                        <label htmlFor="blockchain-verification" className="text-sm font-medium text-blue-900">
+                          Enable blockchain verification for this booking
+                        </label>
+                        <p className="text-sm text-blue-700 mt-1">
+                          Secure your booking with immutable blockchain verification, 
+                          enabling certificate minting and loyalty points.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">Benefits</h4>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Immutable booking record</li>
+                      <li>• Digital certificate eligibility</li>
+                      <li>• Enhanced security</li>
+                      <li>• Loyalty point verification</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Show blockchain status for created booking */}
+          {createdBookingId && walletConnected && enableBlockchainVerification && (
+            <div className="mb-8">
+              <Card className="border-green-200">
+                <CardHeader>
+                  <CardTitle className="text-green-700 flex items-center">
+                    <Shield className="h-5 w-5 mr-2" />
+                    Booking Verification Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BlockchainBookingStatus 
+                    bookingId={createdBookingId} 
+                    onVerificationComplete={handleVerificationComplete}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
           {/* Service Selection Section */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-center text-green-700 mb-8 relative">

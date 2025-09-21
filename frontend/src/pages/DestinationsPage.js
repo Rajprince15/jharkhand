@@ -6,10 +6,12 @@ import DestinationModal from '../components/DestinationModal';
 import { destinationsAPI, regionsAPI } from '../services/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Star, MapPin, IndianRupee, Filter, Loader2, X } from 'lucide-react';
+import { Star, MapPin, IndianRupee, Filter, Loader2, X, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../hooks/use-toast';
+import WalletConnector from '../components/WalletConnector';
+import BlockchainStatus from '../components/BlockchainStatus';
 
 const DestinationsPage = () => {
   const { t } = useTranslation();
@@ -25,6 +27,8 @@ const DestinationsPage = () => {
   const [regions, setRegions] = useState([]);
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
 
   useEffect(() => {
     // Get region from URL parameter
@@ -122,6 +126,11 @@ const DestinationsPage = () => {
     setSelectedDestination(null);
   };
 
+  const handleWalletConnectionChange = (connected, address) => {
+    setWalletConnected(connected);
+    setWalletAddress(address);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -143,6 +152,18 @@ const DestinationsPage = () => {
 
       <section className="py-20">
         <div className="container mx-auto px-4">
+          {/* Wallet Connection Section */}
+          <div className="mb-8">
+            <WalletConnector onConnectionChange={handleWalletConnectionChange} />
+          </div>
+
+          {/* Blockchain Network Status */}
+          {walletConnected && (
+            <div className="mb-8 max-w-sm mx-auto">
+              <BlockchainStatus />
+            </div>
+          )}
+
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               {t('Where Nature Meets Tradition – Explore Jharkhand')}
@@ -150,6 +171,12 @@ const DestinationsPage = () => {
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
               {t('exploreMostBeautiful')}
             </p>
+            {walletConnected && (
+              <div className="mt-4 flex items-center justify-center text-sm text-green-600">
+                <Shield className="h-4 w-4 mr-2" />
+                Blockchain verification enabled for authentic reviews
+              </div>
+            )}
           </div>
 
           {/* Region Filter (if active) */}
