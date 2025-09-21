@@ -12,6 +12,7 @@ import json
 import uuid
 from pathlib import Path
 from services.gemini_service import GeminiService
+from models.blockchain_models import BlockchainStatus
 from services.blockchain_service import blockchain_service
 import aiomysql
 
@@ -35,6 +36,22 @@ JWT_EXPIRE_MINUTES = int(os.getenv('JWT_EXPIRE_MINUTES', 1440))
 
 # Create the main app
 app = FastAPI(title="Jharkhand Tourism API", version="1.0.0")
+@app.get("/api/blockchain/status", response_model=BlockchainStatus)
+async def blockchain_status():
+    info = blockchain_service.get_network_info()  # Returns dict with keys: connected, network, chain_id, etc.
+
+    # Ensure 'contracts' key exists for Pydantic validation
+    contracts_dict = info.get("contracts") or {}
+
+    return BlockchainStatus(
+        network=info.get("network", "unknown"),
+        connected=info.get("connected", False),
+        chain_id=info.get("chain_id"),
+        latest_block=info.get("latest_block"),
+        gas_price_gwei=info.get("gas_price_gwei"),
+        wallet_address=info.get("wallet_address"),
+        contracts=contracts_dict
+    )
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -122,6 +139,8 @@ class Review(BaseModel):
     rating: int
     comment: str
     created_at: datetime
+    
+
 
 # Utility functions
 def hash_password(password: str) -> str:
