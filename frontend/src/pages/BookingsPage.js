@@ -3,13 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Calendar, MapPin, User, Clock, ArrowLeft, Star, Shield, Wallet } from 'lucide-react';
+import { Calendar, MapPin, User, Clock, ArrowLeft, Star } from 'lucide-react';
 import { bookingsAPI } from '../services/api';
 import ReviewModal from '../components/ReviewModal';
-import WalletConnector from '../components/WalletConnector';
-import CertificateGallery from '../components/CertificateGallery';
-import LoyaltyDashboard from '../components/LoyaltyDashboard';
-import BlockchainBookingStatus from '../components/BlockchainBookingStatus';
 
 const BookingsPage = () => {
   const { user } = useAuth();
@@ -25,11 +21,6 @@ const BookingsPage = () => {
     isOpen: false,
     booking: null
   });
-  
-  // Blockchain-related state
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState('');
-  const [activeTab, setActiveTab] = useState('bookings'); // bookings, certificates, loyalty
 
   useEffect(() => {
     if (!user) {
@@ -152,12 +143,6 @@ const BookingsPage = () => {
     }
   };
 
-  // Blockchain wallet connection handler
-  const handleWalletConnection = (connected, address) => {
-    setWalletConnected(connected);
-    setWalletAddress(address);
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed': return 'text-green-600 bg-green-100';
@@ -205,67 +190,19 @@ const BookingsPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Wallet Connection Section */}
-        <div className="mb-6">
-          <WalletConnector onConnectionChange={handleWalletConnection} />
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-              <button
-                onClick={() => setActiveTab('bookings')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'bookings'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                My Bookings
-              </button>
-              <button
-                onClick={() => setActiveTab('certificates')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'certificates'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Shield className="h-4 w-4 inline mr-1" />
-                Certificates
-              </button>
-              <button
-                onClick={() => setActiveTab('loyalty')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'loyalty'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Wallet className="h-4 w-4 inline mr-1" />
-                Loyalty Points
-              </button>
-            </nav>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'bookings' && (
-          <div>
-            {bookings.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Bookings Yet</h3>
-                  <p className="text-gray-600 mb-6">You haven't made any bookings yet. Start planning your trip!</p>
-                  <Link to="/destinations">
-                    <Button className="bg-green-600 hover:bg-green-700">
-                      Explore Destinations
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+        {bookings.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Bookings Yet</h3>
+              <p className="text-gray-600 mb-6">You haven't made any bookings yet. Start planning your trip!</p>
+              <Link to="/destinations">
+                <Button className="bg-green-600 hover:bg-green-700">
+                  Explore Destinations
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-6">
             {bookings.map((booking) => (
@@ -315,20 +252,6 @@ const BookingsPage = () => {
                       <p className="text-2xl font-bold text-green-600 mb-4">
                         ₹{booking.price.toLocaleString()}
                       </p>
-                      
-                      {/* Blockchain Status for individual booking */}
-                      {walletConnected && (
-                        <div className="mb-4">
-                          <BlockchainBookingStatus 
-                            bookingId={booking.id}
-                            onVerificationComplete={(data) => {
-                              // Handle verification completion
-                              console.log('Booking verification completed:', data);
-                            }}
-                          />
-                        </div>
-                      )}
-                      
                       <div className="space-y-2">
                         <Button 
                           variant="outline" 
@@ -381,22 +304,6 @@ const BookingsPage = () => {
             ))}
           </div>
         )}
-      </div>
-    )}
-
-    {/* Certificates Tab */}
-    {activeTab === 'certificates' && (
-      <div>
-        <CertificateGallery walletConnected={walletConnected} />
-      </div>
-    )}
-
-    {/* Loyalty Points Tab */}
-    {activeTab === 'loyalty' && (
-      <div>
-        <LoyaltyDashboard walletConnected={walletConnected} />
-      </div>
-    )}
       </div>
       
       {/* Booking Details Modal */}
