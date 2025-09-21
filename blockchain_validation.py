@@ -242,7 +242,7 @@ def test_backend_apis():
         # Test blockchain endpoints (basic connectivity)
         blockchain_endpoints = {
             '/blockchain/wallet/status': 'GET',
-            '/blockchain/certificates': 'GET', 
+            '/blockchain/certificates/my': 'GET', 
             '/blockchain/loyalty/balance': 'GET',
             '/blockchain/gas/estimate/mint_certificate': 'GET'
         }

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wallet, Shield, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const WalletConnector = ({ onConnectionChange }) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -8,7 +8,8 @@ const WalletConnector = ({ onConnectionChange }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
   const [networkInfo, setNetworkInfo] = useState(null);
-  const { user, token } = useContext(AuthContext);
+  const { user } = useAuth();
+  const token = localStorage.getItem('access_token');
 
   useEffect(() => {
     checkExistingConnection();

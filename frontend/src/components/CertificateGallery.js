@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Award, Download, ExternalLink, Calendar, MapPin } from 'lucide-react';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const CertificateGallery = ({ walletConnected = false }) => {
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { user, token } = useContext(AuthContext);
+  const { user } = useAuth();
+  const token = localStorage.getItem('access_token');
 
   useEffect(() => {
     if (walletConnected && user) {

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Coins, Gift, TrendingUp, History, Award, ShoppingBag } from 'lucide-react';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const LoyaltyDashboard = ({ walletConnected = false }) => {
   const [loyaltyData, setLoyaltyData] = useState({
@@ -13,7 +13,8 @@ const LoyaltyDashboard = ({ walletConnected = false }) => {
   const [error, setError] = useState('');
   const [redeemAmount, setRedeemAmount] = useState('');
   const [isRedeeming, setIsRedeeming] = useState(false);
-  const { user, token } = useContext(AuthContext);
+  const { user } = useAuth();
+  const token = localStorage.getItem('access_token');
 
   useEffect(() => {
     if (walletConnected && user) {

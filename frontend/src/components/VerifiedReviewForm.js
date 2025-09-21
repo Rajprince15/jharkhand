@@ -1,6 +1,6 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { Star, Shield, Send, CheckCircle, AlertCircle } from 'lucide-react';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const VerifiedReviewForm = ({ 
   bookingId, 
@@ -14,7 +14,8 @@ const VerifiedReviewForm = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [enableBlockchainVerification, setEnableBlockchainVerification] = useState(true);
-  const { user, token } = useContext(AuthContext);
+  const { user } = useAuth();
+  const token = localStorage.getItem('access_token');
 
   const submitReview = async (e) => {
     e.preventDefault();

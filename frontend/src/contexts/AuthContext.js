@@ -3,6 +3,8 @@ import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
+export { AuthContext };
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

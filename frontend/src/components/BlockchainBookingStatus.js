@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, CheckCircle, Clock, AlertTriangle, ExternalLink, Loader } from 'lucide-react';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const BlockchainBookingStatus = ({ bookingId, onVerificationComplete }) => {
   const [verificationStatus, setVerificationStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  const { token } = useContext(AuthContext);
+  const { user } = useAuth();
+  const token = localStorage.getItem('access_token');
 
   useEffect(() => {
     if (bookingId) {
