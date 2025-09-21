@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ArrowLeft, Check, X } from 'lucide-react';
+import { ArrowLeft, Check, X, Shield, Wallet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { bookingsAPI, providersAPI, destinationsAPI } from '../services/api';
 import { useToast } from '../hooks/use-toast';
 import LanguageToggle from '../components/LanguageToggle';
+import WalletConnector from '../components/WalletConnector';
+import BlockchainBookingStatus from '../components/BlockchainBookingStatus';
 
 const BookingPage = () => {
   const navigate = useNavigate();
@@ -26,6 +28,13 @@ const BookingPage = () => {
   const [providers, setProviders] = useState([]);
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Blockchain-related state
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
+  const [enableBlockchainVerification, setEnableBlockchainVerification] = useState(true);
+  const [createdBookingId, setCreatedBookingId] = useState(null);
+  
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -227,6 +236,9 @@ const BookingPage = () => {
       const response = await bookingsAPI.create(bookingData);
       console.log('Booking created successfully:', response);
 
+      // Store the created booking ID for blockchain verification
+      setCreatedBookingId(response.id);
+
       // Navigate to payment page instead of showing success modal
       navigate(`/payment/${response.id}`, {
         state: {
@@ -238,7 +250,8 @@ const BookingPage = () => {
             package_name: selectedProvider?.service_name || 'Custom Service',
             package_type: selectedProvider?.category?.toLowerCase() || 'service',
             total_price: totalPrice, // Pass the frontend calculated total price
-            calculated_price: totalPrice // Also pass as calculated_price for compatibility
+            calculated_price: totalPrice, // Also pass as calculated_price for compatibility
+            blockchain_verification_enabled: enableBlockchainVerification && walletConnected
           }
         }
       });
@@ -262,6 +275,12 @@ const BookingPage = () => {
 
   const closeModal = () => {
     setShowSuccessModal(false);
+  };
+
+  // Blockchain wallet connection handler
+  const handleWalletConnection = (connected, address) => {
+    setWalletConnected(connected);
+    setWalletAddress(address);
   };
 
   // Show loading state while fetching data
@@ -363,6 +382,59 @@ const BookingPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Left Column - Form */}
             <div className="space-y-6">
+              {/* Wallet Connection Section */}
+              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="text-blue-700 flex items-center">
+                    <Wallet className="h-5 w-5 mr-2" />
+                    Blockchain Features
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <WalletConnector onConnectionChange={handleWalletConnection} />
+                  
+                  {/* Blockchain Verification Option */}
+                  {walletConnected && (
+                    <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-start">
+                        <input
+                          id="blockchain-verification"
+                          type="checkbox"
+                          checked={enableBlockchainVerification}
+                          onChange={(e) => setEnableBlockchainVerification(e.target.checked)}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <div className="ml-3">
+                          <label htmlFor="blockchain-verification" className="text-sm font-medium text-green-900">
+                            Enable blockchain verification for this booking
+                          </label>
+                          <p className="text-sm text-green-700 mt-1">
+                            Create an immutable record of your booking on the blockchain. This enables certificate minting 
+                            upon completion and additional loyalty points.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show blockchain status for created booking */}
+                  {createdBookingId && walletConnected && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Booking Blockchain Status
+                      </h4>
+                      <BlockchainBookingStatus 
+                        bookingId={createdBookingId}
+                        onVerificationComplete={(data) => {
+                          console.log('Booking verification completed:', data);
+                        }}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card className="bg-white border-green-200">
                 <CardHeader>
                   <CardTitle className="text-green-700">{t('personalInformation')}</CardTitle>

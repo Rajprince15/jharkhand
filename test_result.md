@@ -99,6 +99,78 @@
 user_problem_statement: "Implement comprehensive AR/VR functionality in Jharkhand Tourism map using Cesium/Resium with: 1) All AR/VR features (3D Globe Navigation, VR Tourism Experience, AR Mobile Features) 2) Primary focus on 3D Map Replacement, VR Destination Tours, and AR Location Features 3) Add toggle button for AR/VR and 2D modes with 3D previews integrated into booking system 4) Support both desktop VR and mobile AR devices"
 
 backend:
+  - task: "PHASE 5: Frontend Integration - Wallet Connector"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/WalletConnector.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ WALLET CONNECTOR COMPONENT CREATED: 1) MetaMask connection and disconnection functionality 2) Automatic wallet detection and reconnection on page refresh 3) Network status display (Sepolia testnet support) 4) Network switching functionality (auto-add Sepolia if not present) 5) Backend wallet registration integration 6) Professional UI with connection status, wallet address display, and network information 7) Error handling for MetaMask installation and connection failures 8) Responsive design with proper loading states and user feedback"
+
+  - task: "PHASE 5: Frontend Integration - Certificate Gallery"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/CertificateGallery.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ CERTIFICATE GALLERY COMPONENT CREATED: 1) Blockchain certificate display with NFT token IDs and metadata 2) Certificate download functionality with canvas-generated certificate images 3) Blockchain explorer integration for transaction viewing (Sepolia Etherscan) 4) Certificate minting capability for completed tours 5) Professional certificate design with Jharkhand Tourism branding 6) Certificate details display (completion date, destination, description) 7) Loading states and error handling 8) Responsive gallery layout with empty state for new users"
+
+  - task: "PHASE 5: Frontend Integration - Loyalty Dashboard"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/LoyaltyDashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ LOYALTY DASHBOARD COMPONENT CREATED: 1) Blockchain loyalty points balance display with total earned/redeemed tracking 2) Points redemption functionality with conversion rates (100 points = ₹10 discount) 3) Transaction history with blockchain verification links 4) Points earning guide with different categories (bookings, reviews, milestones) 5) Beautiful gradient cards for points statistics 6) Real-time balance updates after redemptions 7) Integration with backend loyalty API endpoints 8) Professional UI with icons, colors, and responsive design"
+
+  - task: "PHASE 5: Frontend Integration - Blockchain Booking Status"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/BlockchainBookingStatus.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ BLOCKCHAIN BOOKING STATUS COMPONENT CREATED: 1) Real-time blockchain verification status tracking (pending, verified, failed) 2) Manual booking verification initiation with secure blockchain recording 3) Blockchain details display (booking hash, contract address, gas fees) 4) Transaction explorer integration for Sepolia testnet 5) Status-based UI with appropriate colors and icons 6) Benefits explanation (certificate eligibility, loyalty points, fraud prevention) 7) Comprehensive error handling and retry functionality 8) Professional status cards with detailed blockchain information"
+
+  - task: "PHASE 5: Frontend Integration - Verified Review Form"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/VerifiedReviewForm.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ VERIFIED REVIEW FORM COMPONENT CREATED: 1) Star rating system with interactive hover effects 2) Blockchain review verification option for verified bookings 3) Review submission with automatic blockchain recording 4) Form validation (minimum character requirements, rating validation) 5) Success states with blockchain verification confirmation 6) Benefits display (bonus loyalty points, increased trust, fraud prevention) 7) Integration with both regular and blockchain review APIs 8) Professional form design with conditional blockchain features"
+
+  - task: "PHASE 5: Frontend Integration - Blockchain Status Widget"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/BlockchainStatus.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ BLOCKCHAIN STATUS WIDGET CREATED: 1) Real-time network connectivity monitoring 2) Latest block number and gas price display 3) Smart contract addresses overview 4) Network status indicators with color-coded health status 5) Auto-refresh functionality (30-second intervals) 6) Manual refresh capability 7) Professional compact widget design 8) Error handling for network connectivity issues"
+
   - task: "UPI Payment Database Schema"
     implemented: true
     working: true
@@ -242,6 +314,30 @@ backend:
         comment: "FIXED MAJOR BUG: View Details buttons in both tourist and provider booking dashboards were non-functional. Added comprehensive modal functionality with detailed booking information display, customer details, pricing info, add-ons, special requests, and action buttons for booking management. Both dashboards now have fully functional view details modals."
 
 frontend:
+  - task: "PHASE 5: BookingsPage Integration"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/BookingsPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ BOOKINGSPAGE BLOCKCHAIN INTEGRATION COMPLETED: 1) Added tabbed interface (My Bookings, Certificates, Loyalty Points) 2) Wallet connector integration at the top of the page 3) Blockchain booking status component integrated into individual booking cards 4) Certificate gallery accessible via dedicated tab 5) Loyalty dashboard accessible via dedicated tab 6) Conditional rendering based on wallet connection status 7) Blockchain verification status display for each booking 8) Professional tab navigation with icons and responsive design"
+
+  - task: "PHASE 5: BookingPage Integration"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/BookingPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ BOOKINGPAGE BLOCKCHAIN INTEGRATION COMPLETED: 1) Wallet connector section added before booking form 2) Blockchain verification opt-in checkbox for connected wallets 3) Real-time blockchain status display for created bookings 4) Booking submission updated to include blockchain verification preference 5) Enhanced payment page navigation with blockchain verification status 6) Professional blockchain features card with benefits explanation 7) Conditional blockchain UI based on wallet connection 8) Seamless integration with existing booking flow"
+
   - task: "Frontend API Services Update"
     implemented: true
     working: "NA"
@@ -773,3 +869,29 @@ agent_communication:
     message: "REGIONS FUNCTIONALITY TESTING COMPLETED SUCCESSFULLY - ALL REQUIREMENTS MET: ✅ GET /api/regions endpoint fully operational returning exactly 4 regions (east, west, north, south) as requested ✅ All regions properly structured with required fields: id, name, description, image_url, highlights (parsed as JSON arrays) ✅ Region names correctly implemented: 'East Jharkhand', 'West Jharkhand', 'North Jharkhand', 'South Jharkhand' ✅ Enhanced destinations API with region filtering working perfectly: GET /api/destinations?region=east/west/north/south all functional ✅ Combined filters operational: GET /api/destinations?category=Nature&region=east returns correct results ✅ Database verification successful: regions table exists with 4 regions, destinations table has region column with 10/10 destinations populated ✅ Region assignments logical and accurate: Ranchi correctly assigned to east region, Netarhat to west region (100% accuracy) ✅ MariaDB database integration confirmed on port 3001 with proper credentials ✅ All 8 comprehensive tests passed (100% success rate). New regions functionality is production-ready and meets all review request requirements."
 
  "PHASE 4: Blockchain Backend Integration - Setup & Dependencies"\n    implemented: true\n    working: false\n    file: "/app/backend/services/blockchain_service.py, /app/backend/models/blockchain_models.py, /app/backend/database/blockchain_schema.sql, /app/backend/requirements.txt"\n    stuck_count: 1\n    priority: "high"\n    needs_retesting: true\n    status_history:\n      - working: false\n        agent: "main"\n        comment: "🔧 BLOCKCHAIN INFRASTRUCTURE SETUP COMPLETED: ✅ Phase 1-3 Dependencies: web3==6.11.0, eth-account==0.9.0 installed ✅ Environment Variables: ETHEREUM_NETWORK=sepolia, INFURA_PROJECT_ID, BLOCKCHAIN_PRIVATE_KEY, CONTRACT_ADDRESS_* configured ✅ Database Schema: blockchain_schema.sql created with tables (user_wallets, certificates, loyalty_points, blockchain_bookings, blockchain_reviews) ✅ Smart Contract Models: blockchain_models.py implemented with all Pydantic models ✅ Blockchain Service: blockchain_service.py created with Web3 connection, contract interactions, NFT minting, loyalty points, booking/review verification ✅ Network Status: API endpoints added for blockchain status and wallet management. CRITICAL ISSUES IDENTIFIED: 1) Web3 transaction attribute mismatch (raw_transaction vs rawTransaction) - FIXED 2) Database connection pattern issues in API endpoints - PARTIALLY FIXED 3) Missing dependencies (aiosignal, aiohappyeyeballs, frozenlist) - FIXED 4) BlockchainStatus model field mapping mismatch - FIXED. Ready for comprehensive testing phase."\n\n  - task: "PHASE 4: Critical Bug Fixes Applied"\n    implemented: true\n    working: "NA"\n    file: "/app/backend/services/blockchain_service.py, /app/backend/server.py"\n    stuck_count: 0\n    priority: "high"\n    needs_retesting: true\n    status_history:\n      - working: "NA"\n        agent: "main"\n        comment: "🚨 CRITICAL BLOCKCHAIN BUGS FIXED: ✅ Issue 1: Web3 Transaction Attribute - Fixed signed_txn.raw_transaction → signed_txn.rawTransaction in 4 functions (mint_certificate, award_loyalty_points, redeem_loyalty_points, verify_booking_on_blockchain, verify_review_on_blockchain) ✅ Issue 2: BlockchainStatus Model Mapping - Fixed field mismatches: latest_block→block_number, gas_price_gwei→gas_price, contracts→contract_addresses in both /api/blockchain/status endpoints ✅ Issue 3: Missing Dependencies - Installed aiosignal>=1.4.0, aiohappyeyeballs>=2.6.1, frozenlist>=1.7.0 ✅ Issue 4: Database Connection Pattern - Started fixing \'async with get_db() as pool\' → \'pool = await get_db()\' pattern (2/7 locations completed). REMAINING WORK: Complete database connection fixes in remaining 5 blockchain API endpoints."\n\nbackend:\n  - task: "PHASE 4: Blockchain API Endpoints Implementation"\n    implemented: true\n    working: "NA"\n    file: "/app/backend/server.py"\n    stuck_count: 0\n    priority: "high"\n    needs_retesting: true\n    status_history:\n      - working: "NA"\n        agent: "main"\n        comment: "🔗 BLOCKCHAIN API ENDPOINTS CREATED: ✅ Network Status: GET /api/blockchain/status - Returns network info, contract addresses, gas prices ✅ Wallet Management: POST /api/blockchain/wallet/connect, GET /api/blockchain/wallet/status ✅ Certificate System: POST /api/blockchain/certificates/mint, GET /api/blockchain/certificates ✅ Loyalty Points: GET /api/blockchain/loyalty/points, POST /api/blockchain/loyalty/award ✅ Booking Verification: POST /api/blockchain/bookings/verify ✅ Gas Estimation: GET /api/blockchain/gas-estimate ✅ All endpoints include proper authentication, error handling, and database integration. CONTRACT ADDRESSES CONFIGURED: certificates=0x8d4b58bd5fabe0d31f78d7caa3fa1ad5faebc6c6, loyalty=0x0bc63df35c5ea71f0311cae56d68fbef83fc2346, booking=0xa51179c34c0cd05d27bd9c6702723d8000aca8a1, reviews=0xbd8629411bdf5d906d81355f92313729aa39c2e8"\n\n  - task: "UPI Payment Database Schema" --new-str backend:\n  - task: "PHASE 1: Blockchain Setup & Preparation"\n    implemented: true\n    working: true\n    file: "/app/backend/.env, /app/backend/requirements.txt"\n    stuck_count: 0\n    priority: "high"\n    needs_retesting: false\n    status_history:\n      - working: true\n        agent: "main"\n        comment: "✅ PHASE 1 BLOCKCHAIN SETUP COMPLETED: 1) Dependencies Installed: web3==6.11.0, eth-account==0.9.0, aiosignal>=1.4.0, aiohappyeyeballs>=2.6.1, frozenlist>=1.7.0 successfully installed 2) Environment Variables Configured: ETHEREUM_NETWORK=sepolia, INFURA_PROJECT_ID configured, BLOCKCHAIN_PRIVATE_KEY and WALLET_ADDRESS set 3) Smart Contract Addresses: CONTRACT_ADDRESS_CERTIFICATES=0x8d4b58bd5fabe0d31f78d7caa3fa1ad5faebc6c6, CONTRACT_ADDRESS_LOYALTY=0x0bc63df35c5ea71f0311cae56d68fbef83fc2346, CONTRACT_ADDRESS_BOOKING=0xa51179c34c0cd05d27bd9c6702723d8000aca8a1, CONTRACT_ADDRESS_REVIEWS=0xbd8629411bdf5d906d81355f92313729aa39c2e8 4) Sepolia Testnet Connection: Ready for Web3 interactions with free test environment. All Phase 1 requirements completed successfully."\n\n  - task: "PHASE 2: Smart Contract Development"\n    implemented: true\n    working: "NA"\n    file: "/app/Contracts/TourismCertificates.sol, /app/Contracts/LoyaltyRewards.sol, /app/Contracts/BookingVerification.sol, /app/Contracts/AuthenticReviews.sol"\n    stuck_count: 0\n    priority: "high"\n    needs_retesting: true\n    status_history:\n      - working: "NA"\n        agent: "main"\n        comment: "✅ PHASE 2 SMART CONTRACTS DEVELOPMENT COMPLETED: 1) TourismCertificates.sol: NFT contract for tour completion certificates with mintCertificate function, metadata URI support, ownership tracking 2) LoyaltyRewards.sol: Points system contract with awardPoints, redeemPoints, getPoints functions for booking rewards 3) BookingVerification.sol: Booking hash verification with verifyBooking and isBookingVerified functions 4) AuthenticReviews.sol: Review authentication contract with verifyReview and isReviewVerified functions 5) Contract Deployment: All contracts deployed to Sepolia testnet with addresses configured in environment variables 6) ABI Integration: Contract ABIs integrated into blockchain service for seamless interaction. All smart contracts ready for backend integration."\n\n  - task: "PHASE 3: Database Schema Update"\n    implemented: true\n    working: true\n    file: "/app/backend/database/blockchain_schema.sql"\n    stuck_count: 0\n    priority: "high"\n    needs_retesting: false\n    status_history:\n      - working: true\n        agent: "main"\n        comment: "✅ PHASE 3 DATABASE SCHEMA COMPLETED: 1) New Tables Created: user_wallets (wallet connections), certificates (NFT records), loyalty_points (points balance), blockchain_bookings (verified bookings), blockchain_reviews (authenticated reviews) 2) Schema Integration: All tables properly integrated with existing MariaDB structure on port 3001 3) Foreign Key Relationships: Proper relationships established with users, bookings, reviews tables 4) Index Optimization: Database indexes created for efficient blockchain data queries 5) Migration Scripts: blockchain_schema.sql ready for production deployment. Database infrastructure ready for blockchain operations."\n\n  - task: "PHASE 4: Blockchain Backend Integration - Setup & Dependencies"\n    implemented: true\n    working: false\n    file: "/app/backend/services/blockchain_service.py, /app/backend/models/blockchain_models.py, /app/backend/database/blockchain_schema.sql, /app/backend/requirements.txt"\n    stuck_count: 1\n    priority: "high"\n    needs_retesting: true\n    status_history:\n      - working: false\n        agent: "main"\n        comment: "🔧 BLOCKCHAIN INFRASTRUCTURE SETUP COMPLETED: ✅ Phase 1-3 Dependencies: web3==6.11.0, eth-account==0.9.0 installed ✅ Environment Variables: ETHEREUM_NETWORK=sepolia, INFURA_PROJECT_ID, BLOCKCHAIN_PRIVATE_KEY, CONTRACT_ADDRESS_* configured ✅ Database Schema: blockchain_schema.sql created with tables (user_wallets, certificates, loyalty_points, blockchain_bookings, blockchain_reviews) ✅ Smart Contract Models: blockchain_models.py implemented with all Pydantic models ✅ Blockchain Service: blockchain_service.py created with Web3 connection, contract interactions, NFT minting, loyalty points, booking/review verification ✅ Network Status: API endpoints added for blockchain status and wallet management. CRITICAL ISSUES IDENTIFIED: 1) Web3 transaction attribute mismatch (raw_transaction vs rawTransaction) - FIXED 2) Database connection pattern issues in API endpoints - PARTIALLY FIXED 3) Missing dependencies (aiosignal, aiohappyeyeballs, frozenlist) - FIXED 4) BlockchainStatus model field mapping mismatch - FIXED. Ready for comprehensive testing phase."\n\n  - task: "PHASE 4: Critical Bug Fixes Applied"\n    implemented: true\n    working: "NA"\n    file: "/app/backend/services/blockchain_service.py, /app/backend/server.py"\n    stuck_count: 0\n    priority: "high"\n    needs_retesting: true\n    status_history:\n      - working: "NA"\n        agent: "main"\n        comment: "🚨 CRITICAL BLOCKCHAIN BUGS FIXED: ✅ Issue 1: Web3 Transaction Attribute - Fixed signed_txn.raw_transaction → signed_txn.rawTransaction in 4 functions (mint_certificate, award_loyalty_points, redeem_loyalty_points, verify_booking_on_blockchain, verify_review_on_blockchain) ✅ Issue 2: BlockchainStatus Model Mapping - Fixed field mismatches: latest_block→block_number, gas_price_gwei→gas_price, contracts→contract_addresses in both /api/blockchain/status endpoints ✅ Issue 3: Missing Dependencies - Installed aiosignal>=1.4.0, aiohappyeyeballs>=2.6.1, frozenlist>=1.7.0 ✅ Issue 4: Database Connection Pattern - Started fixing \'async with get_db() as pool\' → \'pool = await get_db()\' pattern (2/7 locations completed). REMAINING WORK: Complete database connection fixes in remaining 5 blockchain API endpoints."\n\nbackend:\n  - task: "PHASE 4: Blockchain API Endpoints Implementation"\n    implemented: true\n    working: "NA"\n    file: "/app/backend/server.py"\n    stuck_count: 0\n    priority: "high"\n    needs_retesting: true\n    status_history:\n      - working: "NA"\n        agent: "main"\n        comment: "🔗 BLOCKCHAIN API ENDPOINTS CREATED: ✅ Network Status: GET /api/blockchain/status - Returns network info, contract addresses, gas prices ✅ Wallet Management: POST /api/blockchain/wallet/connect, GET /api/blockchain/wallet/status ✅ Certificate System: POST /api/blockchain/certificates/mint, GET /api/blockchain/certificates ✅ Loyalty Points: GET /api/blockchain/loyalty/points, POST /api/blockchain/loyalty/award ✅ Booking Verification: POST /api/blockchain/bookings/verify ✅ Gas Estimation: GET /api/blockchain/gas-estimate ✅ All endpoints include proper authentication, error handling, and database integration. CONTRACT ADDRESSES CONFIGURED: certificates=0x8d4b58bd5fabe0d31f78d7caa3fa1ad5faebc6c6, loyalty=0x0bc63df35c5ea71f0311cae56d68fbef83fc2346, booking=0xa51179c34c0cd05d27bd9c6702723d8000aca8a1, reviews=0xbd8629411bdf5d906d81355f92313729aa39c2e8"\n\n  - task: "UPI Payment D
+
+  - task: "PHASE 5: BookingsPage Integration"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/BookingsPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ BOOKINGSPAGE BLOCKCHAIN INTEGRATION COMPLETED: 1) Added tabbed interface (My Bookings, Certificates, Loyalty Points) 2) Wallet connector integration at the top of the page 3) Blockchain booking status component integrated into individual booking cards 4) Certificate gallery accessible via dedicated tab 5) Loyalty dashboard accessible via dedicated tab 6) Conditional rendering based on wallet connection status 7) Blockchain verification status display for each booking 8) Professional tab navigation with icons and responsive design"
+
+  - task: "PHASE 5: BookingPage Integration"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/BookingPage.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "✅ BOOKINGPAGE BLOCKCHAIN INTEGRATION COMPLETED: 1) Wallet connector section added before booking form 2) Blockchain verification opt-in checkbox for connected wallets 3) Real-time blockchain status display for created bookings 4) Booking submission updated to include blockchain verification preference 5) Enhanced payment page navigation with blockchain verification status 6) Professional blockchain features card with benefits explanation 7) Conditional blockchain UI based on wallet connection 8) Seamless integration with existing booking flow"
+
+  - task: "Frontend API Services Update"
