@@ -57,18 +57,42 @@ const ProviderDashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const [bookingsData, servicesData] = await Promise.all([
-        bookingsAPI.getProviderBookings(),
-        providerManagementAPI.getUserProviders()
-      ]);
       
-      setBookings(bookingsData);
-      setServices(servicesData);
+      // Fetch data separately to handle partial failures gracefully
+      let bookingsData = [];
+      let servicesData = [];
+      
+      // Fetch bookings with error handling
+      try {
+        bookingsData = await bookingsAPI.getProviderBookings();
+      } catch (error) {
+        console.error('Failed to load bookings:', error);
+        toast({
+          title: "Warning",
+          description: "Failed to load bookings. Please try refreshing.",
+          variant: "destructive",
+        });
+      }
+      
+      // Fetch services with error handling
+      try {
+        servicesData = await providerManagementAPI.getUserProviders();
+      } catch (error) {
+        console.error('Failed to load services:', error);
+        toast({
+          title: "Warning",
+          description: "Failed to load services. Some features may be limited.",
+          variant: "destructive",
+        });
+      }
+      
+      setBookings(bookingsData || []);
+      setServices(servicesData || []);
       
       // Calculate comprehensive stats
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-      const monthlyBookings = bookingsData.filter(booking => {
+      const monthlyBookings = (bookingsData || []).filter(booking => {
         const bookingDate = new Date(booking.created_at);
         return bookingDate.getMonth() === currentMonth && bookingDate.getFullYear() === currentYear;
       });
@@ -77,11 +101,11 @@ const ProviderDashboard = () => {
         .filter(booking => booking.status === 'completed')
         .reduce((sum, booking) => sum + (booking.total_price || 0), 0);
       
-      const completedBookings = bookingsData.filter(booking => booking.status === 'completed').length;
-      const pendingBookings = bookingsData.filter(booking => booking.status === 'pending').length;
+      const completedBookings = (bookingsData || []).filter(booking => booking.status === 'completed').length;
+      const pendingBookings = (bookingsData || []).filter(booking => booking.status === 'pending').length;
       
       // Calculate booking status distribution
-      const statusCounts = bookingsData.reduce((acc, booking) => {
+      const statusCounts = (bookingsData || []).reduce((acc, booking) => {
         acc[booking.status] = (acc[booking.status] || 0) + 1;
         return acc;
       }, {});
@@ -94,24 +118,32 @@ const ProviderDashboard = () => {
       }));
       
       setStats({
-        totalBookings: bookingsData.length,
+        totalBookings: (bookingsData || []).length,
         monthlyRevenue: monthlyRevenue,
-        activeServices: servicesData.filter(service => service.is_active).length,
+        activeServices: (servicesData || []).filter(service => service.is_active).length,
         pendingBookings: pendingBookings,
         completedBookings: completedBookings,
         averageRating: 4.8, // This would come from reviews API
         monthlyGrowth: monthlyGrowth,
         revenueGrowth: monthlyGrowth,
         bookingStatusDistribution: statusCounts,
-        recentActivity: bookingsData.slice(0, 5)
+        recentActivity: (bookingsData || []).slice(0, 5)
       });
       
       setLastUpdated(new Date());
+      
+      // Show success message for manual refresh
+      toast({
+        title: "Success",
+        description: "Dashboard data refreshed successfully!",
+        variant: "default",
+      });
+      
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast({
         title: "Error",
-        description: "Failed to load dashboard data",
+        description: "Failed to refresh dashboard. Please check your connection and try again.",
         variant: "destructive",
       });
     } finally {

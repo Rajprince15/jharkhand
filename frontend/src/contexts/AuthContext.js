@@ -25,13 +25,28 @@ export const AuthProvider = ({ children }) => {
       
       if (token && savedUser) {
         try {
-          // Validate token by fetching current user
-          const currentUser = await authAPI.getCurrentUser();
-          setUser(currentUser);
-          localStorage.setItem('jharkhandTourismUser', JSON.stringify(currentUser));
-        } catch (error) {
-          console.error('Token validation failed:', error);
-          // Clear invalid token
+          // Parse saved user first - in case API call fails, we still have user data
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          
+          // Try to validate token - but don't clear on failure (could be network issue)
+          try {
+            const currentUser = await authAPI.getCurrentUser();
+            setUser(currentUser);
+            localStorage.setItem('jharkhandTourismUser', JSON.stringify(currentUser));
+          } catch (validationError) {
+            console.warn('Token validation failed, but keeping user logged in:', validationError);
+            // Only clear if we get a 401 unauthorized error (invalid token)
+            if (validationError.response?.status === 401) {
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('jharkhandTourismUser');
+              setUser(null);
+            }
+            // For other errors (network, server down), keep user logged in with saved data
+          }
+        } catch (parseError) {
+          console.error('Failed to parse saved user data:', parseError);
+          // Clear corrupted data
           localStorage.removeItem('access_token');
           localStorage.removeItem('jharkhandTourismUser');
           setUser(null);

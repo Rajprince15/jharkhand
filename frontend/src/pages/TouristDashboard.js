@@ -58,47 +58,93 @@ const TouristDashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const [destinationsData, bookingsData, wishlistData] = await Promise.all([
-        destinationsAPI.getAll(null, 6), // Get 6 destinations for recommendations  
-        bookingsAPI.getUserBookings(),
-        wishlistAPI.getAll()
-      ]);
       
-      setDestinations(destinationsData);
-      setBookings(bookingsData);
+      // Fetch data separately to handle partial failures gracefully
+      let destinationsData = [];
+      let bookingsData = [];
+      let wishlistData = { items: [] };
+      
+      // Fetch destinations with error handling
+      try {
+        destinationsData = await destinationsAPI.getAll(null, null, 6); // Get 6 destinations for recommendations  
+      } catch (error) {
+        console.error('Failed to load destinations:', error);
+        toast({
+          title: "Warning",
+          description: "Failed to load destinations. Some features may be limited.",
+          variant: "destructive",
+        });
+      }
+      
+      // Fetch bookings with error handling
+      try {
+        bookingsData = await bookingsAPI.getUserBookings();
+      } catch (error) {
+        console.error('Failed to load bookings:', error);
+        toast({
+          title: "Warning", 
+          description: "Failed to load bookings. Please try refreshing.",
+          variant: "destructive",
+        });
+      }
+      
+      // Fetch wishlist with error handling
+      try {
+        wishlistData = await wishlistAPI.getAll();
+      } catch (error) {
+        console.error('Failed to load wishlist:', error);
+        toast({
+          title: "Warning",
+          description: "Failed to load wishlist. Some features may be limited.",
+          variant: "destructive",
+        });
+      }
+      
+      // Update state with whatever data we successfully fetched
+      setDestinations(destinationsData || []);
+      setBookings(bookingsData || []);
       setWishlist(wishlistData.items || []);
 
       // Calculate comprehensive stats
-      const totalSpent = bookingsData
+      const totalSpent = (bookingsData || [])
         .filter(booking => booking.status === 'completed')
         .reduce((sum, booking) => sum + (booking.total_price || 0), 0);
       
-      const activeTrips = bookingsData.filter(booking => ['pending', 'confirmed'].includes(booking.status)).length;
-      const completedTrips = bookingsData.filter(booking => booking.status === 'completed').length;
-      
+      const activeTrips = (bookingsData || []).filter(booking => ['pending', 'confirmed'].includes(booking.status)).length;
+      const completedTrips = (bookingsData || []).filter(booking => booking.status === 'completed').length;
       
       setStats({
-        totalBookings: bookingsData.length,
+        totalBookings: (bookingsData || []).length,
         totalSpent: totalSpent,
         wishlistCount: wishlistData.items ? wishlistData.items.length : 0,
         activeTrips: activeTrips,
         completedTrips: completedTrips,
         averageRating: 4.6, // This would come from reviews API
-        recentActivity: bookingsData.slice(0, 5)
+        recentActivity: (bookingsData || []).slice(0, 5)
       });
       
       setLastUpdated(new Date());
+      
+      // Show success message for manual refresh
+      if (!loading) {
+        toast({
+          title: "Success",
+          description: "Dashboard data refreshed successfully!",
+          variant: "default",
+        });
+      }
+      
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast({
         title: t('errorOccurred'),
-        description: "Failed to load dashboard data",
+        description: "Failed to refresh dashboard. Please check your connection and try again.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, loading]);
 
   const handleLogout = () => {
     logout();

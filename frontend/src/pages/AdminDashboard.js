@@ -91,11 +91,19 @@ const AdminDashboard = () => {
       });
       
       setLastUpdated(new Date());
+      
+      // Show success message for manual refresh
+      toast({
+        title: "Success",
+        description: "Dashboard data refreshed successfully!",
+        variant: "default",
+      });
+      
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast({
         title: "Error",
-        description: "Failed to load dashboard data",
+        description: "Failed to refresh dashboard. Please check your connection and try again.",
         variant: "destructive",
       });
     } finally {
