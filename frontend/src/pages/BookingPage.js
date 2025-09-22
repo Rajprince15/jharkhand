@@ -91,7 +91,7 @@ const BookingPage = () => {
 
   useEffect(() => {
     updatePrice();
-  }, [selectedProvider, formData.travelers, formData.addons, destinations]);
+  }, [selectedProvider, formData.travelers, formData.addons]);
 
   useEffect(() => {
     // Set minimum date to today
@@ -101,19 +101,7 @@ const BookingPage = () => {
 
   const updatePrice = () => {
     const travelers = parseInt(formData.travelers) || 1;
-    
-    // Find the destination that matches the provider's location
-    const selectedDestination = destinations.find(d => 
-      d.name?.toLowerCase().includes(selectedProvider?.location?.toLowerCase()?.split(',')[0] || '')
-    ) || destinations[0];
-    
-    // Calculate base price: provider price + destination price, multiplied by travelers
-    let newTotalPrice = 0;
-    if (selectedProvider && selectedDestination) {
-      newTotalPrice = (selectedProvider.price + selectedDestination.price) * travelers;
-    } else if (selectedProvider) {
-      newTotalPrice = selectedProvider.price * travelers;
-    }
+    let newTotalPrice = selectedProvider ? selectedProvider.price * travelers : 0;
     
     // Add addon prices
     formData.addons.forEach(addonId => {
@@ -209,10 +197,45 @@ const BookingPage = () => {
       console.log('Selected provider:', selectedProvider);
       console.log('Available destinations:', destinations);
       
-      // Use the first destination as default or find appropriate one
-      const selectedDestination = destinations.find(d => 
-        d.name?.toLowerCase().includes(selectedProvider?.location?.toLowerCase()?.split(',')[0] || '')
-      ) || destinations[0];
+      // Find the best matching destination for the selected provider
+      let selectedDestination = null;
+      
+      if (selectedProvider) {
+        // Try to match by provider name or description
+        const providerName = selectedProvider.name?.toLowerCase() || '';
+        const providerLocation = selectedProvider.location?.toLowerCase() || '';
+        
+        // First try to match by location city name
+        const locationCity = providerLocation.split(',')[0]?.trim() || '';
+        selectedDestination = destinations.find(d => 
+          d.name?.toLowerCase().includes(locationCity) ||
+          d.location?.toLowerCase().includes(locationCity)
+        );
+        
+        // If no match by location, try matching by provider service type or name
+        if (!selectedDestination) {
+          selectedDestination = destinations.find(d => 
+            providerName.includes(d.name?.toLowerCase()) ||
+            d.name?.toLowerCase().includes(providerName.split(' ')[0]) ||
+            (providerName.includes('netarhat') && d.name?.toLowerCase().includes('netarhat')) ||
+            (providerName.includes('betla') && d.name?.toLowerCase().includes('betla')) ||
+            (providerName.includes('ranchi') && d.name?.toLowerCase().includes('ranchi'))
+          );
+        }
+        
+        // If still no match, try matching by category/type
+        if (!selectedDestination && selectedProvider.category) {
+          const providerCategory = selectedProvider.category.toLowerCase();
+          selectedDestination = destinations.find(d => 
+            d.category?.toLowerCase() === providerCategory ||
+            (providerCategory.includes('wildlife') && d.category?.toLowerCase().includes('wildlife')) ||
+            (providerCategory.includes('nature') && d.category?.toLowerCase().includes('nature'))
+          );
+        }
+      }
+      
+      // Final fallback to first destination if no match found
+      selectedDestination = selectedDestination || destinations[0];
       
       // Prepare booking data for API (matching backend BookingCreate model)
       const departureDate = new Date(formData.departureDate);
@@ -227,7 +250,7 @@ const BookingPage = () => {
         check_out: checkOutDate.toISOString().split('T')[0],
         guests: parseInt(formData.travelers),
         rooms: Math.ceil(parseInt(formData.travelers) / 2), // Estimate rooms needed
-        calculated_price: totalPrice, // Send frontend calculated price to backend
+        calculated_price: null, // Let backend calculate from provider+destination prices
         special_requests: formData.requirements || '',
         city_origin: formData.cityOrigin || '',
         addons: JSON.stringify(formData.addons),
