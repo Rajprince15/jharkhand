@@ -2968,6 +2968,315 @@ async def estimate_gas_cost(operation: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Additional blockchain endpoints that frontend expects
+@api_router.get("/blockchain/certificates")
+async def get_certificates(current_user: dict = Depends(get_current_user)):
+    """Get user's certificates (alias for /blockchain/certificates/my)"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(
+                    "SELECT * FROM certificates WHERE user_id = %s ORDER BY created_at DESC",
+                    (current_user['id'],)
+                )
+                certificates = await cur.fetchall()
+                return certificates
+                
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/blockchain/loyalty/points")  
+async def get_loyalty_points(current_user: dict = Depends(get_current_user)):
+    """Get user's loyalty points (alias for /blockchain/loyalty/balance)"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(
+                    "SELECT * FROM loyalty_points WHERE user_id = %s",
+                    (current_user['id'],)
+                )
+                loyalty_data = await cur.fetchone()
+                
+                if not loyalty_data:
+                    # Create initial loyalty record
+                    loyalty_id = str(uuid.uuid4())
+                    user_wallet = ""
+                    
+                    # Get user wallet address
+                    await cur.execute(
+                        "SELECT wallet_address FROM users WHERE id = %s",
+                        (current_user['id'],)
+                    )
+                    user_data = await cur.fetchone()
+                    if user_data and user_data['wallet_address']:
+                        user_wallet = user_data['wallet_address']
+                    
+                    await cur.execute("""
+                        INSERT INTO loyalty_points (
+                            id, user_id, wallet_address, points_balance, 
+                            total_earned, total_redeemed, contract_address
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        loyalty_id, current_user['id'], user_wallet, 0.0, 0.0, 0.0,
+                        os.environ.get('CONTRACT_ADDRESS_LOYALTY', '')
+                    ))
+                    
+                    return {
+                        "user_id": current_user['id'],
+                        "wallet_address": user_wallet,
+                        "points_balance": 0.0,
+                        "total_earned": 0.0,
+                        "total_redeemed": 0.0
+                    }
+                
+                return loyalty_data
+                
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/blockchain/bookings/status/{booking_id}")
+async def get_booking_blockchain_status(booking_id: str, current_user: dict = Depends(get_current_user)):
+    """Get blockchain verification status for a booking"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check if booking exists and belongs to user
+                await cur.execute(
+                    "SELECT * FROM bookings WHERE id = %s AND user_id = %s",
+                    (booking_id, current_user['id'])
+                )
+                booking = await cur.fetchone()
+                
+                if not booking:
+                    raise HTTPException(status_code=404, detail="Booking not found")
+                
+                # Check blockchain verification status
+                await cur.execute(
+                    "SELECT * FROM blockchain_bookings WHERE booking_id = %s",
+                    (booking_id,)
+                )
+                blockchain_booking = await cur.fetchone()
+                
+                if not blockchain_booking:
+                    return {
+                        "booking_id": booking_id,
+                        "verification_status": "pending",
+                        "blockchain_verified": False,
+                        "booking_hash": None,
+                        "transaction_hash": None,
+                        "contract_address": None
+                    }
+                
+                return {
+                    "booking_id": booking_id,
+                    "verification_status": blockchain_booking['verification_status'],
+                    "blockchain_verified": True,
+                    "booking_hash": blockchain_booking['booking_hash'],
+                    "transaction_hash": blockchain_booking['transaction_hash'],
+                    "contract_address": blockchain_booking['contract_address']
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/blockchain/loyalty/redeem")
+async def redeem_blockchain_points(
+    redeem_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Redeem loyalty points for booking discount (blockchain version)"""
+    try:
+        points_to_redeem = redeem_data.get('points', 0)
+        booking_id = redeem_data.get('booking_id')
+        
+        if not points_to_redeem or points_to_redeem <= 0:
+            raise HTTPException(status_code=400, detail="Invalid points amount")
+        
+        if not booking_id:
+            raise HTTPException(status_code=400, detail="Booking ID is required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Get user's loyalty points balance
+                await cur.execute(
+                    "SELECT * FROM loyalty_points WHERE user_id = %s",
+                    (current_user['id'],)
+                )
+                loyalty_data = await cur.fetchone()
+                
+                if not loyalty_data:
+                    raise HTTPException(status_code=404, detail="No loyalty points found")
+                
+                if loyalty_data['points_balance'] < points_to_redeem:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Insufficient points. Available: {loyalty_data['points_balance']}, Requested: {points_to_redeem}"
+                    )
+                
+                # Calculate discount (100 points = ₹10)
+                discount_amount = points_to_redeem / 100 * 10
+                
+                # Get booking details
+                await cur.execute(
+                    "SELECT * FROM bookings WHERE id = %s AND user_id = %s AND status = 'pending'",
+                    (booking_id, current_user['id'])
+                )
+                booking = await cur.fetchone()
+                
+                if not booking:
+                    raise HTTPException(status_code=404, detail="Pending booking not found")
+                
+                # Check if discount would exceed total price
+                max_discount = booking['total_price'] * 0.5  # Max 50% discount
+                final_discount = min(discount_amount, max_discount)
+                final_points_used = int(final_discount * 100 / 10)  # Recalculate points needed for final discount
+                
+                # Update loyalty points balance
+                await cur.execute("""
+                    UPDATE loyalty_points 
+                    SET points_balance = points_balance - %s, 
+                        total_redeemed = total_redeemed + %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                """, (final_points_used, final_points_used, current_user['id']))
+                
+                # Update booking price
+                new_total_price = booking['total_price'] - final_discount
+                await cur.execute("""
+                    UPDATE bookings 
+                    SET total_price = %s
+                    WHERE id = %s
+                """, (new_total_price, booking_id))
+                
+                # Log redemption transaction
+                tx_id = str(uuid.uuid4())
+                await cur.execute("""
+                    INSERT INTO loyalty_transactions (
+                        id, user_id, transaction_type, points_amount, 
+                        booking_id, description, status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    tx_id, current_user['id'], 'redeemed', final_points_used,
+                    booking_id, f"Points redeemed for booking discount - ₹{final_discount:.2f}", 'completed'
+                ))
+                
+                # Get updated balance
+                await cur.execute(
+                    "SELECT points_balance FROM loyalty_points WHERE user_id = %s",
+                    (current_user['id'],)
+                )
+                updated_balance = await cur.fetchone()
+                
+                return {
+                    "success": True,
+                    "points_redeemed": final_points_used,
+                    "discount_applied": final_discount,
+                    "new_total_price": new_total_price,
+                    "remaining_points": updated_balance['points_balance'] if updated_balance else 0,
+                    "message": f"Successfully redeemed {final_points_used} points for ₹{final_discount:.2f} discount"
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/blockchain/reviews/verify")
+async def verify_review_blockchain(
+    review_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Verify review on blockchain"""
+    try:
+        review_id = review_data.get('review_id')
+        booking_id = review_data.get('booking_id')
+        
+        if not review_id or not booking_id:
+            raise HTTPException(status_code=400, detail="Review ID and Booking ID are required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check if review exists and belongs to user
+                await cur.execute(
+                    "SELECT * FROM reviews WHERE id = %s AND user_id = %s",
+                    (review_id, current_user['id'])
+                )
+                review = await cur.fetchone()
+                
+                if not review:
+                    raise HTTPException(status_code=404, detail="Review not found")
+                
+                # Check if booking is verified on blockchain
+                await cur.execute(
+                    "SELECT * FROM blockchain_bookings WHERE booking_id = %s AND verification_status = 'verified'",
+                    (booking_id,)
+                )
+                blockchain_booking = await cur.fetchone()
+                
+                if not blockchain_booking:
+                    raise HTTPException(status_code=400, detail="Booking must be verified on blockchain first")
+                
+                # Get user wallet
+                await cur.execute(
+                    "SELECT wallet_address FROM users WHERE id = %s",
+                    (current_user['id'],)
+                )
+                user_data = await cur.fetchone()
+                
+                if not user_data or not user_data['wallet_address']:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Please connect your wallet first"
+                    )
+                
+                # Save blockchain review record
+                blockchain_review_id = str(uuid.uuid4())
+                await cur.execute("""
+                    INSERT INTO blockchain_reviews (
+                        id, review_id, booking_id, user_wallet, review_hash,
+                        contract_address, verification_status, blockchain_network
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    blockchain_review_id, review_id, booking_id, user_data['wallet_address'],
+                    f"review_hash_{review_id}", os.environ.get('CONTRACT_ADDRESS_REVIEWS', ''),
+                    'verified', 'sepolia'
+                ))
+                
+                # Update review blockchain status
+                await cur.execute("""
+                    UPDATE reviews 
+                    SET blockchain_verified = %s
+                    WHERE id = %s
+                """, (True, review_id))
+                
+                # Award bonus loyalty points for verified review
+                await cur.execute("""
+                    UPDATE loyalty_points 
+                    SET points_balance = points_balance + 25, 
+                        total_earned = total_earned + 25,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                """, (current_user['id'],))
+                
+                return {
+                    "success": True,
+                    "review_id": review_id,
+                    "verification_status": "verified",
+                    "bonus_points_awarded": 25
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -3068,3 +3377,4 @@ async def shutdown_event():
         db_pool.close()
         await db_pool.wait_closed()
     print("Database connection closed")
+    
