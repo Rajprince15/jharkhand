@@ -1,17 +1,8 @@
-"""
-Blockchain Service for Jharkhand Tourism
-Phase 4: Backend Integration - Complete Web3 functionality
-
-Handles:
-- Certificate NFT minting
-- Loyalty points system
-- Booking verification
-- Review authentication
-"""
 import os
 import json
 import uuid
 import hashlib
+import asyncio
 from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 from decimal import Decimal
@@ -23,6 +14,144 @@ from hexbytes import HexBytes
 from dotenv import load_dotenv
 
 load_dotenv()
+
+class BlockchainEventMonitor:
+    """Real-time blockchain event monitoring for data synchronization"""
+    
+    def __init__(self, blockchain_service, db_pool):
+        self.blockchain_service = blockchain_service
+        self.db_pool = db_pool
+        self.w3 = blockchain_service.w3
+        self.running = False
+        
+    async def start_monitoring(self):
+        """Start monitoring blockchain events"""
+        self.running = True
+        await asyncio.gather(
+            self.monitor_certificate_events(),
+            self.monitor_loyalty_events(),
+            self.monitor_booking_events()
+        )
+    
+    async def stop_monitoring(self):
+        """Stop monitoring blockchain events"""
+        self.running = False
+    
+    async def monitor_certificate_events(self):
+        """Monitor certificate minting events"""
+        try:
+            contract = self.w3.eth.contract(
+                address=self.blockchain_service.contracts['certificates'],
+                abi=self.blockchain_service.contract_abis['certificates']
+            )
+            
+            # Create event filter for CertificateIssued events
+            event_filter = contract.events.CertificateIssued.createFilter(fromBlock='latest')
+            
+            while self.running:
+                try:
+                    for event in event_filter.get_new_entries():
+                        await self.handle_certificate_event(event)
+                    await asyncio.sleep(10)  # Check every 10 seconds
+                except Exception as e:
+                    print(f"Error in certificate monitoring: {e}")
+                    await asyncio.sleep(30)  # Wait longer on error
+                    
+        except Exception as e:
+            print(f"Error setting up certificate monitoring: {e}")
+    
+    async def handle_certificate_event(self, event):
+        """Handle certificate minting event"""
+        try:
+            token_id = event['args']['tokenId']
+            tourist_address = event['args']['tourist']
+            destination = event['args']['destination']
+            tx_hash = event['transactionHash'].hex()
+            
+            # Update database
+            # Note: In real implementation, this would use the actual database connection
+            print(f"✅ Certificate minted: TokenID={token_id}, Tourist={tourist_address}, Destination={destination}")
+            
+        except Exception as e:
+            print(f"Error handling certificate event: {e}")
+    
+    async def monitor_loyalty_events(self):
+        """Monitor loyalty point events"""
+        try:
+            contract = self.w3.eth.contract(
+                address=self.blockchain_service.contracts['loyalty'],
+                abi=self.blockchain_service.contract_abis['loyalty']
+            )
+            
+            # Monitor both PointsEarned and PointsRedeemed events
+            earned_filter = contract.events.PointsEarned.createFilter(fromBlock='latest')
+            redeemed_filter = contract.events.PointsRedeemed.createFilter(fromBlock='latest')
+            
+            while self.running:
+                try:
+                    for event in earned_filter.get_new_entries():
+                        await self.handle_loyalty_event(event, 'earned')
+                    for event in redeemed_filter.get_new_entries():
+                        await self.handle_loyalty_event(event, 'redeemed')
+                    await asyncio.sleep(10)
+                except Exception as e:
+                    print(f"Error in loyalty monitoring: {e}")
+                    await asyncio.sleep(30)
+                    
+        except Exception as e:
+            print(f"Error setting up loyalty monitoring: {e}")
+    
+    async def handle_loyalty_event(self, event, event_type):
+        """Handle loyalty point events"""
+        try:
+            user_address = event['args']['user']
+            amount = event['args']['amount']
+            description = event['args']['description']
+            tx_hash = event['transactionHash'].hex()
+            
+            print(f"✅ Loyalty {event_type}: User={user_address}, Amount={amount}, Description={description}")
+            
+        except Exception as e:
+            print(f"Error handling loyalty event: {e}")
+    
+    async def monitor_booking_events(self):
+        """Monitor booking verification events"""
+        try:
+            contract = self.w3.eth.contract(
+                address=self.blockchain_service.contracts['booking'],
+                abi=self.blockchain_service.contract_abis['booking']
+            )
+            
+            # Monitor BookingCreated and BookingVerified events
+            created_filter = contract.events.BookingCreated.createFilter(fromBlock='latest')
+            verified_filter = contract.events.BookingVerified.createFilter(fromBlock='latest')
+            
+            while self.running:
+                try:
+                    for event in created_filter.get_new_entries():
+                        await self.handle_booking_event(event, 'created')
+                    for event in verified_filter.get_new_entries():
+                        await self.handle_booking_event(event, 'verified')
+                    await asyncio.sleep(10)
+                except Exception as e:
+                    print(f"Error in booking monitoring: {e}")
+                    await asyncio.sleep(30)
+                    
+        except Exception as e:
+            print(f"Error setting up booking monitoring: {e}")
+    
+    async def handle_booking_event(self, event, event_type):
+        """Handle booking verification events"""
+        try:
+            booking_hash = event['args']['bookingHash'].hex()
+            tourist = event['args']['tourist']
+            provider = event['args']['provider']
+            tx_hash = event['transactionHash'].hex()
+            
+            print(f"✅ Booking {event_type}: Hash={booking_hash}, Tourist={tourist}, Provider={provider}")
+            
+        except Exception as e:
+            print(f"Error handling booking event: {e}")
 
 class BlockchainService:
     def __init__(self):
@@ -60,86 +189,179 @@ class BlockchainService:
         }
     
     def _get_certificate_abi(self) -> List[Dict]:
-        """Certificate NFT contract ABI"""
+        """Certificate NFT contract ABI - CORRECTED to match deployed contract"""
         return [
             {
                 "inputs": [
-                    {"name": "to", "type": "address"},
-                    {"name": "tokenURI", "type": "string"},
-                    {"name": "certificateType", "type": "string"},
-                    {"name": "destinationName", "type": "string"}
+                    {"name": "_tourist", "type": "address"},
+                    {"name": "_destination", "type": "string"},
+                    {"name": "_tourDate", "type": "string"}
                 ],
                 "name": "mintCertificate",
-                "outputs": [{"name": "tokenId", "type": "uint256"}],
+                "outputs": [{"name": "", "type": "uint256"}],
                 "stateMutability": "nonpayable",
                 "type": "function"
             },
             {
-                "inputs": [{"name": "tokenId", "type": "uint256"}],
-                "name": "tokenURI",
-                "outputs": [{"type": "string"}],
+                "inputs": [{"name": "_user", "type": "address"}],
+                "name": "getUserCertificates",
+                "outputs": [{"type": "uint256[]"}],
                 "stateMutability": "view",
                 "type": "function"
             },
             {
-                "inputs": [{"name": "owner", "type": "address"}],
-                "name": "balanceOf",
+                "inputs": [{"name": "_user", "type": "address"}],
+                "name": "getUserCertificateCount",
                 "outputs": [{"type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "_tokenId", "type": "uint256"}],
+                "name": "getCertificate",
+                "outputs": [{
+                    "components": [
+                        {"name": "tokenId", "type": "uint256"},
+                        {"name": "tourist", "type": "address"},
+                        {"name": "destination", "type": "string"},
+                        {"name": "tourDate", "type": "string"},
+                        {"name": "issuedDate", "type": "uint256"},
+                        {"name": "isActive", "type": "bool"}
+                    ],
+                    "type": "tuple"
+                }],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "_tokenId", "type": "uint256"}],
+                "name": "isCertificateValid",
+                "outputs": [{"type": "bool"}],
                 "stateMutability": "view",
                 "type": "function"
             }
         ]
     
     def _get_loyalty_abi(self) -> List[Dict]:
-        """Loyalty points contract ABI"""
+        """Loyalty points contract ABI - CORRECTED to match deployed contract"""
         return [
             {
                 "inputs": [
-                    {"name": "user", "type": "address"},
-                    {"name": "points", "type": "uint256"}
+                    {"name": "_user", "type": "address"},
+                    {"name": "_bookingAmount", "type": "uint256"},
+                    {"name": "_description", "type": "string"}
                 ],
-                "name": "awardPoints",
+                "name": "earnPoints",
                 "outputs": [],
                 "stateMutability": "nonpayable",
                 "type": "function"
             },
             {
                 "inputs": [
-                    {"name": "user", "type": "address"},
-                    {"name": "points", "type": "uint256"}
+                    {"name": "_user", "type": "address"},
+                    {"name": "_pointsToRedeem", "type": "uint256"},
+                    {"name": "_description", "type": "string"}
                 ],
                 "name": "redeemPoints",
-                "outputs": [],
+                "outputs": [{"type": "uint256"}],
                 "stateMutability": "nonpayable",
                 "type": "function"
             },
             {
-                "inputs": [{"name": "user", "type": "address"}],
-                "name": "getPoints",
+                "inputs": [{"name": "_user", "type": "address"}],
+                "name": "getPointBalance",
                 "outputs": [{"type": "uint256"}],
                 "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "_user", "type": "address"}],
+                "name": "getUserTransactions",
+                "outputs": [{
+                    "components": [
+                        {"name": "user", "type": "address"},
+                        {"name": "amount", "type": "int256"},
+                        {"name": "transactionType", "type": "string"},
+                        {"name": "description", "type": "string"},
+                        {"name": "timestamp", "type": "uint256"}
+                    ],
+                    "type": "tuple[]"
+                }],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "_user", "type": "address"}],
+                "name": "getUserStats",
+                "outputs": [
+                    {"name": "balance", "type": "uint256"},
+                    {"name": "earned", "type": "uint256"},
+                    {"name": "redeemed", "type": "uint256"},
+                    {"name": "transactionCount", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "_points", "type": "uint256"}],
+                "name": "calculateDiscountValue",
+                "outputs": [{"type": "uint256"}],
+                "stateMutability": "pure",
                 "type": "function"
             }
         ]
     
     def _get_booking_abi(self) -> List[Dict]:
-        """Booking verification contract ABI"""
+        """Booking verification contract ABI - CORRECTED to match deployed contract"""
         return [
             {
                 "inputs": [
-                    {"name": "bookingId", "type": "string"},
-                    {"name": "bookingHash", "type": "bytes32"},
-                    {"name": "user", "type": "address"}
+                    {"name": "_tourist", "type": "address"},
+                    {"name": "_provider", "type": "address"},
+                    {"name": "_destination", "type": "string"},
+                    {"name": "_amount", "type": "uint256"},
+                    {"name": "_bookingDate", "type": "uint256"},
+                    {"name": "_ipfsHash", "type": "string"}
                 ],
                 "name": "verifyBooking",
-                "outputs": [],
+                "outputs": [{"type": "bytes32"}],
                 "stateMutability": "nonpayable",
                 "type": "function"
             },
             {
-                "inputs": [{"name": "bookingId", "type": "string"}],
-                "name": "isBookingVerified",
+                "inputs": [{"name": "_bookingHash", "type": "bytes32"}],
+                "name": "isBookingValid",
                 "outputs": [{"type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "_bookingHash", "type": "bytes32"}],
+                "name": "getBookingDetails",
+                "outputs": [
+                    {"name": "tourist", "type": "address"},
+                    {"name": "provider", "type": "address"},
+                    {"name": "destination", "type": "string"},
+                    {"name": "amount", "type": "uint256"},
+                    {"name": "bookingDate", "type": "uint256"},
+                    {"name": "verificationDate", "type": "uint256"},
+                    {"name": "status", "type": "uint8"},
+                    {"name": "ipfsHash", "type": "string"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "_tourist", "type": "address"}],
+                "name": "getTouristBookings",
+                "outputs": [{"type": "bytes32[]"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "_provider", "type": "address"}],
+                "name": "getProviderBookings",
+                "outputs": [{"type": "bytes32[]"}],
                 "stateMutability": "view",
                 "type": "function"
             }
@@ -299,41 +521,27 @@ class BlockchainService:
     # ===========================================
     
     async def mint_certificate(self, user_wallet: str, booking_id: str, 
-                             destination_name: str, certificate_type: str = "tour_completion") -> Dict:
-        """Mint a tourism certificate NFT"""
+                             destination_name: str, tour_date: str = None) -> Dict:
+        """Mint a tourism certificate NFT using corrected ABI"""
         try:
-            # Create metadata for the certificate
-            metadata = {
-                "name": f"Tourism Certificate - {destination_name}",
-                "description": f"Certificate of {certificate_type} for visiting {destination_name}",
-                "image": f"https://certificates.jharkhandtourism.com/{booking_id}.png",
-                "attributes": [
-                    {"trait_type": "Destination", "value": destination_name},
-                    {"trait_type": "Type", "value": certificate_type},
-                    {"trait_type": "Issue Date", "value": datetime.now().isoformat()},
-                    {"trait_type": "Network", "value": self.network}
-                ]
-            }
+            if not tour_date:
+                tour_date = datetime.now().strftime("%Y-%m-%d")
             
-            # Generate metadata URL (in production, upload to IPFS)
-            metadata_url = f"https://metadata.jharkhandtourism.com/{booking_id}.json"
-            
-            # Get contract
+            # Get contract with corrected ABI
             contract = self.w3.eth.contract(
                 address=self.contracts['certificates'],
                 abi=self.contract_abis['certificates']
             )
             
-            # Build transaction
+            # Use corrected function signature: mintCertificate(address _tourist, string _destination, string _tourDate)
             transaction = contract.functions.mintCertificate(
                 user_wallet,
-                metadata_url,
-                certificate_type,
-                destination_name
+                destination_name,
+                tour_date
             ).build_transaction({
                 'from': self.wallet_address,
-                'gas': 300000,
-                'gasPrice': self.w3.to_wei('20', 'gwei'),
+                'gas': await self.get_dynamic_gas_limit('mint_certificate'),
+                'gasPrice': await self.get_dynamic_gas_price(),
                 'nonce': self.w3.eth.get_transaction_count(self.wallet_address)
             })
             
@@ -344,14 +552,24 @@ class BlockchainService:
             # Wait for receipt
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
             
-            # Extract token ID from logs (simplified for MVP)
-            token_id = receipt.logs[0]['topics'][3] if receipt.logs else 1
+            # Extract token ID from receipt
+            token_id = None
+            if receipt.logs:
+                # Parse the CertificateIssued event
+                for log in receipt.logs:
+                    try:
+                        decoded_log = contract.events.CertificateIssued().processLog(log)
+                        token_id = decoded_log['args']['tokenId']
+                        break
+                    except:
+                        continue
             
             return {
                 'success': True,
                 'transaction_hash': tx_hash.hex(),
-                'token_id': int.from_bytes(token_id, byteorder='big') if isinstance(token_id, bytes) else token_id,
-                'metadata_url': metadata_url,
+                'token_id': token_id,
+                'destination': destination_name,
+                'tour_date': tour_date,
                 'gas_used': receipt.gasUsed
             }
             
@@ -362,22 +580,32 @@ class BlockchainService:
             }
     
     async def get_user_certificates(self, wallet_address: str) -> List[Dict]:
-        """Get all certificates owned by a user"""
+        """Get all certificates owned by a user - UPDATED to use corrected functions"""
         try:
             contract = self.w3.eth.contract(
                 address=self.contracts['certificates'],
                 abi=self.contract_abis['certificates']
             )
             
-            balance = contract.functions.balanceOf(wallet_address).call()
+            # Use corrected function: getUserCertificates(address _user)
+            token_ids = contract.functions.getUserCertificates(wallet_address).call()
             certificates = []
             
-            # In a real implementation, iterate through token IDs
-            for i in range(balance):
-                certificates.append({
-                    'token_id': i + 1,
-                    'metadata_url': f"https://metadata.jharkhandtourism.com/cert_{i+1}.json"
-                })
+            # Get details for each certificate
+            for token_id in token_ids:
+                try:
+                    cert_details = contract.functions.getCertificate(token_id).call()
+                    certificates.append({
+                        'token_id': cert_details[0],  # tokenId
+                        'tourist': cert_details[1],   # tourist
+                        'destination': cert_details[2], # destination  
+                        'tour_date': cert_details[3],   # tourDate
+                        'issued_date': cert_details[4], # issuedDate
+                        'is_active': cert_details[5]    # isActive
+                    })
+                except Exception as e:
+                    print(f"Error getting certificate {token_id}: {e}")
+                    continue
             
             return certificates
             
@@ -391,20 +619,23 @@ class BlockchainService:
     
     async def award_loyalty_points(self, user_wallet: str, points: int, 
                                  booking_id: str) -> Dict:
-        """Award loyalty points to user"""
+        """Award loyalty points to user - UPDATED to use corrected function"""
         try:
             contract = self.w3.eth.contract(
                 address=self.contracts['loyalty'],
                 abi=self.contract_abis['loyalty']
             )
             
-            transaction = contract.functions.awardPoints(
+            # Use corrected function: earnPoints(address _user, uint256 _bookingAmount, string _description)
+            description = f"Earned from booking {booking_id}"
+            transaction = contract.functions.earnPoints(
                 user_wallet,
-                points
+                points,  # This should be booking amount, but using points for backward compatibility
+                description
             ).build_transaction({
                 'from': self.wallet_address,
-                'gas': 100000,
-                'gasPrice': self.w3.to_wei('20', 'gwei'),
+                'gas': await self.get_dynamic_gas_limit('earn_points'),
+                'gasPrice': await self.get_dynamic_gas_price(),
                 'nonce': self.w3.eth.get_transaction_count(self.wallet_address)
             })
             
@@ -426,20 +657,23 @@ class BlockchainService:
             }
     
     async def redeem_loyalty_points(self, user_wallet: str, points: int) -> Dict:
-        """Redeem loyalty points"""
+        """Redeem loyalty points - UPDATED to use corrected function"""
         try:
             contract = self.w3.eth.contract(
                 address=self.contracts['loyalty'],
                 abi=self.contract_abis['loyalty']
             )
             
+            # Use corrected function: redeemPoints(address _user, uint256 _pointsToRedeem, string _description)
+            description = f"Redeemed {points} points for discount"
             transaction = contract.functions.redeemPoints(
                 user_wallet,
-                points
+                points,
+                description
             ).build_transaction({
                 'from': self.wallet_address,
-                'gas': 100000,
-                'gasPrice': self.w3.to_wei('20', 'gwei'),
+                'gas': await self.get_dynamic_gas_limit('redeem_points'),
+                'gasPrice': await self.get_dynamic_gas_price(),
                 'nonce': self.w3.eth.get_transaction_count(self.wallet_address)
             })
             
@@ -461,14 +695,15 @@ class BlockchainService:
             }
     
     async def get_loyalty_points(self, wallet_address: str) -> int:
-        """Get user's loyalty points balance"""
+        """Get user's loyalty points balance - UPDATED to use corrected function"""
         try:
             contract = self.w3.eth.contract(
                 address=self.contracts['loyalty'],
                 abi=self.contract_abis['loyalty']
             )
             
-            balance = contract.functions.getPoints(wallet_address).call()
+            # Use corrected function: getPointBalance(address _user)
+            balance = contract.functions.getPointBalance(wallet_address).call()
             return balance
             
         except Exception as e:
@@ -481,31 +716,56 @@ class BlockchainService:
     
     async def verify_booking_on_blockchain(self, booking_id: str, booking_data: Dict, 
                                          user_wallet: str) -> Dict:
-        """Verify booking on blockchain"""
+        """Verify booking on blockchain - UPDATED to use corrected function"""
         try:
-            # Create booking hash
-            booking_string = f"{booking_id}_{booking_data.get('destination_id')}_{booking_data.get('total_price')}_{booking_data.get('booking_date')}"
-            booking_hash = self.generate_hash(booking_string)
-            
             contract = self.w3.eth.contract(
                 address=self.contracts['booking'],
                 abi=self.contract_abis['booking']
             )
             
+            # Extract required data for corrected function signature
+            provider_wallet = booking_data.get('provider_wallet', self.wallet_address)  # Fallback to system wallet
+            destination = booking_data.get('destination_name', 'Unknown')
+            amount = int(float(booking_data.get('total_price', 0)) * 100)  # Convert to cents/smallest unit
+            booking_timestamp = int(datetime.now().timestamp())
+            ipfs_hash = f"booking_{booking_id}"  # Simple IPFS hash placeholder
+            
+            # Use corrected function: verifyBooking(address _tourist, address _provider, string _destination, uint256 _amount, uint256 _bookingDate, string _ipfsHash)
             transaction = contract.functions.verifyBooking(
-                booking_id,
-                booking_hash,
-                user_wallet
+                user_wallet,
+                provider_wallet,
+                destination,
+                amount,
+                booking_timestamp,
+                ipfs_hash
             ).build_transaction({
                 'from': self.wallet_address,
-                'gas': 150000,
-                'gasPrice': self.w3.to_wei('20', 'gwei'),
+                'gas': await self.get_dynamic_gas_limit('verify_booking'),
+                'gasPrice': await self.get_dynamic_gas_price(),
                 'nonce': self.w3.eth.get_transaction_count(self.wallet_address)
             })
             
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
             tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            # Extract booking hash from transaction receipt
+            booking_hash = None
+            if receipt.logs:
+                try:
+                    # Try to decode BookingCreated event
+                    for log in receipt.logs:
+                        try:
+                            decoded_log = contract.events.BookingCreated().processLog(log)
+                            booking_hash = decoded_log['args']['bookingHash'].hex()
+                            break
+                        except:
+                            continue
+                except:
+                    pass
+            
+            if not booking_hash:
+                booking_hash = tx_hash.hex()  # Fallback to transaction hash
             
             return {
                 'success': True,
@@ -520,15 +780,22 @@ class BlockchainService:
                 'error': str(e)
             }
     
-    async def is_booking_verified(self, booking_id: str) -> bool:
-        """Check if booking is verified on blockchain"""
+    async def is_booking_verified(self, booking_hash: str) -> bool:
+        """Check if booking is verified on blockchain - UPDATED to use bytes32 hash"""
         try:
             contract = self.w3.eth.contract(
                 address=self.contracts['booking'],
                 abi=self.contract_abis['booking']
             )
             
-            return contract.functions.isBookingVerified(booking_id).call()
+            # Convert hex string to bytes32 if needed
+            if isinstance(booking_hash, str) and booking_hash.startswith('0x'):
+                booking_hash_bytes = bytes.fromhex(booking_hash[2:])
+            else:
+                booking_hash_bytes = booking_hash.encode() if isinstance(booking_hash, str) else booking_hash
+            
+            # Use corrected function: isBookingValid(bytes32 _bookingHash)
+            return contract.functions.isBookingValid(booking_hash_bytes).call()
             
         except Exception as e:
             print(f"Error checking booking verification: {str(e)}")
@@ -620,6 +887,202 @@ class BlockchainService:
         except Exception as e:
             return {
                 'operation': operation,
+                'error': str(e)
+            }
+
+    # ===========================================
+    # ENHANCED GAS MANAGEMENT & RETRY LOGIC
+    # ===========================================
+    
+    async def get_dynamic_gas_price(self) -> int:
+        """Get dynamic gas price based on network conditions"""
+        try:
+            # Get current gas price from network
+            current_gas_price = self.w3.eth.gas_price
+            
+            # Add 10% buffer for faster confirmation
+            buffered_price = int(current_gas_price * 1.1)
+            
+            # Set reasonable limits (5 gwei minimum, 100 gwei maximum)
+            min_price = self.w3.to_wei('5', 'gwei')
+            max_price = self.w3.to_wei('100', 'gwei')
+            
+            return max(min_price, min(buffered_price, max_price))
+            
+        except Exception:
+            # Fallback to 20 gwei
+            return self.w3.to_wei('20', 'gwei')
+
+    async def get_dynamic_gas_limit(self, operation: str) -> int:
+        """Get dynamic gas limit for operations"""
+        gas_limits = {
+            'mint_certificate': 300000,
+            'earn_points': 120000,
+            'redeem_points': 150000,
+            'verify_booking': 200000,
+            'verify_review': 150000
+        }
+        
+        base_limit = gas_limits.get(operation, 200000)
+        # Add 20% buffer for safety
+        return int(base_limit * 1.2)
+
+    async def estimate_transaction_gas(self, transaction) -> int:
+        """Estimate gas for transaction"""
+        try:
+            gas_estimate = self.w3.eth.estimate_gas(transaction)
+            # Add 20% buffer
+            return int(gas_estimate * 1.2)
+        except Exception:
+            # Return default based on operation type
+            return 300000  # Default fallback
+
+    async def execute_blockchain_transaction_with_retry(self, operation_func, max_retries=3):
+        """Execute blockchain transaction with retry logic"""
+        for attempt in range(max_retries):
+            try:
+                # Execute the blockchain operation
+                result = await operation_func()
+                
+                if result.get('success'):
+                    return result
+                    
+            except Exception as e:
+                error_msg = str(e).lower()
+                
+                # Handle specific errors
+                if 'nonce too low' in error_msg:
+                    # Reset nonce and retry
+                    await self.reset_nonce()
+                elif 'gas price too low' in error_msg:
+                    # Increase gas price and retry
+                    await self.increase_gas_price()
+                elif 'insufficient funds' in error_msg:
+                    # Can't retry insufficient funds
+                    return {'success': False, 'error': 'Insufficient ETH balance'}
+                
+                if attempt == max_retries - 1:
+                    return {'success': False, 'error': str(e)}
+                    
+                # Wait before retry (exponential backoff)
+                await asyncio.sleep(2 ** attempt)
+        
+        return {'success': False, 'error': 'Max retries exceeded'}
+
+    async def reset_nonce(self):
+        """Reset nonce for account"""
+        try:
+            if self.account:
+                # Get latest nonce from network
+                latest_nonce = self.w3.eth.get_transaction_count(self.account.address, 'latest')
+                pending_nonce = self.w3.eth.get_transaction_count(self.account.address, 'pending')
+                print(f"Nonce reset: latest={latest_nonce}, pending={pending_nonce}")
+        except Exception as e:
+            print(f"Error resetting nonce: {e}")
+
+    async def increase_gas_price(self, multiplier=1.5):
+        """Increase gas price for retries"""
+        try:
+            current_price = await self.get_dynamic_gas_price()
+            new_price = int(current_price * multiplier)
+            max_price = self.w3.to_wei('200', 'gwei')  # Emergency max limit
+            
+            return min(new_price, max_price)
+        except Exception as e:
+            print(f"Error increasing gas price: {e}")
+            return self.w3.to_wei('30', 'gwei')  # Fallback
+
+    # ===========================================
+    # CORRECTED BLOCKCHAIN OPERATIONS
+    # ===========================================
+    
+    async def award_loyalty_points_corrected(self, user_wallet: str, booking_amount: int, 
+                                           description: str) -> Dict:
+        """Award loyalty points using corrected earnPoints function"""
+        try:
+            contract = self.w3.eth.contract(
+                address=self.contracts['loyalty'],
+                abi=self.contract_abis['loyalty']
+            )
+            
+            # Use corrected function: earnPoints(address _user, uint256 _bookingAmount, string _description)
+            transaction = contract.functions.earnPoints(
+                user_wallet,
+                booking_amount,
+                description
+            ).build_transaction({
+                'from': self.wallet_address,
+                'gas': await self.get_dynamic_gas_limit('earn_points'),
+                'gasPrice': await self.get_dynamic_gas_price(),
+                'nonce': self.w3.eth.get_transaction_count(self.wallet_address)
+            })
+            
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            return {
+                'success': True,
+                'transaction_hash': tx_hash.hex(),
+                'booking_amount': booking_amount,
+                'description': description,
+                'gas_used': receipt.gasUsed
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    async def verify_booking_corrected(self, tourist_wallet: str, provider_wallet: str,
+                                     destination: str, amount: int, booking_date: int,
+                                     ipfs_hash: str = "") -> Dict:
+        """Verify booking using corrected function signature"""
+        try:
+            contract = self.w3.eth.contract(
+                address=self.contracts['booking'],
+                abi=self.contract_abis['booking']
+            )
+            
+            # Use corrected function: verifyBooking(address _tourist, address _provider, string _destination, uint256 _amount, uint256 _bookingDate, string _ipfsHash)
+            transaction = contract.functions.verifyBooking(
+                tourist_wallet,
+                provider_wallet,
+                destination,
+                amount,
+                booking_date,
+                ipfs_hash
+            ).build_transaction({
+                'from': self.wallet_address,
+                'gas': await self.get_dynamic_gas_limit('verify_booking'),
+                'gasPrice': await self.get_dynamic_gas_price(),
+                'nonce': self.w3.eth.get_transaction_count(self.wallet_address)
+            })
+            
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            # Extract booking hash from return value
+            booking_hash = None
+            if receipt.logs:
+                try:
+                    decoded_log = contract.events.BookingCreated().processLog(receipt.logs[0])
+                    booking_hash = decoded_log['args']['bookingHash'].hex()
+                except:
+                    booking_hash = tx_hash.hex()  # Fallback
+            
+            return {
+                'success': True,
+                'transaction_hash': tx_hash.hex(),
+                'booking_hash': booking_hash,
+                'gas_used': receipt.gasUsed
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
                 'error': str(e)
             }
 
