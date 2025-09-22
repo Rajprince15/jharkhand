@@ -91,7 +91,7 @@ const BookingPage = () => {
 
   useEffect(() => {
     updatePrice();
-  }, [selectedProvider, formData.travelers, formData.addons]);
+  }, [selectedProvider, formData.travelers, formData.addons, destinations]);
 
   useEffect(() => {
     // Set minimum date to today
@@ -101,7 +101,19 @@ const BookingPage = () => {
 
   const updatePrice = () => {
     const travelers = parseInt(formData.travelers) || 1;
-    let newTotalPrice = selectedProvider ? selectedProvider.price * travelers : 0;
+    
+    // Find the destination that matches the provider's location
+    const selectedDestination = destinations.find(d => 
+      d.name?.toLowerCase().includes(selectedProvider?.location?.toLowerCase()?.split(',')[0] || '')
+    ) || destinations[0];
+    
+    // Calculate base price: provider price + destination price, multiplied by travelers
+    let newTotalPrice = 0;
+    if (selectedProvider && selectedDestination) {
+      newTotalPrice = (selectedProvider.price + selectedDestination.price) * travelers;
+    } else if (selectedProvider) {
+      newTotalPrice = selectedProvider.price * travelers;
+    }
     
     // Add addon prices
     formData.addons.forEach(addonId => {
@@ -215,7 +227,7 @@ const BookingPage = () => {
         check_out: checkOutDate.toISOString().split('T')[0],
         guests: parseInt(formData.travelers),
         rooms: Math.ceil(parseInt(formData.travelers) / 2), // Estimate rooms needed
-        calculated_price: null, // Let backend calculate from provider+destination prices
+        calculated_price: totalPrice, // Send frontend calculated price to backend
         special_requests: formData.requirements || '',
         city_origin: formData.cityOrigin || '',
         addons: JSON.stringify(formData.addons),
