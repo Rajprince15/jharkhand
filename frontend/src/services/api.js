@@ -21,17 +21,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle token expiration and network errors
+// Handle token expiration
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Only redirect to login if we're not already on login page
-      if (window.location.pathname !== '/login') {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('jharkhandTourismUser');
-        window.location.href = '/login';
-      }
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('jharkhandTourismUser');
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
