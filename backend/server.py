@@ -1495,13 +1495,18 @@ async def create_review(
                     try:
                         # Create blockchain review record
                         blockchain_review_id = str(uuid.uuid4())
+                        # Get user wallet address for blockchain operations
+                        await cur.execute("SELECT wallet_address FROM user_wallets WHERE user_id = %s", (current_user['id'],))
+                        wallet_data = await cur.fetchone()
+                        user_wallet = wallet_data['wallet_address'] if wallet_data else None
+                        
                         await cur.execute("""
                             INSERT INTO blockchain_reviews (
-                                id, review_id, user_id, booking_id, destination_id,
+                                id, review_id, user_id, user_wallet, booking_id, destination_id,
                                 review_hash, contract_address, verification_status, is_authentic
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """, (
-                            blockchain_review_id, review_id, current_user['id'], 
+                            blockchain_review_id, review_id, current_user['id'], user_wallet,
                             review_data.booking_id, review_data.destination_id or verified_booking['destination_id'],
                             f"review_hash_{review_id}", 
                             os.getenv('CONTRACT_ADDRESS_REVIEWS', 'pending'),
@@ -3063,7 +3068,7 @@ async def get_booking_blockchain_status(booking_id: str, current_user: dict = De
                 if not blockchain_booking:
                     return {
                         "booking_id": booking_id,
-                        "verification_status": "pending",
+                        "verification_status": "not_requested",
                         "blockchain_verified": False,
                         "booking_hash": None,
                         "transaction_hash": None,
@@ -3240,11 +3245,11 @@ async def verify_review_blockchain(
                 blockchain_review_id = str(uuid.uuid4())
                 await cur.execute("""
                     INSERT INTO blockchain_reviews (
-                        id, review_id, booking_id, user_wallet, review_hash,
+                        id, review_id, user_id, booking_id, user_wallet, review_hash,
                         contract_address, verification_status, blockchain_network
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
-                    blockchain_review_id, review_id, booking_id, user_data['wallet_address'],
+                    blockchain_review_id, review_id, current_user['id'], booking_id, user_data['wallet_address'],
                     f"review_hash_{review_id}", os.environ.get('CONTRACT_ADDRESS_REVIEWS', ''),
                     'verified', 'sepolia'
                 ))

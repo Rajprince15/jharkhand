@@ -85,6 +85,8 @@ const BlockchainBookingStatus = ({ bookingId, onVerificationComplete }) => {
         return <Clock className="h-5 w-5 text-yellow-500" />;
       case 'failed':
         return <AlertTriangle className="h-5 w-5 text-red-500" />;
+      case 'not_requested':
+        return <Shield className="h-5 w-5 text-blue-400" />;
       default:
         return <Shield className="h-5 w-5 text-gray-400" />;
     }
@@ -98,6 +100,8 @@ const BlockchainBookingStatus = ({ bookingId, onVerificationComplete }) => {
         return 'bg-yellow-50 border-yellow-200 text-yellow-800';
       case 'failed':
         return 'bg-red-50 border-red-200 text-red-800';
+      case 'not_requested':
+        return 'bg-blue-50 border-blue-200 text-blue-800';
       default:
         return 'bg-gray-50 border-gray-200 text-gray-800';
     }
@@ -111,8 +115,10 @@ const BlockchainBookingStatus = ({ bookingId, onVerificationComplete }) => {
         return 'Blockchain verification in progress';
       case 'failed':
         return 'Blockchain verification failed';
+      case 'not_requested':
+        return 'Blockchain verification not requested';
       default:
-        return 'Not verified on blockchain';
+        return 'No blockchain verification';
     }
   };
 
