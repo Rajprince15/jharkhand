@@ -21,7 +21,7 @@ const CertificateGallery = ({ walletConnected = false }) => {
     
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/blockchain/certificates`, {
+      const response = await fetch(`${backendUrl}/blockchain/certificates`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
@@ -44,7 +44,7 @@ const CertificateGallery = ({ walletConnected = false }) => {
   const mintCertificate = async (bookingId, destinationName) => {
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/blockchain/certificates/mint`, {
+      const response = await fetch(`${backendUrl}/blockchain/certificates/mint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

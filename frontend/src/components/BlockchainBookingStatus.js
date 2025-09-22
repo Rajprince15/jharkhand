@@ -22,7 +22,7 @@ const BlockchainBookingStatus = ({ bookingId, onVerificationComplete }) => {
     
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/blockchain/bookings/status/${bookingId}`, {
+      const response = await fetch(`${backendUrl}/blockchain/bookings/status/${bookingId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
@@ -48,7 +48,7 @@ const BlockchainBookingStatus = ({ bookingId, onVerificationComplete }) => {
 
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/blockchain/bookings/verify`, {
+      const response = await fetch(`${backendUrl}/blockchain/bookings/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

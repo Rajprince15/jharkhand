@@ -17,7 +17,7 @@ const BlockchainStatus = () => {
   const fetchNetworkStatus = async () => {
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/blockchain/status`);
+      const response = await fetch(`${backendUrl}/blockchain/status`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch blockchain status');

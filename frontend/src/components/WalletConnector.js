@@ -87,7 +87,7 @@ const WalletConnector = ({ onConnectionChange }) => {
   const registerWalletWithBackend = async (address) => {
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/blockchain/wallet/connect`, {
+      const response = await fetch(`${backendUrl}/blockchain/wallet/connect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

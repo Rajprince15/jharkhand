@@ -60,7 +60,7 @@ const VerifiedReviewForm = ({
       // If blockchain verification is enabled and booking is verified, verify the review
       if (enableBlockchainVerification && isBlockchainVerified) {
         try {
-          const verifyResponse = await fetch(`${backendUrl}/api/blockchain/reviews/verify`, {
+          const verifyResponse = await fetch(`${backendUrl}/blockchain/reviews/verify`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

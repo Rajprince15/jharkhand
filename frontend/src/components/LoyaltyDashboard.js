@@ -28,7 +28,7 @@ const LoyaltyDashboard = ({ walletConnected = false }) => {
     
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/blockchain/loyalty/points`, {
+      const response = await fetch(`${backendUrl}/blockchain/loyalty/points`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
@@ -64,7 +64,7 @@ const LoyaltyDashboard = ({ walletConnected = false }) => {
 
     try {
       const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-      const response = await fetch(`${backendUrl}/api/blockchain/loyalty/redeem`, {
+      const response = await fetch(`${backendUrl}/blockchain/loyalty/redeem`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
