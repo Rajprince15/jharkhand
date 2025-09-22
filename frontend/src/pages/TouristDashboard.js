@@ -546,7 +546,7 @@ const TouristDashboard = () => {
                                   <Star className="h-4 w-4 text-yellow-400 fill-current" />
                                   <span className="text-sm">{destination.rating}</span>
                                 </div>
-                                <span className="text-sm font-medium text-green-600">₹{destination.price}</span>
+                                <span className="text-sm font-medium text-green-600">Contact Your Service Provider For Pricing</span>
                               </div>
                             </div>
                             <Link to={`/destination/${destination.id}`}>

@@ -250,7 +250,7 @@ const BookingPage = () => {
         check_out: checkOutDate.toISOString().split('T')[0],
         guests: parseInt(formData.travelers),
         rooms: Math.ceil(parseInt(formData.travelers) / 2), // Estimate rooms needed
-        calculated_price: null, // Let backend calculate from provider+destination prices
+        calculated_price: totalPrice, 
         special_requests: formData.requirements || '',
         city_origin: formData.cityOrigin || '',
         addons: JSON.stringify(formData.addons),

@@ -173,8 +173,8 @@ const WishlistPage = () => {
                   </p>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-green-600">
-                      ₹{item.destination.price?.toLocaleString() || t('contactForPricing')}
+                    <span className="text-lg font-bold text-gray-500">
+                      Contact Your Service Provider For Pricing
                     </span>
                     <div className="space-x-2">
                       <Link to={`/destination/${item.destination_id}`}>

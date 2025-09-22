@@ -122,9 +122,9 @@ const FeaturedDestinations = () => {
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center text-green-600 font-bold">
-                        <IndianRupee className="h-4 w-4 mr-1" />
-                        <span>{destination.price.toLocaleString('en-IN')}</span>
+                      <div className="flex items-center text-gray-500 font-medium">
+                        
+                        <span>Contact Your Service Provider For Pricing</span>
                       </div>
                       <button 
                         className="text-green-600 hover:text-green-700 font-medium text-sm transition-colors"

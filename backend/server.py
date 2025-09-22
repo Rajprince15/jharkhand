@@ -736,7 +736,7 @@ async def create_booking(
                 if not provider:
                     raise HTTPException(status_code=404, detail="Provider not found")
                 
-                await cur.execute("SELECT name, price FROM destinations WHERE id = %s", (booking_data.destination_id,))
+                await cur.execute("SELECT name FROM destinations WHERE id = %s", (booking_data.destination_id,))
                 destination = await cur.fetchone()
                 if not destination:
                     raise HTTPException(status_code=404, detail="Destination not found")

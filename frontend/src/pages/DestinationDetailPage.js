@@ -334,11 +334,10 @@ const DestinationDetailPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center">
-                  <div className="flex items-center justify-center text-2xl font-bold text-green-600 mb-2">
-                    <IndianRupee className="h-6 w-6" />
-                    {destination.price?.toLocaleString() || 'Contact for pricing'}
+                  <div className="flex items-center justify-center text-2xl font-bold text-gray-500 mb-2">
+                    <span>Contact Your Service Provider For Pricing</span>
                   </div>
-                  <p className="text-sm text-gray-600">per person</p>
+                  <p className="text-sm text-gray-600">based on service provider</p>
                 </div>
 
                 <div className="space-y-3">

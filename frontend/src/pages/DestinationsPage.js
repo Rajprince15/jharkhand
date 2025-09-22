@@ -283,9 +283,9 @@ const DestinationsPage = () => {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center text-green-600 font-bold">
-                      <IndianRupee className="h-4 w-4 mr-1" />
-                      <span>{destination.price.toLocaleString('en-IN')}</span>
+                    <div className="flex items-center text-gray-00 font-medium">
+                      <MapPin className="h-4 w-4 mr-1" />
+                      <span>Contact Your Service Provider For Pricing</span>
                     </div>
                     <Button 
                       variant="outline" 

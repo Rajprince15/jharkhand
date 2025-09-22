@@ -45,7 +45,7 @@ class DestinationCreate(BaseModel):
     location: str
     description: str
     image_url: str
-    price: float
+   
     category: Optional[str] = None
     highlights: Optional[List[str]] = None
 
@@ -56,7 +56,7 @@ class Destination(BaseModel):
     description: str
     image_url: str
     rating: float
-    price: float
+   
     category: Optional[str] = None
     highlights: Optional[List[str]] = None
     created_at: datetime

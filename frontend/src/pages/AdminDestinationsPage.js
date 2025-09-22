@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { 
-  ArrowLeft, Search, Filter, MapPin, Star, IndianRupee, 
+  ArrowLeft, Search, Filter, MapPin, Star, 
   Plus, Edit, Trash2, Loader2, AlertTriangle, Eye, X
 } from 'lucide-react';
 import { destinationsAPI, adminAPI, regionsAPI } from '../services/api';
@@ -29,7 +29,6 @@ const AdminDestinationsPage = () => {
     location: '',
     description: '',
     image_url: '',
-    price: '',
     category: '',
     region: '',
     highlights: []
@@ -92,7 +91,6 @@ const AdminDestinationsPage = () => {
         location: '',
         description: '',
         image_url: '',
-        price: '',
         category: '',
         region: '',
         highlights: []
@@ -103,7 +101,6 @@ const AdminDestinationsPage = () => {
         location: destination.location || '',
         description: destination.description || '',
         image_url: destination.image_url || '',
-        price: destination.price?.toString() || '',
         category: destination.category || '',
         region: destination.region || '',
         highlights: destination.highlights || []
@@ -121,7 +118,6 @@ const AdminDestinationsPage = () => {
       location: '',
       description: '',
       image_url: '',
-      price: '',
       category: '',
       region: '',
       highlights: []
@@ -137,7 +133,6 @@ const AdminDestinationsPage = () => {
       
       const submitData = {
         ...formData,
-        price: parseFloat(formData.price),
         highlights: Array.isArray(formData.highlights) ? formData.highlights : 
                    formData.highlights.split(',').map(h => h.trim()).filter(h => h)
       };
@@ -424,10 +419,6 @@ const AdminDestinationsPage = () => {
                   
                   <div className="flex items-center justify-between mb-4">
                     {renderStars(destination.rating)}
-                    <div className="flex items-center text-lg font-bold text-green-600">
-                      <IndianRupee className="h-4 w-4" />
-                      {destination.price}
-                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -529,10 +520,6 @@ const AdminDestinationsPage = () => {
                       <p className="mt-1 text-gray-900">{selectedDestination?.region}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Price</label>
-                      <p className="mt-1 text-gray-900">₹{selectedDestination?.price}</p>
-                    </div>
-                    <div>
                       <label className="text-sm font-medium text-gray-700">Rating</label>
                       <div className="mt-1">{renderStars(selectedDestination?.rating)}</div>
                     </div>
@@ -599,19 +586,7 @@ const AdminDestinationsPage = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Price *</label>
-                      <input
-                        type="number"
-                        required
-                        min="0"
-                        step="0.01"
-                        value={formData.price}
-                        onChange={(e) => handleInputChange('price', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
                       <select
