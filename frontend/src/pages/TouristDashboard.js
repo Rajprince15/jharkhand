@@ -31,18 +31,23 @@ const TouristDashboard = () => {
     wishlistCount: 0,
     activeTrips: 0,
     completedTrips: 0,
-    destinationsVisited: 0,
     recentActivity: []
   });
 
-  // Color scheme: white, green, brown (matching admin)
+  // Enhanced Nature Color Palette - Forest Green Theme
   const colors = {
-    primary: '#22c55e', // green-500
-    secondary: '#a3a3a3', // neutral-400
-    accent: '#92400e', // amber-800 (brown)
-    background: '#ffffff', // white
-    surface: '#f8fafc', // slate-50
-    text: '#1f2937' // gray-800
+    primary: '#16a34a', // forest-green-600
+    secondary: '#059669', // emerald-600
+    accent: '#92400e', // amber-800 (earth brown)
+    deepForest: '#14532d', // green-900
+    earthBrown: '#451a03', // amber-900
+    naturalBlue: '#1e40af', // blue-700
+    lightGreen: '#dcfce7', // green-100
+    lightBrown: '#fef3c7', // amber-100
+    lightBlue: '#dbeafe', // blue-100
+    background: '#ffffff',
+    surface: '#f0fdf4', // green-50
+    text: '#1f2937'
   };
 
   useEffect(() => {
@@ -113,18 +118,12 @@ const TouristDashboard = () => {
       const activeTrips = (bookingsData || []).filter(booking => ['pending', 'confirmed'].includes(booking.status)).length;
       const completedTrips = (bookingsData || []).filter(booking => booking.status === 'completed').length;
       
-      // Calculate destinations visited from completed bookings
-      const destinationsVisited = new Set((bookingsData || [])
-        .filter(booking => booking.status === 'completed')
-        .map(booking => booking.destination_id)).size;
-      
       setStats({
         totalBookings: (bookingsData || []).length,
         totalSpent: totalSpent,
         wishlistCount: wishlistData.items ? wishlistData.items.length : 0,
         activeTrips: activeTrips,
         completedTrips: completedTrips,
-        destinationsVisited: destinationsVisited,
         recentActivity: (bookingsData || []).slice(0, 5)
       });
       
@@ -156,24 +155,47 @@ const TouristDashboard = () => {
     navigate('/');
   };
 
-  // 3D Animation components (matching admin)
-  const AnimatedCard = ({ children, delay = 0, className = "" }) => {
+  // Enhanced 3D Animation components with nature theme
+  const AnimatedCard = ({ children, delay = 0, className = "", hoverEffect = "default" }) => {
     const cardSpring = useSpring({
-      from: { transform: 'perspective(1000px) rotateX(30deg) translateY(50px)', opacity: 0 },
-      to: { transform: 'perspective(1000px) rotateX(0deg) translateY(0px)', opacity: 1 },
-      delay: delay * 100,
-      config: { tension: 280, friction: 60 }
+      from: { 
+        transform: 'perspective(1200px) rotateX(45deg) rotateY(-10deg) translateY(100px) translateZ(-50px)', 
+        opacity: 0,
+        filter: 'blur(10px)'
+      },
+      to: { 
+        transform: 'perspective(1200px) rotateX(0deg) rotateY(0deg) translateY(0px) translateZ(0px)', 
+        opacity: 1,
+        filter: 'blur(0px)'
+      },
+      delay: delay * 150,
+      config: { tension: 200, friction: 25, mass: 0.8 }
     });
+
+    const getHoverTransform = () => {
+      switch(hoverEffect) {
+        case "lift":
+          return 'perspective(1200px) rotateX(-5deg) translateY(-15px) translateZ(30px) scale(1.05)';
+        case "tilt":
+          return 'perspective(1200px) rotateY(8deg) rotateX(2deg) scale(1.03)';
+        case "float":
+          return 'perspective(1200px) translateY(-20px) translateZ(40px) scale(1.08)';
+        default:
+          return 'perspective(1200px) rotateY(5deg) rotateX(2deg) scale(1.05)';
+      }
+    };
 
     return (
       <animated.div 
         style={cardSpring}
-        className={`transform-gpu hover:scale-105 transition-all duration-300 ${className}`}
+        className={`transform-gpu transition-all duration-500 ease-out ${className}`}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'perspective(1000px) rotateY(5deg) scale(1.05)';
+          e.currentTarget.style.transform = getHoverTransform();
+          e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 30px rgba(34, 197, 94, 0.3)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'perspective(1000px) rotateY(0deg) scale(1)';
+          e.currentTarget.style.transform = 'perspective(1200px) rotateY(0deg) rotateX(0deg) scale(1)';
+          e.currentTarget.style.boxShadow = '';
         }}
       >
         {children}
@@ -181,13 +203,36 @@ const TouristDashboard = () => {
     );
   };
 
+  // Enhanced particle animation for background
+  const ParticleBackground = () => (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      {[...Array(12)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-2 h-2 bg-green-400 rounded-full opacity-20"
+          initial={{
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+          }}
+          animate={{
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+          }}
+          transition={{
+            duration: Math.random() * 20 + 30,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+      ))}
+    </div>
+  );
+
   // Booking details modal handler
   const handleViewBookingDetails = (booking) => {
     setSelectedBooking(booking);
     setShowBookingDetailsModal(true);
   };
-
-
 
   if (!user || user.role !== 'tourist') {
     navigate('/login');
@@ -198,79 +243,95 @@ const TouristDashboard = () => {
   const recommendedDestinations = destinations.slice(0, 3);
   const recentWishlistItems = wishlist.slice(0, 3);
 
+  // Reorganized stats data (removed Active Users and Destinations Visited)
   const statsData = [
     {
       title: t('totalBookings'),
       value: stats.totalBookings,
       icon: Calendar,
-      gradient: 'from-green-400 to-green-600',
-      textColor: 'text-white'
+      gradient: 'from-green-500 via-green-600 to-emerald-700',
+      textColor: 'text-white',
+      hoverEffect: 'lift'
     },
     {
       title: 'Total Spent',
       value: stats.totalSpent,
       icon: IndianRupee,
-      gradient: 'from-amber-700 to-amber-900',
+      gradient: 'from-amber-600 via-amber-700 to-amber-900',
       textColor: 'text-white',
-      isRevenue: true
+      isRevenue: true,
+      hoverEffect: 'tilt'
     },
     {
       title: t('myWishlist'),
       value: stats.wishlistCount,
       icon: Heart,
-      gradient: 'from-red-400 to-red-600',
-      textColor: 'text-white'
-    },
-    {
-      title: t('activeUsers'),
-      value: stats.activeTrips,
-      icon: MapPin,
-      gradient: 'from-green-500 to-green-700',
-      textColor: 'text-white'
+      gradient: 'from-red-500 via-pink-600 to-red-700',
+      textColor: 'text-white',
+      hoverEffect: 'float'
     },
     {
       title: 'Completed Trips',
       value: stats.completedTrips,
       icon: CheckCircle,
-      gradient: 'from-amber-600 to-amber-800',
-      textColor: 'text-white'
-    },
-    {
-      title: 'Destinations Visited',
-      value: stats.destinationsVisited,
-      icon: MapPin,
-      gradient: 'from-amber-500 to-amber-700',
-      textColor: 'text-white'
+      gradient: 'from-emerald-500 via-green-600 to-green-700',
+      textColor: 'text-white',
+      hoverEffect: 'lift'
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-amber-50">
-      {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-blue-50 relative">
+      <ParticleBackground />
+      
+      {/* Enhanced Header with nature theme */}
       <motion.div 
-        initial={{ y: -50, opacity: 0 }}
+        initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-white shadow-lg border-b border-gray-200 backdrop-blur-sm"
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="bg-gradient-to-r from-green-800 via-emerald-700 to-blue-800 shadow-2xl border-b-4 border-amber-400 backdrop-blur-lg relative overflow-hidden"
       >
-        <div className="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-900/20 to-blue-900/20"></div>
+        <div className="max-w-7xl mx-auto px-4 py-8 flex justify-between items-center relative z-10">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-amber-600 bg-clip-text text-transparent">
-              {t('dashboard')}
-            </h1>
-            <p className="text-gray-600 mt-1">{t('welcomeBack')}, {user.name}</p>
-            <div className="flex items-center space-x-2 mt-2">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-500">
+            <motion.h1 
+              initial={{ x: -50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-4xl font-bold bg-gradient-to-r from-green-200 via-emerald-100 to-blue-200 bg-clip-text text-transparent"
+            >
+              🌿 {t('dashboard')} 🏔️
+            </motion.h1>
+            <motion.p 
+              initial={{ x: -30, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="text-green-100 mt-2 text-lg"
+            >
+              {t('welcomeBack')}, {user.name}! 🌱
+            </motion.p>
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="flex items-center space-x-3 mt-3"
+            >
+              <Clock className="h-5 w-5 text-amber-300" />
+              <span className="text-green-200 text-sm">
                 Last updated: {lastUpdated.toLocaleTimeString()}
               </span>
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            </div>
+              <motion.div 
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-3 h-3 bg-emerald-400 rounded-full"
+              />
+            </motion.div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
             <Button 
               onClick={fetchDashboardData} 
               variant="outline" 
-              className="border-green-300 text-green-700 hover:bg-green-50"
+              className="border-green-300 text-green-100 hover:bg-green-700/30 backdrop-blur-sm"
               disabled={loading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -278,9 +339,9 @@ const TouristDashboard = () => {
             </Button>
             <LanguageToggle variant="outline" />
             <Link to="/">
-              <Button variant="outline" className="hover:bg-gray-50">{t('home')}</Button>
+              <Button variant="outline" className="border-blue-300 text-blue-100 hover:bg-blue-700/30 backdrop-blur-sm">{t('home')}</Button>
             </Link>
-            <Button onClick={handleLogout} variant="outline" className="hover:bg-gray-50">
+            <Button onClick={handleLogout} variant="outline" className="border-red-300 text-red-100 hover:bg-red-700/30 backdrop-blur-sm">
               <LogOut className="h-4 w-4 mr-2" />
               {t('logout')}
             </Button>
@@ -288,50 +349,94 @@ const TouristDashboard = () => {
         </div>
       </motion.div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-10">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <motion.div
-                animate={{ rotate: 360 }}
+                animate={{ rotate: 360, scale: [1, 1.2, 1] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="relative"
               >
-                <Loader2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <Loader2 className="h-16 w-16 text-green-600 mx-auto mb-6" />
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0"
+                >
+                  <div className="w-16 h-16 border-4 border-emerald-300 border-t-transparent rounded-full" />
+                </motion.div>
               </motion.div>
-              <p className="text-gray-600">{t('loading')}</p>
+              <motion.p 
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="text-green-700 text-lg font-medium"
+              >
+                {t('loading')} your nature dashboard... 🌿
+              </motion.p>
             </div>
           </div>
         ) : (
           <AnimatePresence>
-            {/* 3D Animated Stats Grid */}
+            {/* Enhanced 3D Animated Stats Grid - Reorganized 2x2 layout */}
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-12"
             >
               {statsData.map((stat, index) => (
-                <AnimatedCard key={index} delay={index}>
-                  <Card className={`bg-gradient-to-br ${stat.gradient} ${stat.textColor} shadow-xl border-0 overflow-hidden relative`}>
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-                    <CardContent className="p-6 relative z-10">
+                <AnimatedCard key={index} delay={index} hoverEffect={stat.hoverEffect}>
+                  <Card className={`bg-gradient-to-br ${stat.gradient} ${stat.textColor} shadow-2xl border-0 overflow-hidden relative transform-gpu`}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-white/5 to-transparent"></div>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-full -translate-y-8 translate-x-8"></div>
+                    <CardContent className="p-8 relative z-10">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium opacity-90">{stat.title}</p>
-                          <div className="text-3xl font-bold">
+                          <motion.p 
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: index * 0.2 + 0.5 }}
+                            className="text-sm font-semibold opacity-90 mb-2"
+                          >
+                            {stat.title}
+                          </motion.p>
+                          <motion.div 
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: index * 0.2 + 0.7, type: "spring", stiffness: 200 }}
+                            className="text-4xl font-bold"
+                          >
                             {stat.isRevenue ? (
-                              <span>₹<CountUp end={stat.value} duration={2} separator="," /></span>
-                            ) : stat.isRating ? (
-                              <span><CountUp end={stat.value} duration={2} decimals={1} /> ⭐</span>
+                              <span>₹<CountUp end={stat.value} duration={3} separator="," /></span>
                             ) : (
-                              <CountUp end={stat.value} duration={2} />
+                              <CountUp end={stat.value} duration={3} />
                             )}
-                          </div>
+                          </motion.div>
                         </div>
                         <motion.div
-                          animate={{ rotate: [0, 5, -5, 0] }}
-                          transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                          animate={{ 
+                            rotate: [0, 8, -8, 0],
+                            scale: [1, 1.1, 1]
+                          }}
+                          transition={{ 
+                            duration: 4, 
+                            repeat: Infinity, 
+                            repeatDelay: 2,
+                            ease: "easeInOut"
+                          }}
+                          className="relative"
                         >
-                          <stat.icon className="h-8 w-8 opacity-80" />
+                          <stat.icon className="h-12 w-12 opacity-80" />
+                          <motion.div
+                            animate={{ scale: [0, 1.5, 0] }}
+                            transition={{ 
+                              duration: 2, 
+                              repeat: Infinity, 
+                              repeatDelay: 3 
+                            }}
+                            className="absolute inset-0 bg-white/20 rounded-full"
+                          />
                         </motion.div>
                       </div>
                     </CardContent>
@@ -340,91 +445,103 @@ const TouristDashboard = () => {
               ))}
             </motion.div>
 
-
-
-
-
-            {/* Quick Actions */}
+            {/* Enhanced Quick Actions with nature theme */}
             <motion.div 
-              initial={{ y: 50, opacity: 0 }}
+              initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.9 }}
-              className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+              transition={{ delay: 1.2, duration: 0.8 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12"
             >
-              <AnimatedCard delay={9}>
-                <Card className="bg-gradient-to-br from-green-100 to-green-200 border-0 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer">
-                  <CardContent className="p-6 text-center">
+              <AnimatedCard delay={5} hoverEffect="float">
+                <Card className="bg-gradient-to-br from-green-100 via-emerald-100 to-green-200 border-2 border-green-300 shadow-2xl hover:shadow-green-500/25 transition-all cursor-pointer overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-transparent"></div>
+                  <CardContent className="p-8 text-center relative z-10">
                     <motion.div
-                      animate={{ rotate: [0, 5, -5, 0] }}
-                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 4 }}
+                      animate={{ 
+                        rotate: [0, 10, -10, 0],
+                        y: [0, -5, 0]
+                      }}
+                      transition={{ duration: 4, repeat: Infinity, repeatDelay: 2 }}
                     >
-                      <MapPin className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                      <MapPin className="h-16 w-16 text-green-700 mx-auto mb-6" />
                     </motion.div>
-                    <h3 className="text-lg font-semibold mb-2 text-green-900">{t('exploreDestinations')}</h3>
-                    <p className="text-green-700 mb-4">Discover amazing places in Jharkhand</p>
+                    <h3 className="text-xl font-bold mb-3 text-green-900">{t('exploreDestinations')}</h3>
+                    <p className="text-green-800 mb-6">Discover amazing places in Jharkhand 🏞️</p>
                     <Link to="/destinations">
-                      <Button className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white">
-                        {t('destinations')}
+                      <Button className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-700 hover:from-green-700 hover:via-emerald-700 hover:to-green-800 text-white shadow-lg">
+                        {t('destinations')} 🌲
                       </Button>
                     </Link>
                   </CardContent>
                 </Card>
               </AnimatedCard>
 
-              <AnimatedCard delay={10}>
-                <Card className="bg-gradient-to-br from-red-100 to-red-200 border-0 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer">
-                  <CardContent className="p-6 text-center">
+              <AnimatedCard delay={6} hoverEffect="lift">
+                <Card className="bg-gradient-to-br from-red-100 via-pink-100 to-red-200 border-2 border-red-300 shadow-2xl hover:shadow-red-500/25 transition-all cursor-pointer overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-50/50 to-transparent"></div>
+                  <CardContent className="p-8 text-center relative z-10">
                     <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                      animate={{ 
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 5, -5, 0]
+                      }}
+                      transition={{ duration: 3, repeat: Infinity, repeatDelay: 1 }}
                     >
-                      <Heart className="h-12 w-12 text-red-600 mx-auto mb-4" />
+                      <Heart className="h-16 w-16 text-red-700 mx-auto mb-6" />
                     </motion.div>
-                    <h3 className="text-lg font-semibold mb-2 text-red-900">{t('myWishlist')}</h3>
-                    <p className="text-red-700 mb-4">{t('favoriteDestinations')}</p>
+                    <h3 className="text-xl font-bold mb-3 text-red-900">{t('myWishlist')}</h3>
+                    <p className="text-red-800 mb-6">{t('favoriteDestinations')} ❤️</p>
                     <Link to="/wishlist">
-                      <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white">
-                        {t('viewDetails')} ({stats.wishlistCount})
+                      <Button className="bg-gradient-to-r from-red-600 via-pink-600 to-red-700 hover:from-red-700 hover:via-pink-700 hover:to-red-800 text-white shadow-lg">
+                        {t('viewDetails')} ({stats.wishlistCount}) 💕
                       </Button>
                     </Link>
                   </CardContent>
                 </Card>
               </AnimatedCard>
 
-              <AnimatedCard delay={11}>
-                <Card className="bg-gradient-to-br from-blue-100 to-blue-200 border-0 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer">
-                  <CardContent className="p-6 text-center">
+              <AnimatedCard delay={7} hoverEffect="tilt">
+                <Card className="bg-gradient-to-br from-blue-100 via-indigo-100 to-blue-200 border-2 border-blue-300 shadow-2xl hover:shadow-blue-500/25 transition-all cursor-pointer overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent"></div>
+                  <CardContent className="p-8 text-center relative z-10">
                     <motion.div
-                      animate={{ rotate: [0, 10, -10, 0] }}
+                      animate={{ 
+                        rotate: [0, 15, -15, 0],
+                        scale: [1, 1.1, 1]
+                      }}
+                      transition={{ duration: 5, repeat: Infinity, repeatDelay: 1 }}
+                    >
+                      <Compass className="h-16 w-16 text-blue-700 mx-auto mb-6" />
+                    </motion.div>
+                    <h3 className="text-xl font-bold mb-3 text-blue-900">{t('aiPlanner')}</h3>
+                    <p className="text-blue-800 mb-6">Get personalized travel itineraries 🧭</p>
+                    <Link to="/ai-planner">
+                      <Button className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white shadow-lg">
+                        {t('planYourTrip')} ✨
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </AnimatedCard>
+
+              <AnimatedCard delay={8} hoverEffect="float">
+                <Card className="bg-gradient-to-br from-purple-100 via-violet-100 to-purple-200 border-2 border-purple-300 shadow-2xl hover:shadow-purple-500/25 transition-all cursor-pointer overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-transparent"></div>
+                  <CardContent className="p-8 text-center relative z-10">
+                    <motion.div
+                      animate={{ 
+                        y: [0, -8, 0],
+                        rotate: [0, 5, -5, 0]
+                      }}
                       transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
                     >
-                      <Compass className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                      <Briefcase className="h-16 w-16 text-purple-700 mx-auto mb-6" />
                     </motion.div>
-                    <h3 className="text-lg font-semibold mb-2 text-blue-900">{t('aiPlanner')}</h3>
-                    <p className="text-blue-700 mb-4">Get personalized travel itineraries</p>
-                    <Link to="/ai-planner">
-                      <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
-                        {t('planYourTrip')}
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              </AnimatedCard>
-
-              <AnimatedCard delay={12}>
-                <Card className="bg-gradient-to-br from-purple-100 to-purple-200 border-0 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer">
-                  <CardContent className="p-6 text-center">
-                    <motion.div
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                    >
-                      <Briefcase className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                    </motion.div>
-                    <h3 className="text-lg font-semibold mb-2 text-purple-900">{t('myBookings')}</h3>
-                    <p className="text-purple-700 mb-4">View your travel bookings</p>
+                    <h3 className="text-xl font-bold mb-3 text-purple-900">{t('myBookings')}</h3>
+                    <p className="text-purple-800 mb-6">View your travel bookings 🎒</p>
                     <Link to="/bookings">
-                      <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white">
-                        {t('viewDetails')}
+                      <Button className="bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 hover:from-purple-700 hover:via-violet-700 hover:to-purple-800 text-white shadow-lg">
+                        {t('viewDetails')} 📋
                       </Button>
                     </Link>
                   </CardContent>
@@ -432,41 +549,42 @@ const TouristDashboard = () => {
               </AnimatedCard>
             </motion.div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Enhanced content sections with nature theme */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Recent Bookings */}
-              <AnimatedCard delay={13}>
-                <Card className="bg-white shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-green-50 to-green-100">
-                    <CardTitle className="text-green-900 flex items-center">
-                      <Calendar className="h-5 w-5 mr-2" />
-                      {t('recentActivity')}
+              <AnimatedCard delay={9} hoverEffect="lift">
+                <Card className="bg-white shadow-2xl border-2 border-green-200 overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-green-100 via-emerald-100 to-green-200 border-b-2 border-green-300">
+                    <CardTitle className="text-green-900 flex items-center text-xl">
+                      <Calendar className="h-6 w-6 mr-3" />
+                      {t('recentActivity')} 🌱
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-6">
                     {recentBookings.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         {recentBookings.map((booking, index) => (
                           <motion.div 
                             key={booking.id} 
-                            initial={{ x: -20, opacity: 0 }}
+                            initial={{ x: -30, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="flex items-center justify-between p-3 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                            transition={{ delay: index * 0.1 + 1 }}
+                            className="flex items-center justify-between p-4 border-2 border-green-100 rounded-xl hover:shadow-lg hover:border-green-300 transition-all cursor-pointer bg-gradient-to-r from-green-50/50 to-transparent"
                             onClick={() => handleViewBookingDetails(booking)}
                           >
                             <div>
-                              <p className="font-medium">{booking.destination_name}</p>
-                              <p className="text-sm text-gray-600">
+                              <p className="font-semibold text-green-900">{booking.destination_name}</p>
+                              <p className="text-sm text-green-700">
                                 {booking.provider_name} • {new Date(booking.booking_date).toLocaleDateString()}
                               </p>
-                              <p className="text-sm text-gray-500">₹{booking.total_price}</p>
+                              <p className="text-sm text-amber-700 font-medium">₹{booking.total_price}</p>
                             </div>
                             <div className="text-right">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                'bg-red-100 text-red-800'
+                              <span className={`px-3 py-2 rounded-full text-xs font-bold ${
+                                booking.status === 'confirmed' ? 'bg-green-200 text-green-900' :
+                                booking.status === 'pending' ? 'bg-yellow-200 text-yellow-900' :
+                                booking.status === 'completed' ? 'bg-blue-200 text-blue-900' :
+                                'bg-red-200 text-red-900'
                               }`}>
                                 {booking.status === 'confirmed' ? t('confirmed') :
                                  booking.status === 'pending' ? t('pending') :
@@ -478,17 +596,17 @@ const TouristDashboard = () => {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8">
+                      <div className="text-center py-12">
                         <motion.div
-                          animate={{ rotate: [0, 5, -5, 0] }}
-                          transition={{ duration: 3, repeat: Infinity }}
+                          animate={{ rotate: [0, 10, -10, 0], y: [0, -5, 0] }}
+                          transition={{ duration: 4, repeat: Infinity }}
                         >
-                          <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <Calendar className="h-16 w-16 text-green-400 mx-auto mb-6" />
                         </motion.div>
-                        <p className="text-gray-500">{t('noBookingsFound')}</p>
+                        <p className="text-green-600 text-lg mb-4">{t('noBookingsFound')} 🌿</p>
                         <Link to="/destinations">
-                          <Button className="mt-4 bg-gradient-to-r from-green-600 to-green-700 text-white">
-                            Book Your First Trip
+                          <Button className="bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg">
+                            Book Your First Trip 🏞️
                           </Button>
                         </Link>
                       </div>
@@ -498,63 +616,63 @@ const TouristDashboard = () => {
               </AnimatedCard>
 
               {/* My Wishlist */}
-              <AnimatedCard delay={14}>
-                <Card className="bg-white shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-red-50 to-red-100">
-                    <CardTitle className="text-red-900 flex items-center">
-                      <Heart className="h-5 w-5 mr-2" />
-                      {t('myWishlist')}
+              <AnimatedCard delay={10} hoverEffect="float">
+                <Card className="bg-white shadow-2xl border-2 border-red-200 overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-red-100 via-pink-100 to-red-200 border-b-2 border-red-300">
+                    <CardTitle className="text-red-900 flex items-center text-xl">
+                      <Heart className="h-6 w-6 mr-3" />
+                      {t('myWishlist')} ❤️
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-6">
                     {recentWishlistItems.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         {recentWishlistItems.map((item, index) => (
                           <motion.div 
                             key={item.id}
-                            initial={{ scale: 0.9, opacity: 0 }}
+                            initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="flex items-center space-x-4 p-3 border rounded-lg hover:shadow-md transition-shadow"
+                            transition={{ delay: index * 0.1 + 1.2 }}
+                            className="flex items-center space-x-4 p-4 border-2 border-red-100 rounded-xl hover:shadow-lg hover:border-red-300 transition-all bg-gradient-to-r from-red-50/50 to-transparent"
                           >
                             <img
                               src={item.image_url}
                               alt={item.name}
-                              className="w-16 h-16 object-cover rounded-lg"
+                              className="w-20 h-20 object-cover rounded-xl border-2 border-red-200"
                             />
                             <div className="flex-1">
-                              <h4 className="font-semibold">{item.name}</h4>
-                              <p className="text-sm text-gray-600 line-clamp-1">{item.description}</p>
-                              <div className="flex items-center justify-between mt-2">
+                              <h4 className="font-bold text-red-900">{item.name}</h4>
+                              <p className="text-sm text-red-700 line-clamp-1">{item.description}</p>
+                              <div className="flex items-center justify-between mt-3">
                                 <div className="flex items-center space-x-1">
-                                  <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                                  <span className="text-sm">{item.rating}</span>
+                                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                                  <span className="text-sm font-medium text-yellow-700">{item.rating}</span>
                                 </div>
-                                <span className="text-sm font-medium text-green-600">₹{item.price}</span>
+                                <span className="text-sm font-bold text-green-700">₹{item.price}</span>
                               </div>
                             </div>
                           </motion.div>
                         ))}
-                        <div className="text-center pt-4">
+                        <div className="text-center pt-6">
                           <Link to="/wishlist">
-                            <Button size="sm" className="bg-gradient-to-r from-red-600 to-red-700 text-white">
-                              {t('viewAll')}
+                            <Button size="sm" className="bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg">
+                              {t('viewAll')} 💖
                             </Button>
                           </Link>
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-8">
+                      <div className="text-center py-12">
                         <motion.div
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
+                          animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }}
+                          transition={{ duration: 3, repeat: Infinity }}
                         >
-                          <Heart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <Heart className="h-16 w-16 text-red-400 mx-auto mb-6" />
                         </motion.div>
-                        <p className="text-gray-500">{t('wishlistEmpty')}</p>
+                        <p className="text-red-600 text-lg mb-4">{t('wishlistEmpty')} 💔</p>
                         <Link to="/destinations">
-                          <Button className="mt-4 bg-gradient-to-r from-red-600 to-red-700 text-white">
-                            {t('exploreDestinations')}
+                          <Button className="bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg">
+                            {t('exploreDestinations')} 🏔️
                           </Button>
                         </Link>
                       </div>
@@ -564,58 +682,58 @@ const TouristDashboard = () => {
               </AnimatedCard>
 
               {/* Recommended Destinations */}
-              <AnimatedCard delay={15}>
-                <Card className="bg-white shadow-xl">
-                  <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-100">
-                    <CardTitle className="text-amber-900 flex items-center">
-                      <Star className="h-5 w-5 mr-2" />
-                      Recommended for You
+              <AnimatedCard delay={11} hoverEffect="tilt">
+                <Card className="bg-white shadow-2xl border-2 border-amber-200 overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-b-2 border-amber-300">
+                    <CardTitle className="text-amber-900 flex items-center text-xl">
+                      <Star className="h-6 w-6 mr-3" />
+                      Recommended for You ⭐
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-6">
                     {recommendedDestinations.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         {recommendedDestinations.map((destination, index) => (
                           <motion.div
                             key={destination.id}
-                            initial={{ y: 20, opacity: 0 }}
+                            initial={{ y: 30, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="flex items-center space-x-4 p-3 border rounded-lg hover:shadow-md transition-shadow"
+                            transition={{ delay: index * 0.1 + 1.4 }}
+                            className="flex items-center space-x-4 p-4 border-2 border-amber-100 rounded-xl hover:shadow-lg hover:border-amber-300 transition-all bg-gradient-to-r from-amber-50/50 to-transparent"
                           >
                             <img
                               src={destination.image_url}
                               alt={destination.name}
-                              className="w-16 h-16 object-cover rounded-lg"
+                              className="w-20 h-20 object-cover rounded-xl border-2 border-amber-200"
                             />
                             <div className="flex-1">
-                              <h4 className="font-semibold">{destination.name}</h4>
-                              <p className="text-sm text-gray-600 line-clamp-1">{destination.description}</p>
-                              <div className="flex items-center justify-between mt-2">
+                              <h4 className="font-bold text-amber-900">{destination.name}</h4>
+                              <p className="text-sm text-amber-700 line-clamp-1">{destination.description}</p>
+                              <div className="flex items-center justify-between mt-3">
                                 <div className="flex items-center space-x-1">
-                                  <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                                  <span className="text-sm">{destination.rating}</span>
+                                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                                  <span className="text-sm font-medium text-yellow-700">{destination.rating}</span>
                                 </div>
-                                <span className="text-sm font-medium text-green-600">Contact Your Service Provider For Pricing</span>
+                                <span className="text-xs font-medium text-green-700">Contact Provider</span>
                               </div>
                             </div>
                             <Link to={`/destination/${destination.id}`}>
-                              <Button size="sm" className="bg-gradient-to-r from-amber-600 to-amber-700 text-white">
-                                {t('viewDetails')}
+                              <Button size="sm" className="bg-gradient-to-r from-amber-600 to-yellow-600 text-white shadow-lg">
+                                {t('viewDetails')} 🌟
                               </Button>
                             </Link>
                           </motion.div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8">
+                      <div className="text-center py-12">
                         <motion.div
-                          animate={{ rotate: [0, 10, -10, 0] }}
-                          transition={{ duration: 4, repeat: Infinity }}
+                          animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
+                          transition={{ duration: 5, repeat: Infinity }}
                         >
-                          <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <MapPin className="h-16 w-16 text-amber-400 mx-auto mb-6" />
                         </motion.div>
-                        <p className="text-gray-500">{t('loading')}</p>
+                        <p className="text-amber-600 text-lg">{t('loading')} 🗺️</p>
                       </div>
                     )}
                   </CardContent>
@@ -625,50 +743,57 @@ const TouristDashboard = () => {
           </AnimatePresence>
         )}
 
-        {/* Booking Details Modal */}
+        {/* Enhanced Booking Details Modal */}
         {showBookingDetailsModal && selectedBooking && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto"
+              initial={{ scale: 0.8, opacity: 0, rotateX: -15 }}
+              animate={{ scale: 1, opacity: 1, rotateX: 0 }}
+              exit={{ scale: 0.8, opacity: 0, rotateX: 15 }}
+              className="bg-gradient-to-br from-white via-green-50 to-emerald-50 rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto shadow-2xl border-2 border-green-200"
             >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">Booking Details</h2>
-                <Button variant="outline" onClick={() => setShowBookingDetailsModal(false)}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-green-800 to-emerald-700 bg-clip-text text-transparent">
+                  🌿 Booking Details
+                </h2>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowBookingDetailsModal(false)}
+                  className="border-green-300 hover:bg-green-100"
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
               
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-medium text-gray-700">Destination</label>
-                    <p className="text-gray-900">{selectedBooking.destination_name}</p>
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="font-semibold text-green-800">Destination</label>
+                    <p className="text-green-900 text-lg">{selectedBooking.destination_name}</p>
                   </div>
-                  <div>
-                    <label className="font-medium text-gray-700">Provider</label>
-                    <p className="text-gray-900">{selectedBooking.provider_name}</p>
+                  <div className="space-y-2">
+                    <label className="font-semibold text-green-800">Provider</label>
+                    <p className="text-green-900 text-lg">{selectedBooking.provider_name}</p>
                   </div>
-                  <div>
-                    <label className="font-medium text-gray-700">Booking Date</label>
-                    <p className="text-gray-900">{new Date(selectedBooking.booking_date).toLocaleDateString()}</p>
+                  <div className="space-y-2">
+                    <label className="font-semibold text-green-800">Booking Date</label>
+                    <p className="text-green-900 text-lg">{new Date(selectedBooking.booking_date).toLocaleDateString()}</p>
                   </div>
-                  <div>
-                    <label className="font-medium text-gray-700">Guests</label>
-                    <p className="text-gray-900">{selectedBooking.guests}</p>
+                  <div className="space-y-2">
+                    <label className="font-semibold text-green-800">Guests</label>
+                    <p className="text-green-900 text-lg">{selectedBooking.guests}</p>
                   </div>
-                  <div>
-                    <label className="font-medium text-gray-700">Total Price</label>
-                    <p className="text-gray-900 font-bold">₹{selectedBooking.total_price}</p>
+                  <div className="space-y-2">
+                    <label className="font-semibold text-green-800">Total Price</label>
+                    <p className="text-green-900 text-2xl font-bold">₹{selectedBooking.total_price}</p>
                   </div>
-                  <div>
-                    <label className="font-medium text-gray-700">Status</label>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      selectedBooking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                      selectedBooking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      selectedBooking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                      'bg-red-100 text-red-800'
+                  <div className="space-y-2">
+                    <label className="font-semibold text-green-800">Status</label>
+                    <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${
+                      selectedBooking.status === 'confirmed' ? 'bg-green-200 text-green-900' :
+                      selectedBooking.status === 'pending' ? 'bg-yellow-200 text-yellow-900' :
+                      selectedBooking.status === 'completed' ? 'bg-blue-200 text-blue-900' :
+                      'bg-red-200 text-red-900'
                     }`}>
                       {selectedBooking.status}
                     </span>
@@ -676,16 +801,16 @@ const TouristDashboard = () => {
                 </div>
                 
                 {selectedBooking.special_requests && (
-                  <div>
-                    <label className="font-medium text-gray-700">Special Requests</label>
-                    <p className="text-gray-900">{selectedBooking.special_requests}</p>
+                  <div className="space-y-2">
+                    <label className="font-semibold text-green-800">Special Requests</label>
+                    <p className="text-green-900 bg-green-50 p-4 rounded-lg border border-green-200">{selectedBooking.special_requests}</p>
                   </div>
                 )}
                 
-                <div className="flex justify-end space-x-2 pt-4">
+                <div className="flex justify-end space-x-4 pt-6">
                   <Link to="/bookings">
-                    <Button className="bg-green-600 hover:bg-green-700 text-white">
-                      View All Bookings
+                    <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg px-6">
+                      View All Bookings 📋
                     </Button>
                   </Link>
                 </div>
