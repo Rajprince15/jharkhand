@@ -31,7 +31,7 @@ const TouristDashboard = () => {
     wishlistCount: 0,
     activeTrips: 0,
     completedTrips: 0,
-    averageRating: 0,
+    destinationsVisited: 0,
     recentActivity: []
   });
 
@@ -113,13 +113,18 @@ const TouristDashboard = () => {
       const activeTrips = (bookingsData || []).filter(booking => ['pending', 'confirmed'].includes(booking.status)).length;
       const completedTrips = (bookingsData || []).filter(booking => booking.status === 'completed').length;
       
+      // Calculate destinations visited from completed bookings
+      const destinationsVisited = new Set((bookingsData || [])
+        .filter(booking => booking.status === 'completed')
+        .map(booking => booking.destination_id)).size;
+      
       setStats({
         totalBookings: (bookingsData || []).length,
         totalSpent: totalSpent,
         wishlistCount: wishlistData.items ? wishlistData.items.length : 0,
         activeTrips: activeTrips,
         completedTrips: completedTrips,
-        averageRating: 4.6, // This would come from reviews API
+        destinationsVisited: destinationsVisited,
         recentActivity: (bookingsData || []).slice(0, 5)
       });
       
@@ -231,12 +236,11 @@ const TouristDashboard = () => {
       textColor: 'text-white'
     },
     {
-      title: 'Average Rating',
-      value: stats.averageRating,
-      icon: Star,
+      title: 'Destinations Visited',
+      value: stats.destinationsVisited,
+      icon: MapPin,
       gradient: 'from-amber-500 to-amber-700',
-      textColor: 'text-white',
-      isRating: true
+      textColor: 'text-white'
     }
   ];
 

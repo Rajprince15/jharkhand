@@ -1594,6 +1594,9 @@ async def get_admin_stats(current_user: dict = Depends(get_current_user)):
                 await cur.execute("SELECT COUNT(*) as total FROM providers")
                 stats['total_providers'] = (await cur.fetchone())['total']
                 
+                await cur.execute("SELECT COUNT(*) as total FROM providers WHERE is_active = 1")
+                stats['active_providers'] = (await cur.fetchone())['total']
+                
                 await cur.execute("SELECT COUNT(*) as total FROM bookings")
                 stats['total_bookings'] = (await cur.fetchone())['total']
                 

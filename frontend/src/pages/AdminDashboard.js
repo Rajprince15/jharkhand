@@ -21,9 +21,9 @@ const AdminDashboard = () => {
     totalUsers: 0,
     totalDestinations: 0,
     totalProviders: 0,
+    activeProviders: 0,
     totalBookings: 0,
     totalRevenue: 0,
-    avgBookingValue: 0,
     monthlyRevenue: [],
     userGrowth: [],
     bookingGrowth: [],
@@ -79,9 +79,9 @@ const AdminDashboard = () => {
         totalUsers: data.total_users || 0,
         totalDestinations: data.total_destinations || 0,
         totalProviders: data.total_providers || 0,
+        activeProviders: data.active_providers || 0,
         totalBookings: data.total_bookings || 0,
         totalRevenue: data.total_revenue || 0,
-        avgBookingValue: data.avg_booking_value || 0,
         monthlyRevenue: data.monthly_revenue || [],
         userGrowth: data.user_growth || [],
         bookingGrowth: data.booking_growth || [],
@@ -332,12 +332,11 @@ const AdminDashboard = () => {
       isRevenue: true
     },
     {
-      title: 'Avg Booking Value',
-      value: stats.avgBookingValue,
+      title: 'Active Providers',
+      value: stats.activeProviders,
       icon: Star,
       gradient: 'from-amber-500 to-amber-700',
-      textColor: 'text-white',
-      isRevenue: true
+      textColor: 'text-white'
     }
   ];
 
