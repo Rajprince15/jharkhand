@@ -209,10 +209,7 @@ const AdminDashboard = () => {
       setConfirmationLoading(true);
       
       if (serviceAction === 'toggle') {
-        await providersAPI.update(selectedService.id, {
-          ...selectedService,
-          is_active: !selectedService.is_active
-        });
+        await providersAPI.toggleAdminStatus(selectedService.id);
         toast({
           title: "Success",
           description: `Service ${selectedService.is_active ? 'deactivated' : 'activated'} successfully`,

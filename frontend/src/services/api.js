@@ -118,6 +118,22 @@ export const providersAPI = {
   toggleStatus: async (providerId) => {
     const response = await api.put(`/providers/${providerId}/toggle-status`);
     return response.data;
+  },
+
+  // Admin service management methods
+  update: async (providerId, providerData) => {
+    const response = await api.put(`/providers/${providerId}`, providerData);
+    return response.data;
+  },
+
+  delete: async (providerId) => {
+    const response = await api.delete(`/admin/providers/${providerId}`);
+    return response.data;
+  },
+
+  toggleAdminStatus: async (providerId) => {
+    const response = await api.put(`/admin/providers/${providerId}/status`);
+    return response.data;
   }
 };
 

@@ -1936,6 +1936,78 @@ async def get_all_users(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.put("/admin/users/{user_id}/ban")
+async def ban_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Ban a user (Admin only)"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check if user exists
+                await cur.execute("SELECT id, name, role FROM users WHERE id = %s", (user_id,))
+                user = await cur.fetchone()
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                
+                # Don't allow banning admin users
+                if user['role'] == 'admin':
+                    raise HTTPException(status_code=403, detail="Cannot ban admin users")
+                
+                # Update user status to banned (set is_active to 0)
+                # First check if is_active column exists, if not add it
+                await cur.execute("SHOW COLUMNS FROM users LIKE 'is_active'")
+                column_exists = await cur.fetchone()
+                
+                if not column_exists:
+                    await cur.execute("ALTER TABLE users ADD COLUMN is_active TINYINT(1) DEFAULT 1")
+                    await conn.commit()
+                
+                await cur.execute("""
+                    UPDATE users 
+                    SET is_active = 0, updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = %s
+                """, (user_id,))
+                await conn.commit()
+                
+                return {"message": f"User {user['name']} has been banned"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/admin/users/{user_id}")
+async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a user (Admin only)"""
+    try:
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Check if user exists
+                await cur.execute("SELECT id, name, role FROM users WHERE id = %s", (user_id,))
+                user = await cur.fetchone()
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                
+                # Don't allow deleting admin users
+                if user['role'] == 'admin':
+                    raise HTTPException(status_code=403, detail="Cannot delete admin users")
+                
+                # Delete user (this will cascade to related records due to foreign keys)
+                await cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+                await conn.commit()
+                
+                return {"message": f"User {user['name']} has been deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/admin/bookings")
 async def get_all_bookings(current_user: dict = Depends(get_current_user)):
     """Get all bookings for admin"""
