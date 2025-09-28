@@ -10,6 +10,7 @@ import { useToast } from '../hooks/use-toast';
 import LanguageToggle from '../components/LanguageToggle';
 import WalletConnector from '../components/WalletConnector';
 import BlockchainBookingStatus from '../components/BlockchainBookingStatus';
+import { isBlockchainEnabled } from '../utils/blockchain';
 
 const BookingPage = () => {
   const navigate = useNavigate();
@@ -262,7 +263,7 @@ const BookingPage = () => {
         package_type: selectedProvider?.category?.toLowerCase() || 'service',
         package_name: selectedProvider?.service_name || 'Custom Service',
         // 🔗 PHASE 6.1: Include blockchain verification request
-        blockchain_verification: walletConnected && enableBlockchainVerification
+        blockchain_verification: isBlockchainEnabled() && walletConnected && enableBlockchainVerification
       };
 
       console.log('Submitting booking data:', bookingData);
@@ -274,7 +275,7 @@ const BookingPage = () => {
       setCreatedBookingId(response.id);
 
       // If blockchain verification is enabled, proceed with verification
-      if (walletConnected && enableBlockchainVerification) {
+      if (isBlockchainEnabled() && walletConnected && enableBlockchainVerification) {
         toast({
           title: t('bookingSuccessful'),
           description: `${t('bookingCreatedWithRef')} ${ref}. Blockchain verification will begin automatically.`,
@@ -293,7 +294,7 @@ const BookingPage = () => {
             package_type: selectedProvider?.category?.toLowerCase() || 'service',
             total_price: totalPrice, // Pass the frontend calculated total price
             calculated_price: totalPrice, // Also pass as calculated_price for compatibility
-            blockchain_verification_enabled: walletConnected && enableBlockchainVerification
+            blockchain_verification_enabled: isBlockchainEnabled() && walletConnected && enableBlockchainVerification
           }
         }
       });
@@ -382,12 +383,14 @@ const BookingPage = () => {
 
         <div className="max-w-6xl mx-auto">
           {/* Wallet Connection Section */}
-          <div className="mb-8">
-            <WalletConnector onConnectionChange={handleWalletConnectionChange} />
-          </div>
+          {isBlockchainEnabled() && (
+            <div className="mb-8">
+              <WalletConnector onConnectionChange={handleWalletConnectionChange} />
+            </div>
+          )}
 
           {/* Blockchain Features Card */}
-          {walletConnected && (
+          {isBlockchainEnabled() && walletConnected && (
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 mb-8">
               <CardContent className="p-6">
                 <div className="flex items-center mb-4">
@@ -432,7 +435,7 @@ const BookingPage = () => {
           )}
 
           {/* Show blockchain status for created booking */}
-          {createdBookingId && walletConnected && enableBlockchainVerification && (
+          {isBlockchainEnabled() && createdBookingId && walletConnected && enableBlockchainVerification && (
             <div className="mb-8">
               <Card className="border-green-200">
                 <CardHeader>

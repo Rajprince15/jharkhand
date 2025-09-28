@@ -13,6 +13,7 @@ import { useToast } from '../hooks/use-toast';
 import WalletConnector from '../components/WalletConnector';
 import BlockchainStatus from '../components/BlockchainStatus';
 import VerifiedReviewForm from '../components/VerifiedReviewForm';
+import { isBlockchainEnabled } from '../utils/blockchain';
 
 const DestinationsPage = () => {
   const { t } = useTranslation();
@@ -154,12 +155,14 @@ const DestinationsPage = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           {/* Wallet Connection Section */}
-          <div className="mb-8">
-            <WalletConnector onConnectionChange={handleWalletConnectionChange} />
-          </div>
+          {isBlockchainEnabled() && (
+            <div className="mb-8">
+              <WalletConnector onConnectionChange={handleWalletConnectionChange} />
+            </div>
+          )}
 
           {/* Blockchain Network Status */}
-          {walletConnected && (
+          {isBlockchainEnabled() && walletConnected && (
             <div className="mb-8 max-w-sm mx-auto">
               <BlockchainStatus />
             </div>
@@ -172,7 +175,7 @@ const DestinationsPage = () => {
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
               {t('exploreMostBeautiful')}
             </p>
-            {walletConnected && (
+            {isBlockchainEnabled() && walletConnected && (
               <div className="mt-4 flex items-center justify-center text-sm text-green-600">
                 <Shield className="h-4 w-4 mr-2" />
                 Blockchain verification enabled for authentic reviews
@@ -247,7 +250,7 @@ const DestinationsPage = () => {
                     <Badge className="bg-green-600 text-white">
                       {destination.category}
                     </Badge>
-                    {walletConnected && (
+                    {isBlockchainEnabled() && walletConnected && (
                       <Badge className="bg-blue-600 text-white flex items-center">
                         <Shield className="h-3 w-3 mr-1" />
                         Verified Reviews
@@ -307,7 +310,7 @@ const DestinationsPage = () => {
         destination={selectedDestination}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        walletConnected={walletConnected}
+        walletConnected={isBlockchainEnabled() ? walletConnected : false}
       />
 
       <Footer />

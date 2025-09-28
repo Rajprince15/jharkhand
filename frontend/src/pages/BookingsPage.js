@@ -10,6 +10,7 @@ import WalletConnector from '../components/WalletConnector';
 import CertificateGallery from '../components/CertificateGallery';
 import LoyaltyDashboard from '../components/LoyaltyDashboard';
 import BlockchainBookingStatus from '../components/BlockchainBookingStatus';
+import { isBlockchainEnabled } from '../utils/blockchain';
 
 const BookingsPage = () => {
   const { user } = useAuth();
@@ -195,7 +196,7 @@ const BookingsPage = () => {
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
-                <p className="text-gray-600">Manage your travel bookings and blockchain features</p>
+                <p className="text-gray-600">Manage your travel bookings{isBlockchainEnabled() ? ' and blockchain features' : ''}</p>
               </div>
             </div>
             <Link to="/">
@@ -207,9 +208,11 @@ const BookingsPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Wallet Connection Section */}
-        <div className="mb-8">
-          <WalletConnector onConnectionChange={handleWalletConnectionChange} />
-        </div>
+        {isBlockchainEnabled() && (
+          <div className="mb-8">
+            <WalletConnector onConnectionChange={handleWalletConnectionChange} />
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="mb-8">
@@ -227,32 +230,36 @@ const BookingsPage = () => {
                 My Bookings
               </div>
             </button>
-            <button
-              onClick={() => setActiveTab('certificates')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'certificates'
-                  ? 'border-yellow-500 text-yellow-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center">
-                <Award className="h-4 w-4 mr-2" />
-                Certificates
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('loyalty')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'loyalty'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center">
-                <Coins className="h-4 w-4 mr-2" />
-                Loyalty Points
-              </div>
-            </button>
+            {isBlockchainEnabled() && (
+              <>
+                <button
+                  onClick={() => setActiveTab('certificates')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'certificates'
+                      ? 'border-yellow-500 text-yellow-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <Award className="h-4 w-4 mr-2" />
+                    Certificates
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('loyalty')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'loyalty'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <Coins className="h-4 w-4 mr-2" />
+                    Loyalty Points
+                  </div>
+                </button>
+              </>
+            )}
           </nav>
         </div>
 
@@ -377,7 +384,7 @@ const BookingsPage = () => {
                       </div>
 
                       {/* Blockchain Status for individual bookings */}
-                      {walletConnected && (
+                      {isBlockchainEnabled() && walletConnected && (
                         <div className="mt-6 pt-6 border-t border-gray-200">
                           <div className="flex items-center mb-4">
                             <Shield className="h-4 w-4 text-blue-500 mr-2" />
@@ -397,11 +404,11 @@ const BookingsPage = () => {
           </>
         )}
 
-        {activeTab === 'certificates' && (
+        {activeTab === 'certificates' && isBlockchainEnabled() && (
           <CertificateGallery walletConnected={walletConnected} />
         )}
 
-        {activeTab === 'loyalty' && (
+        {activeTab === 'loyalty' && isBlockchainEnabled() && (
           <LoyaltyDashboard walletConnected={walletConnected} />
         )}
       </div>

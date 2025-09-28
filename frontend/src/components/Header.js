@@ -65,7 +65,7 @@ const Header = () => {
         <nav className="hidden md:flex items-center space-x-8">
           <Link
             to="/destinations"
-            className="text-foreground/80 hover:text-foreground transition-colors font-medium"
+            className="text-foreground/80 hover:text-foreground transition-colors font-bold"
           >
             {t('placesToGo')}
           </Link>
@@ -76,19 +76,19 @@ const Header = () => {
 
           <Link
             to="/ai-planner"
-            className="text-foreground/80 hover:text-foreground transition-colors font-medium"
+            className="text-foreground/80 hover:text-foreground transition-colors font-bold"
           >
             {t('aiPlanner')}
           </Link>
           <Link
             to="/map"
-            className="text-foreground/80 hover:text-foreground transition-colors font-medium"
+            className="text-foreground/80 hover:text-foreground transition-colors font-bold"
           >
             {t('map')}
           </Link>
           <Link
             to="/sustainable-trip"
-            className="text-foreground/80 hover:text-foreground transition-colors font-medium"
+            className="text-foreground/80 hover:text-foreground transition-colors font-bold"
           >
             {t('sustainableTrip')}
           </Link>
@@ -140,7 +140,7 @@ const Header = () => {
           <nav className="flex flex-col space-y-4 p-4">
             <Link
               to="/destinations"
-              className="text-foreground/80 hover:text-foreground transition-colors font-medium"
+              className="text-foreground/80 hover:text-foreground transition-colors font-bold"
               onClick={() => setIsMenuOpen(false)}
             >
               {t('placesToGo')}
@@ -151,28 +151,28 @@ const Header = () => {
                 navigate('/practical-tips');
                 setIsMenuOpen(false);
               }}
-              className="text-foreground/80 hover:text-foreground transition-colors font-medium text-left"
+              className="text-foreground/80 hover:text-foreground transition-colors font-bold text-left"
             >
               {t('practicalTips')}
             </button>
 
             <Link
               to="/ai-planner"
-              className="text-foreground/80 hover:text-foreground transition-colors font-medium"
+              className="text-foreground/80 hover:text-foreground transition-colors font-bold"
               onClick={() => setIsMenuOpen(false)}
             >
               {t('aiPlanner')}
             </Link>
             <Link
               to="/map"
-              className="text-foreground/80 hover:text-foreground transition-colors font-medium"
+              className="text-foreground/80 hover:text-foreground transition-colors font-bold"
               onClick={() => setIsMenuOpen(false)}
             >
               {t('map')}
             </Link>
             <Link
               to="/sustainable-trip"
-              className="text-foreground/80 hover:text-foreground transition-colors font-medium"
+              className="text-foreground/80 hover:text-foreground transition-colors font-bold"
               onClick={() => setIsMenuOpen(false)}
             >
               {t('sustainableTrip')}
