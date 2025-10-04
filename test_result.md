@@ -96,20 +96,68 @@
 # END - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
 #====================================================================================================
 
-user_problem_statement: "Implement comprehensive AR/VR functionality in Jharkhand Tourism map using Cesium/Resium with: 1) All AR/VR features (3D Globe Navigation, VR Tourism Experience, AR Mobile Features) 2) Primary focus on 3D Map Replacement, VR Destination Tours, and AR Location Features 3) Add toggle button for AR/VR and 2D modes with 3D previews integrated into booking system 4) Support both desktop VR and mobile AR devices"
+user_problem_statement: "Add new artisan role to existing tourism system with comprehensive marketplace functionality: 1) Add 'artisan' role to users table alongside existing tourist/provider/admin roles 2) Create artisan registration and authentication 3) Build artisan dashboard with sections: handicrafts management, events management, orders/sales, analytics 4) Implement handicrafts marketplace where artisans can sell tribal products with option to mark as 'tribal-made' 5) Add community-posted events system where artisans/guides/admins can post cultural events, fairs, exhibitions 6) Create database tables for handicrafts, events, handicraft_orders, event_bookings with full CRUD operations"
 
 backend:
-  - task: "PHASE 5: Frontend Integration - Wallet Connector"
+  - task: "Database Schema Update - Add Artisan Role"
     implemented: true
-    working: "NA"
-    file: "/app/frontend/src/components/WalletConnector.js"
+    working: true
+    file: "/app/backend/database/artisan_marketplace_schema.sql"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "user"
+        comment: "✅ DATABASE SCHEMA APPLIED SUCCESSFULLY: 1) Added 'artisan' role to users table enum 2) Created all required tables: handicrafts, events, handicraft_orders, event_bookings, handicraft_reviews, marketplace_notifications 3) Added marketplace fields to providers table 4) Inserted sample artisan users and handicrafts data for testing 5) Database changes confirmed by user"
+
+  - task: "Backend Artisan Authentication System"
+    implemented: false
+    working: "NA" 
+    file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "✅ WALLET CONNECTOR COMPONENT CREATED: 1) MetaMask connection and disconnection functionality 2) Automatic wallet detection and reconnection on page refresh 3) Network status display (Sepolia testnet support) 4) Network switching functionality (auto-add Sepolia if not present) 5) Backend wallet registration integration 6) Professional UI with connection status, wallet address display, and network information 7) Error handling for MetaMask installation and connection failures 8) Responsive design with proper loading states and user feedback"
+        comment: "READY FOR IMPLEMENTATION: 1) Update user registration endpoint to allow 'artisan' role 2) Update authentication middleware to support artisan role 3) Integrate existing marketplace endpoints from marketplace_endpoints_update.py into main server.py 4) Add artisan-specific dashboard API endpoints 5) Test artisan login/registration flow"
+
+  - task: "Marketplace Endpoints Integration"
+    implemented: false
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high" 
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "READY: Integrate existing marketplace endpoints from marketplace_endpoints_update.py into main server.py - includes handicrafts CRUD, events CRUD, orders management, artisan dashboard analytics, marketplace search and filtering"
+
+  - task: "Artisan Dashboard API Endpoints"
+    implemented: false
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"  
+        agent: "main"
+        comment: "READY: Create artisan-specific dashboard endpoints - overview stats, handicrafts management, events management, orders/sales history, notifications, analytics data"
+
+  - task: "Marketplace Database Tables Creation"
+    implemented: true
+    working: true
+    file: "/app/backend/database/artisan_marketplace_schema.sql"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "user"
+        comment: "✅ MARKETPLACE TABLES CREATED SUCCESSFULLY: 1) handicrafts table - artisan products with tribal-made flag and community name 2) events table - community-posted events with approval system 3) handicraft_orders table - sales tracking with order status 4) event_bookings table - event participation management 5) handicraft_reviews table - product review system 6) marketplace_notifications table - real-time updates 7) Sample data inserted for testing"
 
   - task: "PHASE 5: Frontend Integration - Certificate Gallery"
     implemented: true
@@ -314,17 +362,65 @@ backend:
         comment: "FIXED MAJOR BUG: View Details buttons in both tourist and provider booking dashboards were non-functional. Added comprehensive modal functionality with detailed booking information display, customer details, pricing info, add-ons, special requests, and action buttons for booking management. Both dashboards now have fully functional view details modals."
 
 frontend:
-  - task: "PHASE 5: BookingsPage Integration"
-    implemented: true
+  - task: "Artisan Registration Component"
+    implemented: false
     working: "NA"
-    file: "/app/frontend/src/pages/BookingsPage.js"
+    file: "/app/frontend/src/components/ArtisanRegistration.js"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "✅ BOOKINGSPAGE BLOCKCHAIN INTEGRATION COMPLETED: 1) Added tabbed interface (My Bookings, Certificates, Loyalty Points) 2) Wallet connector integration at the top of the page 3) Blockchain booking status component integrated into individual booking cards 4) Certificate gallery accessible via dedicated tab 5) Loyalty dashboard accessible via dedicated tab 6) Conditional rendering based on wallet connection status 7) Blockchain verification status display for each booking 8) Professional tab navigation with icons and responsive design"
+        comment: "TODO: Create artisan registration form allowing users to register as artisans, integrate with backend authentication system, add to existing registration flow"
+
+  - task: "Artisan Dashboard - Main Layout"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/pages/ArtisanDashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "TODO: Create comprehensive artisan dashboard with sections: 1) Dashboard Home (overview cards) 2) Handicrafts Management (add/edit products) 3) Events Management (post/manage events) 4) Orders/Sales History 5) Analytics (optional)"
+
+  - task: "Handicrafts Management Component"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/components/HandicraftsManagement.js" 
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "TODO: Create handicrafts CRUD interface allowing artisans to add products with name, images, price, tribal-made checkbox, tribal community name field, stock management"
+
+  - task: "Events Management Component"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/components/EventsManagement.js"
+    stuck_count: 0
+    priority: "high" 
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "TODO: Create events management system allowing artisans/guides/admins to post cultural events, tribal fairs, exhibitions with approval workflow"
+
+  - task: "Marketplace Frontend for Tourists"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/pages/Marketplace.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true  
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "TODO: Create marketplace interface for tourists to browse and purchase handicrafts, filter by tribal-made items, view artisan profiles"
 
   - task: "PHASE 5: BookingPage Integration"
     implemented: true
@@ -382,15 +478,19 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Frontend API Services Update"
-    - "RegionsSection Component Database Integration"  
-    - "DestinationsPage Region Filtering"
+    - "Backend Artisan Authentication System"
+    - "Artisan Registration Component"
+    - "Artisan Dashboard - Main Layout"
+    - "Handicrafts Management Component"
+    - "Events Management Component"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
   completed_testing:
     - "UPI Payment API Backend"
     - "Admin Payment Management API"
+    - "Database Schema Update - Add Artisan Role"
+    - "Marketplace Database Tables Creation"
 
   - task: "Currency Symbol Update"
     implemented: true
@@ -469,7 +569,7 @@ test_plan:
 
 agent_communication:
   - agent: "main"
-    message: "🔗 PHASE 6: SYSTEM INTEGRATION COMPLETED! ✅ STEP 6.1: Booking Flow Integration - Enhanced booking creation to auto-award loyalty points (10% of price) when blockchain verification is enabled, auto-issue certificates for completed tours with 50 bonus points, integrated blockchain verification request in frontend booking submission ✅ STEP 6.2: Review System Integration - Enhanced review creation with blockchain verification option for verified tourists only, bonus 25 loyalty points for verified reviews, automatic blockchain review record creation ✅ STEP 6.3: Loyalty System Integration - Created loyalty points redemption endpoint (/loyalty/redeem) with 100 points = ₹10 discount rate, maximum 50% discount protection, added loyalty transaction history endpoint ✅ All blockchain components now seamlessly connected: Booking → Verification → Certificates → Loyalty Points → Redemption → Reviews. Ready for Phase 7: Testing & Validation!"
+    message: "🎯 DATABASE PHASE COMPLETED SUCCESSFULLY! ✅ SCHEMA APPLIED: User confirmed all database changes applied - artisan role added to users table, all marketplace tables created (handicrafts, events, handicraft_orders, event_bookings, handicraft_reviews, marketplace_notifications) ✅ SAMPLE DATA INSERTED: Test artisan users and handicrafts data ready for testing ✅ NEXT PHASE READY: 1) Backend - Update server.py for artisan authentication and integrate marketplace endpoints 2) Frontend - Create artisan registration and comprehensive dashboard 3) Integration - Connect frontend to backend APIs 4) Testing - Full system testing of artisan marketplace functionality ✅ WAITING FOR USER PERMISSION: Ready to proceed with backend implementation phase"
   - agent: "main" 
     message: "🛒 MARKETPLACE IMPLEMENTATION COMPLETED (MySQL 8.0 Compatible)! ✅ DATABASE SCHEMA: Created marketplace_schema_mysql8.sql with handicrafts, cultural_events, event_bookings, handicraft_orders, reviews tables, real-time notifications, and homestay extensions ✅ ROLE INTEGRATION: Fully compatible with existing role system (tourist, provider, admin) - providers can enable marketplace, tourists can purchase ✅ SAMPLE DATA: Added 7 marketplace providers (artisans, event organizers, homestay hosts), 6 handicrafts, 4 cultural events with realistic pricing and descriptions ✅ PROVIDER DASHBOARD: New marketplace endpoints for providers - dashboard analytics, handicraft/event management, order processing, real-time notifications ✅ REAL-TIME FEATURES: Marketplace notifications table, live inventory tracking, automatic low-stock alerts, order status updates ✅ SEARCH & FILTERING: Full-text search on handicrafts and events, category filtering, price ranges, rating filters ✅ Ready for database setup and backend testing!"
   - agent: "main"
