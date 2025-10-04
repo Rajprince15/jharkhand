@@ -3687,7 +3687,7 @@ async def delete_handicraft(
                 # Verify ownership and delete
                 await cur.execute("""
                     DELETE FROM handicrafts 
-                    WHERE id = %s AND artisan_id = %s
+                    WHERE id = %s AND seller_id = %s
                 """, (handicraft_id, current_user['id']))
                 
                 if cur.rowcount == 0:
@@ -3801,6 +3801,264 @@ async def create_event(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating event: {str(e)}")
+
+# ORDERS MANAGEMENT ENDPOINTS
+
+@api_router.get("/artisans/orders")
+async def get_artisan_orders(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    status: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all orders for the current artisan"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                offset = (page - 1) * limit
+                
+                # Build query with optional status filter
+                where_clause = "WHERE ho.seller_id = %s"
+                params = [current_user['id']]
+                
+                if status:
+                    where_clause += " AND ho.status = %s"
+                    params.append(status)
+                
+                # Get total count
+                await cur.execute(f"""
+                    SELECT COUNT(*) as total FROM handicraft_orders ho 
+                    {where_clause}
+                """, params)
+                
+                total_result = await cur.fetchone()
+                total = total_result['total'] if total_result else 0
+                
+                # Get orders with pagination
+                query_params = params + [limit, offset]
+                await cur.execute(f"""
+                    SELECT ho.*, h.name as product_name, u.name as buyer_name, u.email as buyer_email, u.phone as buyer_phone
+                    FROM handicraft_orders ho
+                    JOIN handicrafts h ON ho.handicraft_id = h.id
+                    JOIN users u ON ho.user_id = u.id
+                    {where_clause}
+                    ORDER BY ho.order_date DESC
+                    LIMIT %s OFFSET %s
+                """, query_params)
+                
+                orders = await cur.fetchall()
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "items": orders,
+                        "total": total,
+                        "page": page,
+                        "limit": limit,
+                        "pages": (total + limit - 1) // limit if total > 0 else 1
+                    }
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching orders: {str(e)}")
+
+@api_router.put("/artisans/orders/{order_id}/status")
+async def update_order_status(
+    order_id: str,
+    new_status: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update order status for an artisan's order"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    valid_statuses = ['pending', 'confirmed', 'preparing', 'shipped', 'delivered', 'cancelled']
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Update order status
+                await cur.execute("""
+                    UPDATE handicraft_orders 
+                    SET status = %s, updated_at = NOW()
+                    WHERE id = %s AND seller_id = %s
+                """, (new_status, order_id, current_user['id']))
+                
+                if cur.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Order not found or access denied")
+                
+                return {
+                    "success": True,
+                    "message": f"Order status updated to {new_status}"
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating order status: {str(e)}")
+
+# ANALYTICS ENDPOINTS
+
+@api_router.get("/artisans/analytics")
+async def get_artisan_analytics(
+    period: str = Query("month", pattern="^(week|month|year)$"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get analytics data for artisan's activities"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Determine date range based on period
+                if period == "week":
+                    date_filter = "DATE(order_date) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"
+                elif period == "month":
+                    date_filter = "MONTH(order_date) = MONTH(NOW()) AND YEAR(order_date) = YEAR(NOW())"
+                else:  # year
+                    date_filter = "YEAR(order_date) = YEAR(NOW())"
+                
+                # Get sales analytics
+                await cur.execute(f"""
+                    SELECT 
+                        COUNT(ho.id) as total_orders,
+                        COALESCE(SUM(ho.total_amount), 0) as total_revenue,
+                        COALESCE(AVG(ho.total_amount), 0) as avg_order_value,
+                        COUNT(CASE WHEN ho.order_status = 'delivered' THEN 1 END) as delivered_orders,
+                        COUNT(CASE WHEN ho.order_status = 'pending' THEN 1 END) as pending_orders,
+                        COUNT(CASE WHEN ho.order_status = 'cancelled' THEN 1 END) as cancelled_orders
+                    FROM handicrafts h
+                    JOIN handicraft_orders ho ON h.id = ho.handicraft_id
+                    WHERE h.artisan_id = %s AND {date_filter}
+                """, (current_user['id'],))
+                
+                sales_stats = await cur.fetchone()
+                
+                # Get product performance
+                await cur.execute(f"""
+                    SELECT h.name, h.category, COUNT(ho.id) as orders, COALESCE(SUM(ho.total_amount), 0) as revenue
+                    FROM handicrafts h
+                    LEFT JOIN handicraft_orders ho ON h.id = ho.handicraft_id AND {date_filter}
+                    WHERE h.artisan_id = %s
+                    GROUP BY h.id, h.name, h.category
+                    ORDER BY revenue DESC
+                    LIMIT 10
+                """, (current_user['id'],))
+                
+                product_performance = await cur.fetchall()
+                
+                # Get category performance
+                await cur.execute(f"""
+                    SELECT h.category, COUNT(ho.id) as orders, COALESCE(SUM(ho.total_amount), 0) as revenue
+                    FROM handicrafts h
+                    LEFT JOIN handicraft_orders ho ON h.id = ho.handicraft_id AND {date_filter}
+                    WHERE h.artisan_id = %s
+                    GROUP BY h.category
+                    ORDER BY revenue DESC
+                """, (current_user['id'],))
+                
+                category_performance = await cur.fetchall()
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "period": period,
+                        "sales_stats": sales_stats,
+                        "product_performance": product_performance,
+                        "category_performance": category_performance
+                    }
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching analytics: {str(e)}")
+
+# PUBLIC MARKETPLACE ENDPOINTS
+
+@api_router.get("/marketplace/handicrafts")
+async def get_marketplace_handicrafts(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    category: Optional[str] = Query(None),
+    min_price: Optional[float] = Query(None),
+    max_price: Optional[float] = Query(None),
+    search: Optional[str] = Query(None),
+    is_tribal_made: Optional[bool] = Query(None)
+):
+    """Get handicrafts from marketplace (public endpoint)"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                offset = (page - 1) * limit
+                
+                # Build query with filters
+                where_conditions = ["h.is_available = 1"]
+                params = []
+                
+                if category:
+                    where_conditions.append("h.category = %s")
+                    params.append(category)
+                
+                if min_price is not None:
+                    where_conditions.append("h.price >= %s")
+                    params.append(min_price)
+                
+                if max_price is not None:
+                    where_conditions.append("h.price <= %s")
+                    params.append(max_price)
+                
+                if search:
+                    where_conditions.append("(h.name LIKE %s OR h.description LIKE %s)")
+                    params.extend([f"%{search}%", f"%{search}%"])
+                
+                if is_tribal_made is not None:
+                    where_conditions.append("h.is_tribal_made = %s")
+                    params.append(is_tribal_made)
+                
+                where_clause = "WHERE " + " AND ".join(where_conditions)
+                
+                # Get total count
+                await cur.execute(f"""
+                    SELECT COUNT(*) as total FROM handicrafts h 
+                    {where_clause}
+                """, params)
+                
+                total_result = await cur.fetchone()
+                total = total_result['total'] if total_result else 0
+                
+                # Get handicrafts with pagination
+                query_params = params + [limit, offset]
+                await cur.execute(f"""
+                    SELECT h.*, u.name as artisan_name
+                    FROM handicrafts h
+                    JOIN users u ON h.artisan_id = u.id
+                    {where_clause}
+                    ORDER BY h.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, query_params)
+                
+                handicrafts = await cur.fetchall()
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "items": handicrafts,
+                        "total": total,
+                        "page": page,
+                        "limit": limit,
+                        "pages": (total + limit - 1) // limit if total > 0 else 1
+                    }
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching marketplace handicrafts: {str(e)}")
 
 @api_router.get("/marketplace/events")
 async def get_marketplace_events(

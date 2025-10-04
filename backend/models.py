@@ -7,6 +7,7 @@ class UserRole(str, Enum):
     tourist = "tourist"
     provider = "provider"
     admin = "admin"
+    artisan = "artisan"
 
 class UserCreate(BaseModel):
     name: str
