@@ -3383,7 +3383,7 @@ async def get_artisan_dashboard(current_user: dict = Depends(get_current_user)):
                         COALESCE(AVG(rating), 0) as avg_rating,
                         COALESCE(SUM(total_reviews), 0) as total_reviews
                     FROM handicrafts 
-                    WHERE seller_id = %s
+                    WHERE artisan_id = %s
                 """, (current_user['id'],))
                 
                 handicrafts_stats = await cur.fetchone()
@@ -3392,10 +3392,10 @@ async def get_artisan_dashboard(current_user: dict = Depends(get_current_user)):
                 await cur.execute("""
                     SELECT 
                         COUNT(*) as total_events,
-                        COALESCE(SUM(CASE WHEN is_active = 1 AND start_date > NOW() THEN 1 ELSE 0 END), 0) as upcoming_events,
-                        COALESCE(SUM(CASE WHEN start_date < NOW() AND end_date > NOW() THEN 1 ELSE 0 END), 0) as ongoing_events
-                    FROM cultural_events 
-                    WHERE organizer_id = %s
+                        COALESCE(SUM(CASE WHEN is_approved = 1 AND date > CURDATE() THEN 1 ELSE 0 END), 0) as upcoming_events,
+                        COALESCE(SUM(CASE WHEN date = CURDATE() THEN 1 ELSE 0 END), 0) as ongoing_events
+                    FROM events 
+                    WHERE posted_by = %s
                 """, (current_user['id'],))
                 
                 events_stats = await cur.fetchone()
@@ -3448,7 +3448,7 @@ async def get_artisan_handicrafts(
                 offset = (page - 1) * limit
                 
                 # Build query with optional category filter
-                where_clause = "WHERE seller_id = %s"
+                where_clause = "WHERE artisan_id = %s"
                 params = [current_user['id']]
                 
                 if category:
@@ -3467,9 +3467,9 @@ async def get_artisan_handicrafts(
                 # Get handicrafts with pagination
                 query_params = params + [limit, offset]
                 await cur.execute(f"""
-                    SELECT h.*, u.name as seller_name
+                    SELECT h.*, u.name as artisan_name
                     FROM handicrafts h
-                    JOIN users u ON h.seller_id = u.id
+                    JOIN users u ON h.artisan_id = u.id
                     {where_clause}
                     ORDER BY h.created_at DESC
                     LIMIT %s OFFSET %s
@@ -3508,7 +3508,7 @@ async def create_handicraft(
                 
                 await cur.execute("""
                     INSERT INTO handicrafts (
-                        id, seller_id, name, category, description, price, discount_price,
+                        id, artisan_id, name, category, description, price, discount_price,
                         stock_quantity, images, materials, dimensions, weight, origin_village,
                         cultural_significance, care_instructions, tags, is_featured
                     ) VALUES (
@@ -3588,7 +3588,7 @@ async def get_marketplace_handicrafts(
                 await cur.execute(f"""
                     SELECT h.*, u.name as artisan_name
                     FROM handicrafts h
-                    JOIN users u ON h.seller_id = u.id
+                    JOIN users u ON h.artisan_id = u.id
                     {where_clause}
                     ORDER BY h.is_featured DESC, h.created_at DESC
                     LIMIT %s OFFSET %s
@@ -3609,6 +3609,262 @@ async def get_marketplace_handicrafts(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching marketplace handicrafts: {str(e)}")
+
+@api_router.put("/artisans/handicrafts/{handicraft_id}")
+async def update_handicraft(
+    handicraft_id: str,
+    handicraft_data: HandicraftUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a handicraft owned by the current artisan"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Verify ownership
+                await cur.execute("SELECT artisan_id FROM handicrafts WHERE id = %s", (handicraft_id,))
+                handicraft = await cur.fetchone()
+                
+                if not handicraft or handicraft[0] != current_user['id']:
+                    raise HTTPException(status_code=404, detail="Handicraft not found or access denied")
+                
+                # Build update query dynamically
+                update_fields = []
+                params = []
+                
+                if handicraft_data.name is not None:
+                    update_fields.append("name = %s")
+                    params.append(handicraft_data.name)
+                if handicraft_data.category is not None:
+                    update_fields.append("category = %s")
+                    params.append(handicraft_data.category)
+                if handicraft_data.description is not None:
+                    update_fields.append("description = %s")
+                    params.append(handicraft_data.description)
+                if handicraft_data.price is not None:
+                    update_fields.append("price = %s")
+                    params.append(handicraft_data.price)
+                if handicraft_data.stock_quantity is not None:
+                    update_fields.append("stock_quantity = %s")
+                    params.append(handicraft_data.stock_quantity)
+                
+                if not update_fields:
+                    raise HTTPException(status_code=400, detail="No fields to update")
+                
+                update_fields.append("updated_at = NOW()")
+                params.append(handicraft_id)
+                
+                await cur.execute(f"""
+                    UPDATE handicrafts 
+                    SET {', '.join(update_fields)} 
+                    WHERE id = %s
+                """, params)
+                
+                return {
+                    "success": True,
+                    "message": "Handicraft updated successfully"
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating handicraft: {str(e)}")
+
+@api_router.delete("/artisans/handicrafts/{handicraft_id}")
+async def delete_handicraft(
+    handicraft_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a handicraft owned by the current artisan"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Verify ownership and delete
+                await cur.execute("""
+                    DELETE FROM handicrafts 
+                    WHERE id = %s AND artisan_id = %s
+                """, (handicraft_id, current_user['id']))
+                
+                if cur.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Handicraft not found or access denied")
+                
+                return {
+                    "success": True,
+                    "message": "Handicraft deleted successfully"
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting handicraft: {str(e)}")
+
+@api_router.get("/artisans/events")
+async def get_artisan_events(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    event_type: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all events for the current artisan"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                offset = (page - 1) * limit
+                
+                # Build query with optional event type filter
+                where_clause = "WHERE posted_by = %s"
+                params = [current_user['id']]
+                
+                if event_type:
+                    where_clause += " AND event_type = %s"
+                    params.append(event_type)
+                
+                # Get total count
+                await cur.execute(f"""
+                    SELECT COUNT(*) as total FROM events 
+                    {where_clause}
+                """, params)
+                
+                total_result = await cur.fetchone()
+                total = total_result['total'] if total_result else 0
+                
+                # Get events with pagination
+                query_params = params + [limit, offset]
+                await cur.execute(f"""
+                    SELECT e.*, u.name as organizer_name
+                    FROM events e
+                    JOIN users u ON e.posted_by = u.id
+                    {where_clause}
+                    ORDER BY e.date DESC
+                    LIMIT %s OFFSET %s
+                """, query_params)
+                
+                events = await cur.fetchall()
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "items": events,
+                        "total": total,
+                        "page": page,
+                        "limit": limit,
+                        "pages": (total + limit - 1) // limit if total > 0 else 1
+                    }
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching events: {str(e)}")
+
+@api_router.post("/artisans/events")
+async def create_event(
+    event_data: CulturalEventCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new cultural event for the current artisan"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                event_id = str(uuid.uuid4())
+                
+                await cur.execute("""
+                    INSERT INTO events (
+                        id, title, description, event_type, date, time, location, 
+                        posted_by, poster_role, entry_fee, contact_info, is_approved
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                """, (
+                    event_id, event_data.title, event_data.description,
+                    event_data.event_type, event_data.start_date.date(),
+                    event_data.start_date.time(), event_data.location,
+                    current_user['id'], 'artisan', event_data.price,
+                    json.dumps(event_data.contact_info) if event_data.contact_info else None,
+                    False  # Events need approval by admin
+                ))
+                
+                return {
+                    "success": True,
+                    "message": "Event created successfully and submitted for approval",
+                    "data": {"event_id": event_id}
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating event: {str(e)}")
+
+@api_router.get("/marketplace/events")
+async def get_marketplace_events(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    event_type: Optional[str] = Query(None),
+    location: Optional[str] = Query(None)
+):
+    """Get cultural events from marketplace (public endpoint)"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                offset = (page - 1) * limit
+                
+                # Build query with filters
+                where_conditions = ["e.is_approved = 1", "e.date >= CURDATE()"]
+                params = []
+                
+                if event_type:
+                    where_conditions.append("e.event_type = %s")
+                    params.append(event_type)
+                
+                if location:
+                    where_conditions.append("e.location LIKE %s")
+                    params.append(f"%{location}%")
+                
+                where_clause = "WHERE " + " AND ".join(where_conditions)
+                
+                # Get total count
+                await cur.execute(f"""
+                    SELECT COUNT(*) as total FROM events e 
+                    {where_clause}
+                """, params)
+                
+                total_result = await cur.fetchone()
+                total = total_result['total'] if total_result else 0
+                
+                # Get events with pagination
+                query_params = params + [limit, offset]
+                await cur.execute(f"""
+                    SELECT e.*, u.name as organizer_name
+                    FROM events e
+                    JOIN users u ON e.posted_by = u.id
+                    {where_clause}
+                    ORDER BY e.date ASC
+                    LIMIT %s OFFSET %s
+                """, query_params)
+                
+                events = await cur.fetchall()
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "items": events,
+                        "total": total,
+                        "page": page,
+                        "limit": limit,
+                        "pages": (total + limit - 1) // limit if total > 0 else 1
+                    }
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching marketplace events: {str(e)}")
 
 # Include the router in the main app
 app.include_router(api_router)
