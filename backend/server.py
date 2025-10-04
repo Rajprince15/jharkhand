@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -14,6 +14,11 @@ from pathlib import Path
 from services.gemini_service import GeminiService
 from models.blockchain_models import BlockchainStatus
 from services.blockchain_service import blockchain_service
+from models.marketplace_models_updated import (
+    HandicraftCreate, HandicraftUpdate, Handicraft,
+    CulturalEventCreate, CulturalEventUpdate, CulturalEvent,
+    HandicraftCategory, EventType, OrderStatus, PaymentStatus
+)
 import aiomysql
 
 ROOT_DIR = Path(__file__).parent
@@ -186,9 +191,9 @@ async def register_user(user_data: UserCreate):
         if user_data.role == "admin":
             raise HTTPException(status_code=403, detail="Admin registration is not allowed through public registration")
         
-        # Ensure only valid roles are allowed
-        if user_data.role not in ["tourist", "provider"]:
-            raise HTTPException(status_code=400, detail="Invalid role. Only 'tourist' and 'provider' roles are allowed")
+        # Ensure only valid roles are allowed (now including artisan)
+        if user_data.role not in ["tourist", "provider", "artisan"]:
+            raise HTTPException(status_code=400, detail="Invalid role. Only 'tourist', 'provider', and 'artisan' roles are allowed")
         
         pool = await get_db()
         user_id = str(uuid.uuid4())
@@ -3356,6 +3361,254 @@ async def verify_review_blockchain(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ARTISAN MARKETPLACE ENDPOINTS
+
+@api_router.get("/artisans/dashboard")
+async def get_artisan_dashboard(current_user: dict = Depends(get_current_user)):
+    """Get artisan dashboard overview with stats and recent activity"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                # Get artisan's handicrafts stats
+                await cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_products,
+                        COALESCE(SUM(CASE WHEN is_available = 1 THEN 1 ELSE 0 END), 0) as active_products,
+                        COALESCE(SUM(CASE WHEN stock_quantity <= 5 AND stock_quantity > 0 THEN 1 ELSE 0 END), 0) as low_stock_items,
+                        COALESCE(AVG(rating), 0) as avg_rating,
+                        COALESCE(SUM(total_reviews), 0) as total_reviews
+                    FROM handicrafts 
+                    WHERE seller_id = %s
+                """, (current_user['id'],))
+                
+                handicrafts_stats = await cur.fetchone()
+                
+                # Get artisan's events stats
+                await cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_events,
+                        COALESCE(SUM(CASE WHEN is_active = 1 AND start_date > NOW() THEN 1 ELSE 0 END), 0) as upcoming_events,
+                        COALESCE(SUM(CASE WHEN start_date < NOW() AND end_date > NOW() THEN 1 ELSE 0 END), 0) as ongoing_events
+                    FROM cultural_events 
+                    WHERE organizer_id = %s
+                """, (current_user['id'],))
+                
+                events_stats = await cur.fetchone()
+                
+                # Get orders stats for this month
+                await cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_orders,
+                        COALESCE(SUM(total_price), 0) as total_revenue,
+                        COALESCE(COUNT(CASE WHEN status = 'pending' THEN 1 END), 0) as pending_orders,
+                        COALESCE(COUNT(CASE WHEN status = 'delivered' THEN 1 END), 0) as completed_orders
+                    FROM handicraft_orders 
+                    WHERE seller_id = %s AND MONTH(order_date) = MONTH(NOW()) AND YEAR(order_date) = YEAR(NOW())
+                """, (current_user['id'],))
+                
+                orders_stats = await cur.fetchone()
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "handicrafts_stats": handicrafts_stats,
+                        "events_stats": events_stats,
+                        "orders_stats": orders_stats,
+                        "artisan_info": {
+                            "id": current_user['id'],
+                            "name": current_user['name'],
+                            "role": current_user['role']
+                        }
+                    }
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching artisan dashboard: {str(e)}")
+
+@api_router.get("/artisans/handicrafts")
+async def get_artisan_handicrafts(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    category: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all handicrafts for the current artisan"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                offset = (page - 1) * limit
+                
+                # Build query with optional category filter
+                where_clause = "WHERE seller_id = %s"
+                params = [current_user['id']]
+                
+                if category:
+                    where_clause += " AND category = %s"
+                    params.append(category)
+                
+                # Get total count
+                await cur.execute(f"""
+                    SELECT COUNT(*) as total FROM handicrafts 
+                    {where_clause}
+                """, params)
+                
+                total_result = await cur.fetchone()
+                total = total_result['total'] if total_result else 0
+                
+                # Get handicrafts with pagination
+                query_params = params + [limit, offset]
+                await cur.execute(f"""
+                    SELECT h.*, u.name as seller_name
+                    FROM handicrafts h
+                    JOIN users u ON h.seller_id = u.id
+                    {where_clause}
+                    ORDER BY h.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, query_params)
+                
+                handicrafts = await cur.fetchall()
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "items": handicrafts,
+                        "total": total,
+                        "page": page,
+                        "limit": limit,
+                        "pages": (total + limit - 1) // limit if total > 0 else 1
+                    }
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching handicrafts: {str(e)}")
+
+@api_router.post("/artisans/handicrafts")
+async def create_handicraft(
+    handicraft_data: HandicraftCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new handicraft for the current artisan"""
+    if current_user['role'] != 'artisan':
+        raise HTTPException(status_code=403, detail="Access denied. Artisan role required.")
+    
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                handicraft_id = str(uuid.uuid4())
+                
+                await cur.execute("""
+                    INSERT INTO handicrafts (
+                        id, seller_id, name, category, description, price, discount_price,
+                        stock_quantity, images, materials, dimensions, weight, origin_village,
+                        cultural_significance, care_instructions, tags, is_featured
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                """, (
+                    handicraft_id, current_user['id'], handicraft_data.name,
+                    handicraft_data.category, handicraft_data.description,
+                    handicraft_data.price, handicraft_data.discount_price,
+                    handicraft_data.stock_quantity,
+                    json.dumps(handicraft_data.images) if handicraft_data.images else None,
+                    handicraft_data.materials, handicraft_data.dimensions,
+                    handicraft_data.weight, handicraft_data.origin_village,
+                    handicraft_data.cultural_significance, handicraft_data.care_instructions,
+                    json.dumps(handicraft_data.tags) if handicraft_data.tags else None,
+                    handicraft_data.is_featured
+                ))
+                
+                return {
+                    "success": True,
+                    "message": "Handicraft created successfully",
+                    "data": {"handicraft_id": handicraft_id}
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating handicraft: {str(e)}")
+
+@api_router.get("/marketplace/handicrafts")
+async def get_marketplace_handicrafts(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    category: Optional[str] = Query(None),
+    min_price: Optional[float] = Query(None),
+    max_price: Optional[float] = Query(None),
+    search: Optional[str] = Query(None)
+):
+    """Get handicrafts from marketplace (public endpoint)"""
+    try:
+        pool = await get_db()
+        async with pool.acquire() as conn:
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                offset = (page - 1) * limit
+                
+                # Build query with filters
+                where_conditions = ["h.is_available = 1"]
+                params = []
+                
+                if category:
+                    where_conditions.append("h.category = %s")
+                    params.append(category)
+                
+                if min_price is not None:
+                    where_conditions.append("h.price >= %s")
+                    params.append(min_price)
+                
+                if max_price is not None:
+                    where_conditions.append("h.price <= %s")
+                    params.append(max_price)
+                
+                if search:
+                    where_conditions.append("(h.name LIKE %s OR h.description LIKE %s)")
+                    params.extend([f"%{search}%", f"%{search}%"])
+                
+                where_clause = "WHERE " + " AND ".join(where_conditions)
+                
+                # Get total count
+                await cur.execute(f"""
+                    SELECT COUNT(*) as total FROM handicrafts h 
+                    {where_clause}
+                """, params)
+                
+                total_result = await cur.fetchone()
+                total = total_result['total'] if total_result else 0
+                
+                # Get handicrafts with pagination
+                query_params = params + [limit, offset]
+                await cur.execute(f"""
+                    SELECT h.*, u.name as artisan_name
+                    FROM handicrafts h
+                    JOIN users u ON h.seller_id = u.id
+                    {where_clause}
+                    ORDER BY h.is_featured DESC, h.created_at DESC
+                    LIMIT %s OFFSET %s
+                """, query_params)
+                
+                handicrafts = await cur.fetchall()
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "items": handicrafts,
+                        "total": total,
+                        "page": page,
+                        "limit": limit,
+                        "pages": (total + limit - 1) // limit if total > 0 else 1
+                    }
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching marketplace handicrafts: {str(e)}")
 
 # Include the router in the main app
 app.include_router(api_router)
