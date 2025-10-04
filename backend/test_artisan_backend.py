@@ -8,7 +8,7 @@ import requests
 import json
 import sys
 
-BASE_URL = "http://localhost:8001/api"
+BASE_URL = "http://localhost:8000/api"
 
 def test_artisan_registration():
     """Test artisan user registration"""
@@ -221,8 +221,8 @@ def main():
     # Test server connection
     if not test_server_running():
         print("\n❌ Cannot connect to server. Please start the backend server first:")
-        print("cd /app/backend")
-        print("python -m uvicorn server:app --host 0.0.0.0 --port 8001 --reload")
+        print("cd /jharkhand/backend")
+        print("python -m uvicorn server:app --host 0.0.0.0 --port 8000 --reload")
         sys.exit(1)
     
     # Test registration (try both registration and login)
